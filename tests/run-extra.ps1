@@ -47,7 +47,11 @@ Add-Type -Name K -Namespace W -MemberDefinition '[DllImport("kernel32.dll", Char
 [W.K]::LoadLibrary('$rd\rime.dll') | Out-Null
 Start-Sleep 900
 "@
-Start-Process powershell -ArgumentList '-NoProfile', '-Command', $loader -WindowStyle Hidden
+function Start-Encoded($script) {
+  $enc = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($script))
+  Start-Process powershell -ArgumentList '-NoProfile', '-EncodedCommand', $enc -WindowStyle Hidden -PassThru
+}
+$rimeHost = Start-Encoded $loader
 
 # C. Driver services and a ManageEngine agent look-alike (never started)
 Set-Content "$env:SystemRoot\System32\drivers\ardrv.sys" 'dummy'
@@ -59,8 +63,14 @@ Set-Content "$env:SystemRoot\System32\drivers\ardrv.sys" 'dummy'
 $locked = "$dl\Click here to view7.zip"
 Set-Content $locked 'dummy'
 $lock = "`$f=[IO.File]::Open('$locked','Open','Read','None'); Start-Sleep 900"
-$locker = Start-Process powershell -ArgumentList '-NoProfile', '-Command', $lock -WindowStyle Hidden -PassThru
-Start-Sleep 5
+$locker = Start-Encoded $lock
+# Wait until the fake rime.dll is really loaded before scanning.
+for ($i = 0; $i -lt 30; $i++) {
+  $loaded = try { (Get-Process -Id $rimeHost.Id).Modules | Where-Object ModuleName -eq 'rime.dll' } catch { $null }
+  if ($loaded) { break }
+  Start-Sleep 1
+}
+Check ([bool]$loaded) 'test setup: fake rime.dll loaded in host process'
 
 Write-Host '=== Scan ===' -ForegroundColor Cyan
 $r = Scan "$env:TEMP\x1.json"
@@ -79,7 +89,7 @@ $r = Scan "$env:TEMP\x2.json" -Fix
 Check ($r.Code -eq 1) "fix does not crash on locked file (exit $($r.Code))"
 Check (Test-Path $locked) 'locked file left in place (reported, not lost)'
 Check (-not (Test-Path "$hd\invoice-copy.dat")) 'hash-matched file quarantined'
-Check (-not (Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'RimeTest' })) 'rime.dll host process stopped'
+Check (-not (Get-Process -Id $rimeHost.Id -ErrorAction SilentlyContinue)) 'rime.dll host process stopped'
 & sc.exe query ardrv | Out-Null; Check ($LASTEXITCODE -ne 0) 'ardrv service deleted'
 Check (-not (Test-Path "$env:SystemRoot\System32\drivers\ardrv.sys")) 'ardrv.sys driver file quarantined'
 Check ([bool](Get-Service MEUemsTest -ErrorAction SilentlyContinue)) 'ManageEngine left for the user to decide'

@@ -16,6 +16,9 @@ Set-Content -Path "$dir\KafanInputService.exe" -Value 'dummy'
 
 # Auto-start
 $cmd = "rundll32.exe `"$dir\RIME.dll`",_vmclientcore@16 test"
+if (-not (Test-Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run')) {
+  New-Item -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Force | Out-Null
+}
 New-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'WAZipTestRun' -Value $cmd -Force | Out-Null
 $act = New-ScheduledTaskAction -Execute 'rundll32.exe' -Argument "`"$dir\RIME.dll`",_vmclientcore@16 test"
 Register-ScheduledTask -TaskName 'WAZipTestTask' -Action $act -Trigger (New-ScheduledTaskTrigger -AtLogOn) -Force | Out-Null
