@@ -44,7 +44,15 @@ $AbusedLegit = @(
   @{ Sha = '1c5129b4d63f2d5252b5b02a0a7d655dac3b6eac23dd4ed92b4dd55f243387ff'; Size = 18248;   Name = 'ardrv.sys (OPSWAT, abused as AV killer)'; Vendor = 'OPSWAT' }
   @{ Sha = 'c74f55247aa2c72001024bd977c869cb5adce6f8604a4d32329f015b73ae2a49'; Size = 1994600; Name = 'KafanInputService.exe (sideload host)';      Vendor = 'Kafan' }
 )
-$PersistRegex = 'rime\.dll|_vmclientcore@16|KafanInput|vcRuntimeMinimum_x86\.exe|\\H\d{8,}\.exe|ZyArk|\\ardrv\.sys'
+# Test hook: extra IOCs from a JSON file, so CI can exercise hash matching without real malware.
+if ($env:WAZIP_TEST_IOCS -and (Test-Path -LiteralPath $env:WAZIP_TEST_IOCS)) {
+  $extra = Get-Content -Raw -LiteralPath $env:WAZIP_TEST_IOCS | ConvertFrom-Json
+  foreach ($e in @($extra | ForEach-Object { $_ })) {
+    $entry = @{ Sha = $e.Sha.ToLower(); Size = [long]$e.Size; Name = $e.Name }
+    if ($e.Vendor) { $entry.Vendor = $e.Vendor; $AbusedLegit += $entry } else { $KnownBad += $entry }
+  }
+}
+$PersistRegex ='rime\.dll|_vmclientcore@16|KafanInput|vcRuntimeMinimum_x86\.exe|\\H\d{8,}\.exe|ZyArk|\\ardrv\.sys'
 $LureRegex    = '^Click here to view.*\.(zip|vhd|vhdx)$'
 $VbsLureRegex = '(Account Statement|Debt Statement|Financial Report|Penyata|Invoice|Invois|Payment).*\.(vbs|vbe|js|wsf)$'
 
@@ -129,7 +137,7 @@ function Scan-Services {
     $hit = $null
     if ($name -match '^(ZyArk|ZyArkFilter)$' -or $img -match 'zyark') { $hit = 'ZyArk driver (abused Baidu anti-rootkit, kills antivirus).' }
     elseif (($name -eq 'ardrv' -or $img -match '\\ardrv\.sys') -and $img -notmatch 'OPSWAT') { $hit = 'ardrv.sys outside OPSWAT folder (abused to kill antivirus).' }
-    elseif ($img -match $PersistRegex) { $hit = "Service points at malware path: $img" }
+    elseif ($img -match $PersistRegex -and $img -notmatch 'OPSWAT') { $hit = "Service points at malware path: $img" }
     if ($hit) { Add-Finding 'Service' 'HIGH' $name $hit @{ RegPath = $svc.PSPath; Image = $img } }
   }
   $drv = Join-Path $env:SystemRoot 'System32\drivers\ZyArk.dat'

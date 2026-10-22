@@ -8,9 +8,10 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-2022, windows-2025]
+        suite: [run-e2e, run-extra]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - name: End-to-end (Windows PowerShell 5.1)
+      - name: ${{ matrix.suite }} (Windows PowerShell 5.1)
         shell: powershell
-        run: .\tests\run-e2e.ps1
+        run: .\tests\${{ matrix.suite }}.ps1
