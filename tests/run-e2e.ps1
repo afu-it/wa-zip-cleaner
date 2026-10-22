@@ -13,7 +13,8 @@ function Scan($report, [switch]$Fix) {
   else      { & powershell -NoProfile -ExecutionPolicy Bypass -File $tool -QuarantineRoot $q -ReportPath $report | Out-Host }
   $code = $LASTEXITCODE
   $items = @()
-  if (Test-Path $report) { $items = @(Get-Content -Raw $report | ConvertFrom-Json) }
+  # PS 5.1 emits a JSON array as one pipeline object; assign first, then unroll.
+  if (Test-Path $report) { $parsed = Get-Content -Raw $report | ConvertFrom-Json; $items = @($parsed | ForEach-Object { $_ }) }
   @{ Code = $code; High = @($items | Where-Object Severity -eq 'HIGH'); All = $items }
 }
 
