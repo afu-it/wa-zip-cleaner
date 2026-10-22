@@ -13,6 +13,7 @@ $dir = 'C:\Users\Public\WAZipTest'
 New-Item -ItemType Directory -Force -Path $dir | Out-Null
 Set-Content -Path "$dir\rime.dll" -Value 'dummy'
 Set-Content -Path "$dir\KafanInputService.exe" -Value 'dummy'
+Set-Content -Path "$dir\hidserv.dll" -Value 'dummy'
 
 # Auto-start
 $cmd = "rundll32.exe `"$dir\RIME.dll`",_vmclientcore@16 test"
