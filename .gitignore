@@ -1,0 +1,4 @@
+*.infected
+*.vhd
+*.zip
+samples/
