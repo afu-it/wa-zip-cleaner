@@ -27,13 +27,24 @@ Malware ni nama dia **ValleyRAT** (ada orang panggil Winos 4.0 atau Silver Fox).
    - Keluar **BERSIH**: PC anda okay, takde malware. Settle.
    - Keluar **BAHAYA**: taip `Y`, tekan Enter. Tool ni akan buang malware tu. Fail jahat tu dia pindah ke folder quarantine (`C:\WAZipQuarantine`), bukan delete terus, so kalau tersalah buang boleh restore balik.
 
-## Lepas dah buang, buat 3 benda ni
+## Kalau keluar BAHAYA, buat benda ni juga
 
-1. Buka WhatsApp kat **phone** > **Linked devices** > log out semua. Ni supaya hacker tak boleh baca WhatsApp anda lagi.
-2. Tukar password **online banking** dan **email** anda. Better guna phone untuk tukar.
-3. Restart PC, lepas tu buat "Cara buang" tadi sekali lagi sampai keluar **BERSIH**.
+Malware ni boleh duduk diam dalam PC berminggu-minggu sambil curi data. Jadi walaupun tool ni dah buang dia, anggap password anda dah bocor.
 
-Tak payah format PC. Format cuma perlu kalau tool ni sendiri bagitau dia jumpa driver yang off antivirus. Kalau takde, tak payah.
+Guna **phone**, bukan PC yang kena tu:
+
+1. WhatsApp > **Linked devices** > log out semua. Ni supaya hacker tak boleh guna WhatsApp anda untuk hantar fail jahat ke kawan-kawan.
+2. Tukar password **semua akaun yang pernah login atau save password dalam Chrome atau Edge** kat PC tu. Mula dengan online banking, email, Google, Microsoft dan Facebook.
+3. Dalam setiap akaun tu, log out semua device lain, dan on **2FA** (kod pengesahan dari phone).
+4. Kalau ada info bank dalam PC tu, call bank dan minta dia orang pantau akaun anda.
+
+Lepas tu, untuk PC:
+
+1. Restart PC, lepas tu buat "Cara buang" sekali lagi sampai keluar **BERSIH**.
+2. Kalau tool ni bagi amaran **ManageEngine** (dan office anda tak pernah pasang), atau dia jumpa **driver** yang off antivirus, cara paling selamat: backup fail penting je (dokumen, gambar), pastu **format dan install semula Windows**. Kalau tak reti, bawa ke kedai komputer dan bagitau PC ni kena malware dengan remote access.
+3. Masa backup, jangan copy fail `.exe`, `.zip`, `.dll`, `.bat`, `.vhd` atau `.vhdx`. Copy fail yang anda kenal je.
+
+Kalau dari awal keluar **BERSIH**, tak payah buat semua ni.
 
 ---
 
@@ -48,7 +59,7 @@ Bawah ni info tambahan. Klik tajuk untuk buka.
    - Windows tanya boleh ke tak: tekan **Yes**.
    - Kalau keluar "Windows protected your PC": tekan **More info**, pastu **Run anyway**. Ni normal.
 4. Tunggu 2 sampai 10 minit. Kalau keluar **BAHAYA**, taip `Y` dan tekan Enter.
-5. Buat 3 benda dalam "Lepas dah buang" kat atas. Lepas restart, double-click `MULA-SINI.bat` sekali lagi.
+5. Kalau keluar BAHAYA, buat semua benda dalam "Kalau keluar BAHAYA" kat atas. Lepas restart, double-click `MULA-SINI.bat` sekali lagi.
 
 </details>
 
@@ -93,7 +104,8 @@ Jangan suruh saya format Windows dulu. Tanya satu soalan satu masa kalau perlu.
 
 - Ni bukan antivirus penuh. Dia cuma cari malware WhatsApp yang ni je. Kalau nak full scan, guna Kaspersky atau Malwarebytes.
 - Dia kenal versi malware yang kami jumpa bulan Oktober 2026. Kalau hacker ubah sikit, kami dah tambah detection yang lebih umum, tapi tak boleh janji 100%.
-- Kalau dia jumpa driver yang off antivirus, cara paling selamat tetap backup data dan install semula Windows. Tool ni akan bagitau kalau perlu.
+- Ada mangsa lain yang jumpa program curi data nama `888.exe` dalam kempen yang sama. Program ni ambil password Chrome, Edge dan sesi WhatsApp. Tool ni belum detect `888.exe`. Sebab tu kalau keluar BAHAYA, tukar semua password walaupun tool ni dah bersihkan.
+- ManageEngine yang hacker pasang kadang-kadang tak boleh di-uninstall, sebab dia minta kod. Kalau jadi macam tu, format Windows.
 - Kami belum jumpa alamat server hacker tu. Mungkin server tu dah mati.
 
 </details>
@@ -162,7 +174,7 @@ Press **Windows + X**, open **Terminal (Admin)**, paste the command from the top
 
 Or download the repo, extract it, and double-click `MULA-SINI.bat`.
 
-After cleaning: log out of WhatsApp Linked devices, change bank and email passwords, restart, and scan again. Full analysis: [docs/REPORT.md](docs/REPORT.md).
+If anything is found: from your phone, log out of WhatsApp Linked devices, change every password saved in or typed into Chrome/Edge on that PC, sign out other sessions and turn on 2FA. If the tool warns about ManageEngine or an antivirus-killing driver, back up your documents and reinstall Windows. Another victim of this campaign found a data stealer (`888.exe`) that this tool does not detect yet. Full analysis: [docs/REPORT.md](docs/REPORT.md).
 
 </details>
 
