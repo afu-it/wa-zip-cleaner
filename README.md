@@ -40,29 +40,6 @@ Kami bukan main teka. Kami hantar malware sebenar ni ke dua perkhidmatan keselam
 
 ---
 
-## ⚡ CARA PALING LAJU — 1 command je (tak perlu download)
-
-Kalau awak okay sikit dengan menaip:
-
-**1. Buka PowerShell sebagai Admin.** Tekan **Start** → taip `powershell` → klik kanan **Windows PowerShell** → **Run as administrator** → **Yes**.
-
-**2. IMBAS — copy & paste satu baris ni, tekan Enter:**
-```powershell
-[Net.ServicePointManager]::SecurityProtocol="Tls12"; $p="$env:TEMP\waz.ps1"; iwr https://raw.githubusercontent.com/afu-it/wa-zip-cleaner/main/wa-zip-cleaner.ps1 -OutFile $p; powershell -ExecutionPolicy Bypass -File $p
-```
-Dia terus ambil alat dari GitHub & imbas. Tunggu 2–10 minit.
-
-**3. Kalau keluar BAHAYA — BERSIHKAN dengan baris ni** (sama macam atas, cuma ada `-Fix` di hujung):
-```powershell
-[Net.ServicePointManager]::SecurityProtocol="Tls12"; $p="$env:TEMP\waz.ps1"; iwr https://raw.githubusercontent.com/afu-it/wa-zip-cleaner/main/wa-zip-cleaner.ps1 -OutFile $p; powershell -ExecutionPolicy Bypass -File $p -Fix
-```
-
-**4. Restart komputer, pastu ulang langkah 2** sampai keluar **BERSIH**. Lepas tu buat langkah "Lepas bersih" di bawah.
-
-> Command ni cuma ambil dari repo RASMI kami (`github.com/afu-it/wa-zip-cleaner`). Jangan paste command dari sumber yang awak tak percaya.
-
----
-
 ## 🟢 CARA PALING MUDAH (tak biasa menaip? download & klik je)
 
 **1. Download alat ni.** Tekan butang hijau **`< > Code`** kat atas page ni → **Download ZIP**.
@@ -85,6 +62,29 @@ Dia terus ambil alat dari GitHub & imbas. Tunggu 2–10 minit.
 - **Restart** komputer, pastu double-click `MULA-SINI.bat` sekali lagi sampai keluar **BERSIH**.
 
 Itu je. Satu fail, satu klik.
+
+---
+
+## ⚡ CARA PALING LAJU — 1 command je (tak perlu download)
+
+Kalau awak okay sikit dengan menaip:
+
+**1. Buka PowerShell sebagai Admin.** Tekan **Start** → taip `powershell` → klik kanan **Windows PowerShell** → **Run as administrator** → **Yes**.
+
+**2. IMBAS — copy & paste satu baris ni, tekan Enter:**
+```powershell
+[Net.ServicePointManager]::SecurityProtocol="Tls12"; $p="$env:TEMP\waz.ps1"; iwr https://raw.githubusercontent.com/afu-it/wa-zip-cleaner/main/wa-zip-cleaner.ps1 -OutFile $p; powershell -ExecutionPolicy Bypass -File $p
+```
+Dia terus ambil alat dari GitHub & imbas. Tunggu 2–10 minit.
+
+**3. Kalau keluar BAHAYA — BERSIHKAN dengan baris ni** (sama macam atas, cuma ada `-Fix` di hujung):
+```powershell
+[Net.ServicePointManager]::SecurityProtocol="Tls12"; $p="$env:TEMP\waz.ps1"; iwr https://raw.githubusercontent.com/afu-it/wa-zip-cleaner/main/wa-zip-cleaner.ps1 -OutFile $p; powershell -ExecutionPolicy Bypass -File $p -Fix
+```
+
+**4. Restart komputer, pastu ulang langkah 2** sampai keluar **BERSIH**. Lepas tu buat langkah "Lepas bersih" di bawah.
+
+> Command ni cuma ambil dari repo RASMI kami (`github.com/afu-it/wa-zip-cleaner`). Jangan paste command dari sumber yang awak tak percaya.
 
 ---
 
