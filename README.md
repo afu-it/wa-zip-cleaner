@@ -6,6 +6,8 @@ Free scanner & cleaner for Windows PCs that opened the WhatsApp **"Click here to
 > Mac, iPhone dan Android **tidak** terjejas. Fail ini hanya berfungsi di Windows.
 > Mac, iPhone and Android are **not** affected. This file only works on Windows.
 
+**Bukti & analisis penuh (screenshot VirusTotal + Triage):** [docs/REPORT.md](docs/REPORT.md)
+
 ---
 
 ## Bahasa Melayu

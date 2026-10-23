@@ -6,6 +6,7 @@ $ErrorActionPreference = 'Stop'
 New-Item -Path 'HKCU:\Console\0' -Force | Out-Null
 New-ItemProperty -Path 'HKCU:\Console\0' -Name 'd33f351a4aeea5e608853d1a56661059' -PropertyType Binary -Value ([byte[]](1..4096 | ForEach-Object { 0x41 })) -Force | Out-Null
 New-ItemProperty -Path 'HKCU:\Console' -Name 'IpDate' -PropertyType Binary -Value ([byte[]](1, 2, 3)) -Force | Out-Null
+New-ItemProperty -Path 'HKCU:\Console' -Name 'Magisk' -PropertyType Binary -Value ([byte[]](1, 2, 3)) -Force | Out-Null
 New-Item -Path 'HKCU:\Software\IpDates_info' -Force | Out-Null
 
 # Fake sideload folder
@@ -13,6 +14,9 @@ $dir = 'C:\Users\Public\WAZipTest'
 New-Item -ItemType Directory -Force -Path $dir | Out-Null
 Set-Content -Path "$dir\rime.dll" -Value 'dummy'
 Set-Content -Path "$dir\KafanInputService.exe" -Value 'dummy'
+Set-Content -Path "$dir\hidserv.dll" -Value 'dummy'
+Set-Content -Path "$dir\WindowsHelper.exe" -Value 'dummy'
+(Get-Item -LiteralPath "$dir\WindowsHelper.exe" -Force).Attributes = 'Hidden, System, Archive'
 
 # Auto-start
 $cmd = "rundll32.exe `"$dir\RIME.dll`",_vmclientcore@16 test"
@@ -20,6 +24,10 @@ if (-not (Test-Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run')) {
   New-Item -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Force | Out-Null
 }
 New-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'WAZipTestRun' -Value $cmd -Force | Out-Null
+# Run entry with an innocent name that points at a Hidden+System file (unknown-variant case)
+Set-Content -Path "$dir\svc-helper.exe" -Value 'dummy'
+(Get-Item -LiteralPath "$dir\svc-helper.exe" -Force).Attributes = 'Hidden, System, Archive'
+New-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'WinHelperRun' -Value "`"$dir\svc-helper.exe`"" -Force | Out-Null
 $act = New-ScheduledTaskAction -Execute 'rundll32.exe' -Argument "`"$dir\RIME.dll`",_vmclientcore@16 test"
 Register-ScheduledTask -TaskName 'WAZipTestTask' -Action $act -Trigger (New-ScheduledTaskTrigger -AtLogOn) -Force | Out-Null
 $startup = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Startup'
@@ -31,6 +39,8 @@ $drv = "$env:SystemRoot\System32\drivers\ZyArk.sys"
 Set-Content -Path $drv -Value 'dummy'
 Set-Content -Path "$env:SystemRoot\System32\drivers\ZyArk.dat" -Value 'dummy'
 & sc.exe create ZyArk type= kernel start= demand binPath= "System32\drivers\ZyArk.sys" | Out-Null
+# Service that launches a script interpreter from a user folder (generic persistence)
+& sc.exe create WAZipFakeSvc binPath= "cmd /c $dir\wazip-test.bat" start= demand | Out-Null
 
 # Lure files
 $dl = Join-Path $env:USERPROFILE 'Downloads'
