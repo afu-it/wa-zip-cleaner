@@ -1,0 +1,9 @@
+type,value,description
+sha256,550d08c8459ef11e6177309526c0738848d064f7de5c91e0760255fc93159f99,Lure ZIP (Click here to view*.zip)
+sha256,539b49f6ddfa070d25adbd8cd47c10bbba5cacf5bf27fddfe89d96f0c729b2fb,Winos4.0 stager RImE.dLl (fake rime.dll)
+sha256,c74f55247aa2c72001024bd977c869cb5adce6f8604a4d32329f015b73ae2a49,KafanInputService.exe side-load host (signed revoked)
+sha256,2da61980a54cf44081a111e319ee7ab2165743383a4dbb0dca811389779721ba,hidserv.dll persistence
+sha256,12b9470634bb7f76419c70ee9a510147cd6bcfce920f2abee5afdd13901b383d,encrypted config .dat
+sha256,46883bc25c77678f60c1b836f4c438d87158c9af6b229f533522f635a0d5276e,ZyArk.sys AV-killer (Baidu BdArKit)
+sha256,1c5129b4d63f2d5252b5b02a0a7d655dac3b6eac23dd4ed92b4dd55f243387ff,ardrv.sys AV-killer (OPSWAT)
+mutex,7D29FD842A3F8A91A6A69DD152086C2A,Winos4.0 stager mutex
