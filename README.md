@@ -122,7 +122,7 @@ Jangan suruh saya format Windows dulu. Tanya satu soalan satu masa kalau perlu.
 <summary><b>Apa yang tool ni tak boleh buat</b></summary>
 
 - Ni bukan antivirus penuh. Dia cuma cari malware WhatsApp yang ni je. Kalau nak full scan, guna Windows Defender, Kaspersky atau Malwarebytes.
-- Ada sekurang-kurangnya 3 jenis fail jahat WhatsApp kat Malaysia sekarang: dalam zip ada fail **VHD**, ada fail **VBS**, atau ada **shortcut (`.lnk`)**. Tool ni detect jenis VHD dan VBS. Jenis shortcut (nama dia SORVEPOTEL, asal dari Brazil) **tak detect**. Sebab tu kena buat full scan Windows Defender juga.
+- Tool ni detect jenis fail **VHD** (yang kami kaji) dan jenis fail **VBS** (Kaspersky lapor kat Malaysia bulan Jun). Ada satu lagi jenis guna **shortcut (`.lnk`)**, nama dia SORVEPOTEL, yang Trend Micro jumpa kat Brazil. Belum ada bukti jenis ni tersebar kat Malaysia, dan tool ni tak detect jenis tu. Sebab tu buat juga full scan Windows Defender.
 - Dia kenal versi malware yang kami jumpa bulan Oktober 2026. Kalau hacker ubah sikit, kami dah tambah detection yang lebih umum, tapi tak boleh janji 100%.
 - Ada mangsa lain yang jumpa program curi data nama `888.exe` dalam kempen yang sama. Program ni ambil password Chrome, Edge dan sesi WhatsApp. Tool ni belum detect `888.exe`. Sebab tu kalau keluar BAHAYA, tukar semua password walaupun tool ni dah bersihkan.
 - ManageEngine yang hacker pasang kadang-kadang tak boleh di-uninstall, sebab dia minta kod. Kalau jadi macam tu, format Windows.
@@ -190,7 +190,7 @@ Projek ni free dan open source. Sesiapa pun boleh tolong: developer, vibecoder, 
 
 Free scanner and cleaner for Windows PCs that opened a WhatsApp ZIP lure such as `Click here to view*.zip` or `Notice.zip` (ValleyRAT / Winos 4.0 / Silver Fox). Phones and Macs are not affected, but a phone that auto-saves to a cloud drive synced to a PC can still deliver the file to that PC.
 
-This tool covers the VHD and VBS variants. It does not detect the shortcut (`.lnk`) variant known as SORVEPOTEL, so also run a Windows Defender full scan.
+This tool covers the VHD and VBS variants. It does not detect the shortcut (`.lnk`) variant known as SORVEPOTEL, which Trend Micro reported in Brazil (no confirmed Malaysian cases yet), so also run a Windows Defender full scan.
 
 Press **Windows + X**, open **Terminal (Admin)**, paste the command from the top of this page, and press Enter. If it finds something, type `Y` to quarantine it.
 
