@@ -14,6 +14,8 @@ New-Item -ItemType Directory -Force -Path $dir | Out-Null
 Set-Content -Path "$dir\rime.dll" -Value 'dummy'
 Set-Content -Path "$dir\KafanInputService.exe" -Value 'dummy'
 Set-Content -Path "$dir\hidserv.dll" -Value 'dummy'
+Set-Content -Path "$dir\WindowsHelper.exe" -Value 'dummy'
+(Get-Item -LiteralPath "$dir\WindowsHelper.exe" -Force).Attributes = 'Hidden, System, Archive'
 
 # Auto-start
 $cmd = "rundll32.exe `"$dir\RIME.dll`",_vmclientcore@16 test"

@@ -43,6 +43,7 @@ foreach ($e in $expect) {
   Check ([bool]$hit) "detects $($e[0]) $($e[1])"
 }
 Check (-not ($r.All | Where-Object { $_.Target -match 'normal-document\.pdf' })) 'ignores normal file'
+Check ([bool]($r.All | Where-Object { $_.Kind -eq 'File' -and $_.Severity -eq 'WARN' -and $_.Target -match 'WindowsHelper\.exe$' })) 'detects hidden+system program (WARN)'
 Write-Host "All findings:`n$t"
 
 Write-Host '=== 4. Fix ===' -ForegroundColor Cyan
