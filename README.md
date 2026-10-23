@@ -16,7 +16,19 @@ Betul, ini bukan kami agak-agak je. Kami dah upload fail tu ke dua website yang 
 
 Malware ni nama dia **ValleyRAT** (ada orang panggil Winos 4.0 atau Silver Fox). Kalau dah masuk PC, hacker boleh curi password anda, off antivirus anda, dan control PC anda dari jauh macam dia duduk depan PC anda.
 
-## Cara buang (copy paste 1 line je)
+## Langkah 1: Full scan Windows Defender
+
+Defender memang dah ada dalam Windows, tak payah download apa-apa.
+
+1. Tekan **Start**, taip `Windows Security`, buka.
+2. Pilih **Virus & threat protection** > **Scan options** > **Full scan** > **Scan now**.
+3. Tunggu. Ambil masa lebih kurang 30 minit sampai 2 jam. Kalau Defender jumpa apa-apa, tekan **Remove** atau **Quarantine**.
+
+## Langkah 2: Scan dengan tool ni (copy paste 1 line je)
+
+Defender tak semestinya tangkap malware ni, sebab dia guna program yang sah untuk tipu antivirus. Tool ni cari kesan malware WhatsApp ni secara khusus.
+
+> **Hati-hati:** ada hacker yang suruh mangsa copy paste arahan dalam PowerShell untuk pasang malware. Jangan copy paste arahan dari orang yang anda tak kenal. Arahan bawah ni cuma ambil fail dari GitHub rasmi projek ni, dan code dia terbuka untuk sesiapa semak. Kalau ragu-ragu, tunjuk page ni kat orang IT yang anda percaya dan minta dia buat untuk anda.
 
 1. Tekan **Windows + X** serentak kat keyboard. Satu menu keluar. Pilih **Terminal (Admin)** atau **Windows PowerShell (Admin)**. Kalau dia tanya, tekan **Yes**.
 2. Satu tetingkap hitam/biru keluar. Copy line ni, paste dalam tetingkap tu (klik kanan dalam tetingkap = paste), lepas tu tekan **Enter**:
@@ -25,14 +37,15 @@ Malware ni nama dia **ValleyRAT** (ada orang panggil Winos 4.0 atau Silver Fox).
 [Net.ServicePointManager]::SecurityProtocol="Tls12"; $p="$env:TEMP\waz.ps1"; iwr https://raw.githubusercontent.com/afu-it/wa-zip-cleaner/main/wa-zip-cleaner.ps1 -OutFile $p; powershell -ExecutionPolicy Bypass -File $p; if ($LASTEXITCODE -eq 1 -and (Read-Host "Taip Y dan Enter untuk bersihkan") -eq "Y") { powershell -ExecutionPolicy Bypass -File $p -Fix }
 ```
 
-3. Tunggu dalam 2 sampai 10 minit. Jangan tutup tetingkap tu. Pergi minum air dulu.
-   - Keluar **BERSIH**: PC anda okay, takde malware. Settle.
+3. Tunggu dalam 2 sampai 10 minit. Jangan tutup tetingkap tu.
+   - Keluar **BERSIH**: tool ni tak jumpa kesan malware yang dia kenal.
    - Keluar **BAHAYA**: taip `Y`, tekan Enter. Tool ni akan buang malware tu. Fail jahat tu dia pindah ke folder quarantine (`C:\WAZipQuarantine`), bukan delete terus, so kalau tersalah buang boleh restore balik.
-4. Lepas tu, buat juga **full scan Windows Defender**. Ada jenis malware WhatsApp lain yang tool ni tak detect, dan Defender boleh tolong tangkap. Caranya: tekan **Start**, taip `Windows Security`, buka. Pilih **Virus & threat protection** > **Scan options** > **Full scan** > **Scan now**. Ambil masa lebih kurang 30 minit sampai 2 jam.
 
-## Kalau keluar BAHAYA, buat benda ni juga
+**BERSIH tak bermaksud PC confirm selamat.** Hacker boleh tukar malware ni bila-bila masa, dan tool ni cuma kenal versi yang kami dah bedah. Kalau anda memang dah buka fail tu kat PC, tetap buat langkah tukar password kat bawah, dan kalau ragu-ragu, minta orang IT periksa.
 
-Malware ni boleh duduk diam dalam PC berminggu-minggu sambil curi data. Jadi walaupun tool ni dah buang dia, anggap password anda dah bocor.
+## Kalau dah terbuka fail tu kat PC, buat benda ni juga
+
+Malware ni boleh duduk diam dalam PC berminggu-minggu sambil curi data. Jadi walaupun tool ni keluar BERSIH atau dah buang dia, anggap password anda dah bocor.
 
 Guna **phone**, bukan PC yang kena tu:
 
@@ -43,11 +56,11 @@ Guna **phone**, bukan PC yang kena tu:
 
 Lepas tu, untuk PC:
 
-1. Restart PC, lepas tu buat "Cara buang" sekali lagi sampai keluar **BERSIH**.
+1. Restart PC, lepas tu buat Langkah 2 sekali lagi sampai keluar **BERSIH**.
 2. Kalau tool ni bagi amaran **ManageEngine** (dan office anda tak pernah pasang), atau dia jumpa **driver** yang off antivirus, cara paling selamat: backup fail penting je (dokumen, gambar), pastu **format dan install semula Windows**. Kalau tak reti, bawa ke kedai komputer dan bagitau PC ni kena malware dengan remote access.
 3. Masa backup, jangan copy fail `.exe`, `.zip`, `.dll`, `.bat`, `.vhd` atau `.vhdx`. Copy fail yang anda kenal je.
 
-Kalau dari awal keluar **BERSIH**, tak payah buat semua ni.
+Kalau anda tak pernah buka fail tu kat PC, dan tool ni keluar **BERSIH**, tak payah buat semua ni.
 
 ---
 
@@ -82,7 +95,7 @@ Bank OCBC dan UOB pun dah bagi amaran: jangan buka fail `.vbs`, `.zip`, `.msi` a
    - Windows tanya boleh ke tak: tekan **Yes**.
    - Kalau keluar "Windows protected your PC": tekan **More info**, pastu **Run anyway**. Ni normal.
 4. Tunggu 2 sampai 10 minit. Kalau keluar **BAHAYA**, taip `Y` dan tekan Enter.
-5. Kalau keluar BAHAYA, buat semua benda dalam "Kalau keluar BAHAYA" kat atas. Lepas restart, double-click `MULA-SINI.bat` sekali lagi.
+5. Buat semua benda dalam "Kalau dah terbuka fail tu kat PC" kat atas. Lepas restart, double-click `MULA-SINI.bat` sekali lagi.
 
 </details>
 
@@ -196,7 +209,7 @@ Free scanner and cleaner for Windows PCs that opened a WhatsApp ZIP lure such as
 
 This tool covers the VHD and VBS variants. It does not detect the shortcut (`.lnk`) variant known as SORVEPOTEL, which Trend Micro reported in Brazil (no confirmed Malaysian cases yet), so also run a Windows Defender full scan.
 
-Press **Windows + X**, open **Terminal (Admin)**, paste the command from the top of this page, and press Enter. If it finds something, type `Y` to quarantine it.
+First run a Windows Defender full scan. Then press **Windows + X**, open **Terminal (Admin)**, paste the command from the top of this page, and press Enter. If it finds something, type `Y` to quarantine it. Only paste commands from sources you trust; if unsure, ask an IT person you trust to run it. A clean result does not prove the PC is safe, since the malware can change.
 
 Or download the repo, extract it, and double-click `MULA-SINI.bat`.
 
