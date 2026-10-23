@@ -17,6 +17,12 @@ Awak mungkin kena kalau:
 
 Kalau dah terbuka, malware ni boleh **curi password, matikan antivirus, dan kawal komputer awak dari jauh**. Lagi cepat bersih lagi bagus. Alat ni tolong awak buat tu.
 
+> ### 🛑 JANGAN terus format / install semula Windows!
+> Ramai orang suruh mangsa "format je terus" — **tak perlu, membazir, dan kesian**. Buat ikut urutan ni dulu:
+> 1. **Jalankan alat ni** (cara di bawah) — imbas & bersih dulu.
+> 2. Masih risau? Pasang antivirus percaya macam **Kaspersky** atau **Malwarebytes**, buat full scan.
+> 3. **Format/install semula adalah pilihan TERAKHIR** — cuma perlu kalau alat ni jumpa *driver yang matikan antivirus* (dia akan bagitau), sebab benda tu memang susah nak bersih 100%.
+
 ---
 
 ## 🔬 Ni betul ke? (Bukti)
@@ -34,7 +40,30 @@ Kami bukan main teka. Kami hantar malware sebenar ni ke dua perkhidmatan keselam
 
 ---
 
-## 🟢 CARA PALING SENANG (sesiapa pun boleh, tak perlu pandai IT)
+## ⚡ CARA PALING LAJU — 1 command je (tak perlu download)
+
+Kalau awak okay sikit dengan menaip:
+
+**1. Buka PowerShell sebagai Admin.** Tekan **Start** → taip `powershell` → klik kanan **Windows PowerShell** → **Run as administrator** → **Yes**.
+
+**2. IMBAS — copy & paste satu baris ni, tekan Enter:**
+```powershell
+[Net.ServicePointManager]::SecurityProtocol="Tls12"; $p="$env:TEMP\waz.ps1"; iwr https://raw.githubusercontent.com/afu-it/wa-zip-cleaner/main/wa-zip-cleaner.ps1 -OutFile $p; powershell -ExecutionPolicy Bypass -File $p
+```
+Dia terus ambil alat dari GitHub & imbas. Tunggu 2–10 minit.
+
+**3. Kalau keluar BAHAYA — BERSIHKAN dengan baris ni** (sama macam atas, cuma ada `-Fix` di hujung):
+```powershell
+[Net.ServicePointManager]::SecurityProtocol="Tls12"; $p="$env:TEMP\waz.ps1"; iwr https://raw.githubusercontent.com/afu-it/wa-zip-cleaner/main/wa-zip-cleaner.ps1 -OutFile $p; powershell -ExecutionPolicy Bypass -File $p -Fix
+```
+
+**4. Restart komputer, pastu ulang langkah 2** sampai keluar **BERSIH**. Lepas tu buat langkah "Lepas bersih" di bawah.
+
+> Command ni cuma ambil dari repo RASMI kami (`github.com/afu-it/wa-zip-cleaner`). Jangan paste command dari sumber yang awak tak percaya.
+
+---
+
+## 🟢 CARA PALING MUDAH (tak biasa menaip? download & klik je)
 
 **1. Download alat ni.** Tekan butang hijau **`< > Code`** kat atas page ni → **Download ZIP**.
 
@@ -93,6 +122,30 @@ powershell -ExecutionPolicy Bypass -File .\wa-zip-cleaner.ps1 -Restore -Manifest
 (Path `manifest.json` tu dipaparkan masa membersih tadi.)
 
 > Kod keluar (untuk yang teknikal): `0` = bersih, `1` = ada jumpa, `2` = ralat.
+
+---
+
+## 🤖 Ada Claude / ChatGPT / Copilot? Biar AI pandu awak
+
+Kalau awak ada apps AI (Claude, ChatGPT, Microsoft Copilot) kat komputer atau telefon, **copy & paste prompt ni** — AI akan pandu awak langkah demi langkah ikut keadaan awak:
+
+```text
+Saya rasa komputer Windows saya terkena malware WhatsApp "Click here to view.zip"
+(jenis Winos 4.0 / Silver Fox / ValleyRAT). Saya BUKAN orang IT.
+
+Ada alat pembersih percuma di: https://github.com/afu-it/wa-zip-cleaner
+
+Tolong pandu saya LANGKAH DEMI LANGKAH, bahasa mudah, untuk:
+1. Jalankan alat tu (saya guna Windows) — guna cara paling senang.
+2. Faham keputusan "BERSIH" vs "BAHAYA".
+3. Bersihkan kalau ada jumpa.
+4. Apa saya WAJIB buat lepas tu (WhatsApp linked devices, tukar password, dll).
+
+Jangan suruh saya format Windows dulu. Tanya saya satu soalan pada satu masa
+kalau perlu. Terangkan macam cakap dengan kawan yang tak reti komputer.
+```
+
+> Tip: kalau AI tak pasti, minta dia rujuk fail `README.md` dan `docs/REPORT.md` dalam repo di atas.
 
 ---
 
