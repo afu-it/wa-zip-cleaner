@@ -110,16 +110,22 @@ function Scan-Registry {
         $sizes = foreach ($n in $item.GetValueNames()) {
           $v = $item.GetValue($n); if ($v -is [byte[]]) { $v.Length } }
         $big = @($sizes | Where-Object { $_ -gt 1024 }).Count
-        $sev = if ($big -gt 0) { 'HIGH' } else { 'WARN' }
-        Add-Finding 'RegKey' $sev $k "Console\$sub key ($big binary blob(s) > 1 KB). Winos4.0 stores its module here."
+        # A 32-hex value name under Console is a strong Winos4.0 marker, whatever the blob size.
+        $hex32 = [bool]($item.GetValueNames() | Where-Object { $_ -match '^[0-9a-fA-F]{32}$' })
+        $sev = if ($big -gt 0 -or $hex32) { 'HIGH' } else { 'WARN' }
+        $why = if ($hex32) { "32-hex value name + $big blob(s) > 1 KB" } else { "$big binary blob(s) > 1 KB" }
+        Add-Finding 'RegKey' $sev $k "Console\$sub key ($why). Winos4.0 stores its module here."
       }
     }
     $c = "$hive\Console"
-    if ((Test-Path -LiteralPath $c) -and ((Get-Item -LiteralPath $c).GetValueNames() -contains 'IpDate')) {
-      Add-Finding 'RegValue' 'HIGH' "$c|IpDate" 'Winos4.0 C2 config override (Console\IpDate).'
+    if (Test-Path -LiteralPath $c) {
+      $cnames = (Get-Item -LiteralPath $c).GetValueNames()
+      foreach ($marker in 'IpDate', 'IpDates_sun', 'Magisk', 'FaCai2024') {
+        if ($cnames -contains $marker) { Add-Finding 'RegValue' 'HIGH' "$c|$marker" "Winos4.0 C2/config marker (Console\$marker)." }
+      }
     }
-    foreach ($k in "$hive\Software\IpDates_info") {
-      if (Test-Path -LiteralPath $k) { Add-Finding 'RegKey' 'HIGH' $k 'Winos4.0 final-stage config (IpDates_info).' }
+    foreach ($k in "$hive\Software\IpDates_info", "$hive\Software\IpDates_sun", "$hive\Software\Magisk", "$hive\Software\FaCai2024") {
+      if (Test-Path -LiteralPath $k) { Add-Finding 'RegKey' 'HIGH' $k "Winos4.0 config marker ($(Split-Path $k -Leaf))." }
     }
   }
   foreach ($k in 'HKLM:\SOFTWARE\IpDates_info', 'HKLM:\SOFTWARE\WOW6432Node\IpDates_info') {
@@ -139,6 +145,11 @@ function Scan-Services {
     elseif (($name -eq 'ardrv' -or $img -match '\\ardrv\.sys') -and $img -notmatch 'OPSWAT') { $hit = 'ardrv.sys outside OPSWAT folder (abused to kill antivirus).' }
     elseif ($img -match $PersistRegex -and $img -notmatch 'OPSWAT') { $hit = "Service points at malware path: $img" }
     if ($hit) { Add-Finding 'Service' 'HIGH' $name $hit @{ RegPath = $svc.PSPath; Image = $img } }
+    # A service that launches a script interpreter from a user-writable folder is a common persistence trick.
+    elseif ($img -match '(?i)\b(cmd|powershell|pwsh|wscript|cscript|mshta|rundll32)\b' -and
+            $img -match '(?i)\\(Users|ProgramData|AppData|Temp|Public)\\') {
+      Add-Finding 'Service' 'WARN' $name "Service runs a script interpreter from a user folder: $img" @{ RegPath = $svc.PSPath; Image = $img }
+    }
   }
   $drv = Join-Path $env:SystemRoot 'System32\drivers\ZyArk.dat'
   if (Test-Path -LiteralPath $drv) { Add-Finding 'File' 'HIGH' $drv 'ZyArk driver data file.' }
@@ -174,7 +185,16 @@ function Scan-Persistence {
     $item = Get-Item -LiteralPath $k
     foreach ($n in $item.GetValueNames()) {
       $v = [string]$item.GetValue($n)
-      if ($v -match $PersistRegex) { Add-Finding 'RegValue' 'HIGH' "$k|$n" "Auto-start: $v" }
+      if ($v -match $PersistRegex) { Add-Finding 'RegValue' 'HIGH' "$k|$n" "Auto-start: $v"; continue }
+      # A Run entry whose target file is Hidden+System is a strong sign, even with an unknown name.
+      $target = if ($v -match '"([^"]+\.(exe|dll|bat|cmd|scr))"') { $Matches[1] }
+                elseif ($v -match '([A-Za-z]:\\[^"]+?\.(exe|dll|bat|cmd|scr))') { $Matches[1] } else { $null }
+      if ($target -and (Test-Path -LiteralPath $target)) {
+        $a = (Get-Item -LiteralPath $target -Force -ErrorAction SilentlyContinue).Attributes
+        if (($a -band [IO.FileAttributes]::Hidden) -and ($a -band [IO.FileAttributes]::System)) {
+          Add-Finding 'RegValue' 'HIGH' "$k|$n" "Auto-start points at a Hidden+System file: $target"
+        }
+      }
     }
   }
   foreach ($t in Get-ScheduledTask -ErrorAction SilentlyContinue) {

@@ -36,7 +36,8 @@ $expect = @(
   @('Service', '^ZyArk$'), @('File', 'ZyArk\.dat$'), @('File', 'Click here to view10\.6_9999\.zip$'),
   @('File', 'Account Statement\.vbs$'), @('File', 'vcRuntimeMinimum_x86\.exe$'), @('File', 'WAZipTest\\rime\.dll$'),
   @('Process', 'cmd\.exe'), @('Vhd', 'Click here to view10\.6\.vhd$'),
-  @('File', 'WAZipTest\\hidserv\.dll$')
+  @('File', 'WAZipTest\\hidserv\.dll$'),
+  @('RegValue', 'Console\|Magisk$'), @('RegValue', 'Run\|WinHelperRun$')
 )
 foreach ($e in $expect) {
   $hit = $r.High | Where-Object { $_.Kind -eq $e[0] -and $_.Target -match $e[1] }
@@ -44,6 +45,7 @@ foreach ($e in $expect) {
 }
 Check (-not ($r.All | Where-Object { $_.Target -match 'normal-document\.pdf' })) 'ignores normal file'
 Check ([bool]($r.All | Where-Object { $_.Kind -eq 'File' -and $_.Severity -eq 'WARN' -and $_.Target -match 'WindowsHelper\.exe$' })) 'detects hidden+system program (WARN)'
+Check ([bool]($r.All | Where-Object { $_.Kind -eq 'Service' -and $_.Severity -eq 'WARN' -and $_.Target -match 'WAZipFakeSvc$' })) 'detects interpreter service from user folder (WARN)'
 Write-Host "All findings:`n$t"
 
 Write-Host '=== 4. Fix ===' -ForegroundColor Cyan
