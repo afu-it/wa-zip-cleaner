@@ -1,8 +1,10 @@
 # WA-ZIP Cleaner
 
-Ada orang hantar fail `Click here to view....zip` kat WhatsApp, dan anda terbuka kat laptop atau PC Windows? Relax. Tool free ni akan scan PC anda, dan kalau ada malware tu, dia buang terus.
+Ada orang hantar fail zip kat WhatsApp (contoh `Click here to view....zip` atau `Notice.zip`), dan anda terbuka kat laptop atau PC Windows? Relax. Tool free ni akan scan PC anda, dan kalau ada malware tu, dia buang terus.
 
 Kalau anda buka kat phone (Android, iPhone) atau Mac, takpe, anda selamat. Malware ni cuma kacau Windows je.
+
+Tapi hati-hati: kalau phone anda auto save fail tu ke **Google Drive** (atau cloud lain), dan PC anda sync dengan Drive yang sama, fail tu akan masuk PC. Kalau ada sesiapa double-click kat PC, terus kena.
 
 ## Betul ke ni malware?
 
@@ -26,6 +28,7 @@ Malware ni nama dia **ValleyRAT** (ada orang panggil Winos 4.0 atau Silver Fox).
 3. Tunggu dalam 2 sampai 10 minit. Jangan tutup tetingkap tu. Pergi minum air dulu.
    - Keluar **BERSIH**: PC anda okay, takde malware. Settle.
    - Keluar **BAHAYA**: taip `Y`, tekan Enter. Tool ni akan buang malware tu. Fail jahat tu dia pindah ke folder quarantine (`C:\WAZipQuarantine`), bukan delete terus, so kalau tersalah buang boleh restore balik.
+4. Lepas tu, buat juga **full scan Windows Defender**. Ada jenis malware WhatsApp lain yang tool ni tak detect, dan Defender boleh tolong tangkap. Caranya: tekan **Start**, taip `Windows Security`, buka. Pilih **Virus & threat protection** > **Scan options** > **Full scan** > **Scan now**. Ambil masa lebih kurang 30 minit sampai 2 jam.
 
 ## Kalau keluar BAHAYA, buat benda ni juga
 
@@ -49,6 +52,22 @@ Kalau dari awal keluar **BERSIH**, tak payah buat semua ni.
 ---
 
 Bawah ni info tambahan. Klik tajuk untuk buka.
+
+<details>
+<summary><b>Macam mana nak kenal fail jahat ni (sebelum terbuka)</b></summary>
+
+Nama fail selalu bertukar. Antara yang dah orang jumpa: `Click here to view....zip`, `Notice.zip` (dalam dia ada `Notice.vhd`), dan fail yang nama dia macam penyata akaun, invoice, resit atau purchase order.
+
+Jadi jangan hafal nama. Kenal dari perangai dia:
+
+1. Fail yang anda tak tunggu pun, selalunya `.zip`.
+2. Ada pesanan pendek suruh buka **kat komputer**. Invoice atau penyata yang betul boleh je buka kat phone.
+3. Datang dari kawan atau group yang anda kenal. Sebab WhatsApp diorang dah kena hack.
+4. Kalau dah terbuka kat PC, Windows mungkin tanya "Do you want to open this file?" untuk fail `.vhd`. Tekan **Cancel**.
+
+Kalau ragu-ragu, call orang yang hantar tu dan tanya betul ke dia hantar. Dokumen urusan patut datang guna email atau sistem rasmi, dan anda boleh minta macam tu.
+
+</details>
 
 <details>
 <summary><b>Takut nak taip-taip? Cara download dan double-click je</b></summary>
@@ -102,7 +121,8 @@ Jangan suruh saya format Windows dulu. Tanya satu soalan satu masa kalau perlu.
 <details>
 <summary><b>Apa yang tool ni tak boleh buat</b></summary>
 
-- Ni bukan antivirus penuh. Dia cuma cari malware WhatsApp yang ni je. Kalau nak full scan, guna Kaspersky atau Malwarebytes.
+- Ni bukan antivirus penuh. Dia cuma cari malware WhatsApp yang ni je. Kalau nak full scan, guna Windows Defender, Kaspersky atau Malwarebytes.
+- Ada sekurang-kurangnya 3 jenis fail jahat WhatsApp kat Malaysia sekarang: dalam zip ada fail **VHD**, ada fail **VBS**, atau ada **shortcut (`.lnk`)**. Tool ni detect jenis VHD dan VBS. Jenis shortcut (nama dia SORVEPOTEL, asal dari Brazil) **tak detect**. Sebab tu kena buat full scan Windows Defender juga.
 - Dia kenal versi malware yang kami jumpa bulan Oktober 2026. Kalau hacker ubah sikit, kami dah tambah detection yang lebih umum, tapi tak boleh janji 100%.
 - Ada mangsa lain yang jumpa program curi data nama `888.exe` dalam kempen yang sama. Program ni ambil password Chrome, Edge dan sesi WhatsApp. Tool ni belum detect `888.exe`. Sebab tu kalau keluar BAHAYA, tukar semua password walaupun tool ni dah bersihkan.
 - ManageEngine yang hacker pasang kadang-kadang tak boleh di-uninstall, sebab dia minta kod. Kalau jadi macam tu, format Windows.
@@ -168,7 +188,9 @@ Projek ni free dan open source. Sesiapa pun boleh tolong: developer, vibecoder, 
 <details>
 <summary><b>English</b></summary>
 
-Free scanner and cleaner for Windows PCs that opened the WhatsApp `Click here to view*.zip` malware (ValleyRAT / Winos 4.0 / Silver Fox). Phones and Macs are not affected.
+Free scanner and cleaner for Windows PCs that opened a WhatsApp ZIP lure such as `Click here to view*.zip` or `Notice.zip` (ValleyRAT / Winos 4.0 / Silver Fox). Phones and Macs are not affected, but a phone that auto-saves to a cloud drive synced to a PC can still deliver the file to that PC.
+
+This tool covers the VHD and VBS variants. It does not detect the shortcut (`.lnk`) variant known as SORVEPOTEL, so also run a Windows Defender full scan.
 
 Press **Windows + X**, open **Terminal (Admin)**, paste the command from the top of this page, and press Enter. If it finds something, type `Y` to quarantine it.
 
