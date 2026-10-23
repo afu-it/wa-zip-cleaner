@@ -1,248 +1,202 @@
 # WA-ZIP Cleaner
 
-**Terlanjur buka / tekan fail `.zip` pelik dari WhatsApp kat komputer Windows? Jangan panik.**
-Alat **percuma** ni akan check komputer awak dan bersihkan kalau ada malware tu.
+Terbuka fail `Click here to view....zip` dari WhatsApp kat komputer Windows? Alat percuma ni periksa komputer awak dan buang malware tu kalau ada.
 
-> 📱 **Mac, iPhone, Android TAK kena.** Malware ni cuma jalan kat **Windows** sahaja. Kalau awak buka kat telefon, awak selamat.
+Telefon (Android, iPhone) dan Mac tak kena. Malware ni cuma jalan kat Windows.
 
-Pengimbas & pembersih untuk PC Windows yang terbuka fail **"Click here to view....zip"** dari WhatsApp (kempen malware *Winos 4.0 / Silver Fox / ValleyRAT*).
+## Cara bersihkan (1 arahan)
+
+1. Tekan kekunci **Windows + X**, pilih **Terminal (Admin)** atau **Windows PowerShell (Admin)**. Tekan **Yes**.
+2. Salin baris di bawah, tampal dalam tetingkap tu, tekan **Enter**:
+
+```powershell
+[Net.ServicePointManager]::SecurityProtocol="Tls12"; $p="$env:TEMP\waz.ps1"; iwr https://raw.githubusercontent.com/afu-it/wa-zip-cleaner/main/wa-zip-cleaner.ps1 -OutFile $p; powershell -ExecutionPolicy Bypass -File $p; if ($LASTEXITCODE -eq 1 -and (Read-Host "Taip Y dan Enter untuk bersihkan") -eq "Y") { powershell -ExecutionPolicy Bypass -File $p -Fix }
+```
+
+3. Tunggu 2 hingga 10 minit. Jangan tutup tetingkap.
+   - Keluar **BERSIH**: komputer awak selamat. Siap.
+   - Keluar **BAHAYA**: taip `Y`, tekan Enter. Fail jahat dialih ke folder `C:\WAZipQuarantine`, tak dipadam terus.
+
+## Lepas bersihkan, buat 3 benda ni
+
+1. Dari telefon: WhatsApp > **Peranti dipaut** (Linked devices) > log keluar semua.
+2. Tukar kata laluan bank online dan emel.
+3. Restart komputer, pastu jalankan arahan tadi sekali lagi sampai keluar **BERSIH**.
+
+Tak perlu format Windows. Format cuma perlu kalau alat ni beritahu ia jumpa driver yang matikan antivirus.
 
 ---
 
-## 😨 Apa yang jadi kat saya?
+Bahagian di bawah untuk yang nak tahu lebih. Tekan tajuk untuk buka.
 
-Awak mungkin kena kalau:
-- Awak dapat fail `.zip` dalam WhatsApp — **selalunya dari kawan yang akaun dia dah kena curi** (jadi nampak macam betul), dan
-- awak **buka / double-click** fail tu kat **komputer Windows** — biasanya muncul macam satu "pendrive" baru.
+<details>
+<summary><b>Tak reti guna arahan? Cara download dan klik</b></summary>
 
-Kalau dah terbuka, malware ni boleh **curi password, matikan antivirus, dan kawal komputer awak dari jauh**. Lagi cepat bersih lagi bagus. Alat ni tolong awak buat tu.
+1. Kat atas page ni, tekan butang hijau **Code** > **Download ZIP**.
+2. Buka folder Downloads. Klik kanan fail zip tu > **Extract All** > **Extract**.
+3. Dalam folder tu, double-click **`MULA-SINI.bat`**.
+   - Windows minta kebenaran: tekan **Yes**.
+   - Keluar "Windows protected your PC": tekan **More info** > **Run anyway**.
+4. Tunggu 2 hingga 10 minit. Kalau keluar **BAHAYA**, taip `Y` dan tekan Enter.
+5. Buat 3 benda dalam bahagian "Lepas bersihkan" di atas. Lepas restart, double-click `MULA-SINI.bat` sekali lagi.
 
-> ### 🛑 JANGAN terus format / install semula Windows!
-> Ramai orang suruh mangsa "format je terus" — **tak perlu, membazir, dan kesian**. Buat ikut urutan ni dulu:
-> 1. **Jalankan alat ni** (cara di bawah) — imbas & bersih dulu.
-> 2. Masih risau? Pasang antivirus percaya macam **Kaspersky** atau **Malwarebytes**, buat full scan.
-> 3. **Format/install semula adalah pilihan TERAKHIR** — cuma perlu kalau alat ni jumpa *driver yang matikan antivirus* (dia akan bagitau), sebab benda tu memang susah nak bersih 100%.
+</details>
 
----
+<details>
+<summary><b>Cara manual guna PowerShell (dari folder yang dah download)</b></summary>
 
-## 🔬 Ni betul ke? (Bukti)
+1. Download dan extract alat ni (langkah 1 dan 2 dalam bahagian download di atas).
+2. Buka PowerShell sebagai Admin: **Windows + X** > **Terminal (Admin)**.
+3. Taip `cd ` (ada jarak), seret folder tu masuk tetingkap, tekan Enter. Contoh:
+   ```powershell
+   cd "C:\Users\Ali\Downloads\wa-zip-cleaner"
+   ```
+4. Imbas sahaja, tak ubah apa-apa:
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File .\wa-zip-cleaner.ps1
+   ```
+5. Kalau keluar **BAHAYA**, bersihkan:
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File .\wa-zip-cleaner.ps1 -Fix
+   ```
 
-Kami bukan main teka. Kami hantar malware sebenar ni ke dua perkhidmatan keselamatan terkenal dunia — dua-dua sahkan ia **memang berbahaya**:
-
-| VirusTotal — 18 antivirus tanda bahaya | Hatching Triage — skor penuh 10/10 |
-|---|---|
-| ![VirusTotal](docs/screenshots/virustotal-detection.png) | ![Triage](docs/screenshots/triage-overview.png) |
-
-- **VirusTotal:** 18/71 antivirus tanda malicious; padan peraturan *WinosStager*; dikaitkan dengan kempen **"CleverSoar"**.
-- **Hatching Triage** (jalankan dalam Windows betul): skor **10/10**, dikenal pasti sebagai **ValleyRAT** (Silver Fox / Winos 4.0).
-
-📄 Laporan penuh + semua gambar: **[docs/REPORT.md](docs/REPORT.md)** · Laporan Triage awam: [tria.ge/261023-f44nwacc45](https://tria.ge/261023-f44nwacc45)
-
----
-
-## 🟢 CARA PALING MUDAH (tak biasa menaip? download & klik je)
-
-**1. Download alat ni.** Tekan butang hijau **`< > Code`** kat atas page ni → **Download ZIP**.
-
-**2. Buka (extract) fail zip tu.** Pergi folder *Downloads*, klik kanan fail yang baru turun → **Extract All** → **Extract**.
-
-**3. Double-click fail `MULA-SINI.bat`** dalam folder tu.
-- Windows tanya nak bagi kebenaran? Tekan **Yes**. (Normal, jangan takut.)
-- Kalau keluar "Windows protected your PC" → tekan **More info** → **Run anyway**.
-
-**4. Tunggu je.** Tetingkap hitam akan imbas komputer, ambil masa **2–10 minit**. Jangan tutup, pergi minum air dulu. 😄
-
-**5. Baca apa dia cakap:**
-- **BERSIH** → alhamdulillah, takde apa. Habis.
-- **BAHAYA** → dia tanya nak bersihkan tak. **Taip `Y`, tekan Enter.** Dia bersihkan sendiri.
-
-**6. Lepas bersih — WAJIB buat (guna TELEFON / komputer lain):**
-- WhatsApp telefon → **Peranti dipaut (Linked devices)** → **Log keluar semua**.
-- Tukar password **bank online** dan **email**.
-- **Restart** komputer, pastu double-click `MULA-SINI.bat` sekali lagi sampai keluar **BERSIH**.
-
-Itu je. Satu fail, satu klik.
-
----
-
-## ⚡ CARA PALING LAJU — 1 command je (tak perlu download)
-
-Kalau awak okay sikit dengan menaip:
-
-**1. Buka PowerShell sebagai Admin.** Tekan **Start** → taip `powershell` → klik kanan **Windows PowerShell** → **Run as administrator** → **Yes**.
-
-**2. IMBAS — copy & paste satu baris ni, tekan Enter:**
-```powershell
-[Net.ServicePointManager]::SecurityProtocol="Tls12"; $p="$env:TEMP\waz.ps1"; iwr https://raw.githubusercontent.com/afu-it/wa-zip-cleaner/main/wa-zip-cleaner.ps1 -OutFile $p; powershell -ExecutionPolicy Bypass -File $p
-```
-Dia terus ambil alat dari GitHub & imbas. Tunggu 2–10 minit.
-
-**3. Kalau keluar BAHAYA — BERSIHKAN dengan baris ni** (sama macam atas, cuma ada `-Fix` di hujung):
-```powershell
-[Net.ServicePointManager]::SecurityProtocol="Tls12"; $p="$env:TEMP\waz.ps1"; iwr https://raw.githubusercontent.com/afu-it/wa-zip-cleaner/main/wa-zip-cleaner.ps1 -OutFile $p; powershell -ExecutionPolicy Bypass -File $p -Fix
-```
-
-**4. Restart komputer, pastu ulang langkah 2** sampai keluar **BERSIH**. Lepas tu buat langkah "Lepas bersih" di bawah.
-
-> Command ni cuma ambil dari repo RASMI kami (`github.com/afu-it/wa-zip-cleaner`). Jangan paste command dari sumber yang awak tak percaya.
-
----
-
-## 💻 Cara guna PowerShell (kalau awak suka taip sendiri / `MULA-SINI.bat` tak jalan)
-
-Sama hasil, cuma guna arahan. Ikut step by step:
-
-**1. Download + extract** alat ni (macam langkah 1–2 di atas). Ingat folder tu kat mana (contoh: `C:\Users\Ali\Downloads\wa-zip-cleaner`).
-
-**2. Buka PowerShell sebagai Admin.**
-Tekan butang **Start** → taip `powershell` → klik kanan **Windows PowerShell** → **Run as administrator** → **Yes**.
-
-**3. Pergi ke folder alat tu.** Taip `cd ` (ada space), pastu **seret folder tu masuk tetingkap** (path akan muncul sendiri), tekan Enter. Contoh:
-```powershell
-cd "C:\Users\Ali\Downloads\wa-zip-cleaner"
-```
-
-**4. IMBAS (scan je, tak ubah apa-apa):**
-```powershell
-powershell -ExecutionPolicy Bypass -File .\wa-zip-cleaner.ps1
-```
-Tunggu 2–10 minit. Kalau **BERSIH** → habis. Kalau **BAHAYA** → pergi langkah 5.
-
-**5. BERSIHKAN (alih fail jahat ke kuarantin, bukan padam terus):**
-```powershell
-powershell -ExecutionPolicy Bypass -File .\wa-zip-cleaner.ps1 -Fix
-```
-
-**6. Restart komputer, pastu ulang langkah 4** sampai keluar **BERSIH**.
-
-**Kalau tersalah buang** dan nak pulihkan balik:
+Nak pulihkan fail yang dah dialih (kalau tersalah buang):
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\wa-zip-cleaner.ps1 -Restore -Manifest "C:\WAZipQuarantine\<tarikh>\manifest.json"
 ```
-(Path `manifest.json` tu dipaparkan masa membersih tadi.)
+Lokasi `manifest.json` dipaparkan masa membersih.
 
-> Kod keluar (untuk yang teknikal): `0` = bersih, `1` = ada jumpa, `2` = ralat.
+Kod keluar: `0` bersih, `1` ada jumpa, `2` ralat.
 
----
+</details>
 
-## 🤖 Ada Claude / ChatGPT / Copilot? Biar AI pandu awak
+<details>
+<summary><b>Guna Claude, ChatGPT atau Copilot untuk pandu awak</b></summary>
 
-Kalau awak ada apps AI (Claude, ChatGPT, Microsoft Copilot) kat komputer atau telefon, **copy & paste prompt ni** — AI akan pandu awak langkah demi langkah ikut keadaan awak:
+Salin teks ni dan tampal dalam apps AI awak:
 
 ```text
 Saya rasa komputer Windows saya terkena malware WhatsApp "Click here to view.zip"
-(jenis Winos 4.0 / Silver Fox / ValleyRAT). Saya BUKAN orang IT.
+(jenis Winos 4.0 / Silver Fox / ValleyRAT). Saya bukan orang IT.
 
 Ada alat pembersih percuma di: https://github.com/afu-it/wa-zip-cleaner
 
-Tolong pandu saya LANGKAH DEMI LANGKAH, bahasa mudah, untuk:
-1. Jalankan alat tu (saya guna Windows) — guna cara paling senang.
-2. Faham keputusan "BERSIH" vs "BAHAYA".
+Tolong pandu saya satu langkah pada satu masa, guna bahasa mudah, untuk:
+1. Jalankan alat tu di Windows dengan cara paling senang.
+2. Faham keputusan BERSIH dan BAHAYA.
 3. Bersihkan kalau ada jumpa.
-4. Apa saya WAJIB buat lepas tu (WhatsApp linked devices, tukar password, dll).
+4. Apa saya kena buat lepas tu (WhatsApp linked devices, tukar kata laluan).
 
-Jangan suruh saya format Windows dulu. Tanya saya satu soalan pada satu masa
-kalau perlu. Terangkan macam cakap dengan kawan yang tak reti komputer.
+Jangan suruh saya format Windows dulu. Tanya satu soalan pada satu masa kalau perlu.
 ```
 
-> Tip: kalau AI tak pasti, minta dia rujuk fail `README.md` dan `docs/REPORT.md` dalam repo di atas.
+</details>
 
----
+<details>
+<summary><b>Macam mana saya boleh terkena?</b></summary>
 
-## 🕵️ Apa sebenarnya malware ni buat?
+Biasanya begini:
 
-Ringkasnya, dari mula sampai habis:
+1. Kawan hantar fail `Click here to view....zip` dalam WhatsApp. Selalunya akaun kawan tu dah kena curi, sebab tu nampak betul.
+2. Awak buka fail tu kat komputer Windows. Ia muncul macam satu pendrive baru.
+3. Dalam tu ada program sah (KafanInputService) yang ditipu untuk muat fail jahat `rime.dll`. Sebab programnya sah, antivirus biarkan.
+4. Malware sorok diri dalam registry (`Console\0`) dan jalan terus dari memori, tanpa fail.
+5. Ia pasang driver yang matikan antivirus (ZyArk/Baidu, ardrv/OPSWAT).
+6. Ia pasang servis Windows palsu (`hidserv.dll`) supaya hidup semula setiap kali komputer dibuka, dan cuba hubungi server penggodam.
 
-1. **Umpan:** awak dapat fail `Click here to view*.zip` dalam WhatsApp.
-2. Dalam zip ada fail **VHD** — bila buka, Windows pasang ia jadi "pendrive" baru.
-3. Dalam tu ada program **bertandatangan sah** (KafanInputService) yang **ditipu** untuk muatkan fail jahat `rime.dll` — sebab programnya sah, **antivirus percaya**.
-4. Ia sorok badan sebenar dalam **registry** (`Console\0`) dan jalankan terus dari ingatan — **tanpa fail**, susah dikesan antivirus.
-5. Ia pasang **driver yang matikan antivirus** (ZyArk/Baidu, ardrv/OPSWAT).
-6. Ia **kekal hidup** (servis Windows palsu `hidserv.dll` + auto-start) dan cuba hubungi server penggodam.
+Kalau dibiarkan, penggodam boleh curi kata laluan, matikan antivirus, dan kawal komputer awak dari jauh.
 
-Jenis: **Winos 4.0 / Silver Fox / ValleyRAT** — alat kawalan jauh (RAT) yang makin banyak serang pengguna Malaysia lewat WhatsApp.
+Nama malware: Winos 4.0 / Silver Fox / ValleyRAT.
 
----
+</details>
 
-## 🧪 Macam mana kami jumpa & kaji malware ni?
+<details>
+<summary><b>Betul ke ni malware? (bukti)</b></summary>
 
-Supaya awak percaya alat ni bukan main taip je — ni yang kami buat:
+Kami hantar sampel sebenar ke dua perkhidmatan keselamatan:
 
-1. **Bedah dalam makmal selamat (Linux/Kali):** buka kandungan zip tanpa menjalankannya, kenal pasti setiap fail jahat + cara ia sembunyi.
-2. **Uji atas Windows 11 betul (dalam komputer maya terasing):** sengaja jangkitkan, pastu jalankan alat kami — sahkan ia kesan & buang **jangkitan hidup sebenar** tanpa kacau fail biasa.
-3. **Reverse-engineer** fail jahat (Ghidra): dapat cara penyulitan (RC4), kunci driver, dan mekanisme ia bersembunyi.
-4. **Cuba paksa ia dedah server penggodam** guna beberapa cara (emulasi, Wine+FEX, sandbox awan Triage) — semua dalam persekitaran terasing tanpa internet sebenar.
-5. **Sahkan dengan pihak ketiga:** VirusTotal + Triage (gambar di atas).
+| VirusTotal: 18 antivirus tanda bahaya | Hatching Triage: skor 10/10 |
+|---|---|
+| ![VirusTotal](docs/screenshots/virustotal-detection.png) | ![Triage](docs/screenshots/triage-overview.png) |
 
-Setiap pengesanan dalam alat ni ada **ujian automatik** yang jalan atas Windows bersih (Windows Server 2022 & 2025) setiap kali kod berubah.
+- VirusTotal: 18 daripada 71 antivirus tanda malicious. Padan peraturan *WinosStager*, dikaitkan dengan kempen "CleverSoar".
+- Hatching Triage (dijalankan dalam Windows sebenar): skor 10/10, dikenal pasti sebagai ValleyRAT.
 
----
+Laporan penuh: [docs/REPORT.md](docs/REPORT.md). Laporan Triage: [tria.ge/261023-f44nwacc45](https://tria.ge/261023-f44nwacc45)
 
-## 🚧 Apa kami BELUM mampu buat (jujur)
+</details>
 
-- **Alamat server penggodam (C2) belum dapat.** Alamat tu tersembunyi dalam bahagian tersulit yang cuma terbuka masa malware betul-betul "hidup". Walaupun guna sandbox profesional (Windows Intel sebenar), ia tetap tak dedah — besar kemungkinan **server tu dah mati/ditutup**. Kalau sesiapa ada sampel kempen sama yang server masih hidup, PR sangat dialu-alukan.
-- **Alat ni kenal versi yang kami bedah (Oktober 2026).** Versi baru mungkin sikit berbeza — sebab tu kami tambah pengesanan *generik* (contoh: fail Tersembunyi+Sistem di tempat pelik) supaya varian baru pun tertangkap.
-- **Driver pembunuh antivirus:** kalau dijumpai, cara paling selamat tetap **backup data & install semula Windows**. Alat ni akan bagitau.
+<details>
+<summary><b>Macam mana kami kaji malware ni</b></summary>
 
----
+1. Buka kandungan zip dalam Linux tanpa menjalankannya, dan kenal pasti setiap fail jahat.
+2. Jangkitkan Windows 11 dalam komputer maya yang terasing, pastu jalankan alat ni. Ia kesan dan buang jangkitan yang sedang hidup tanpa kacau fail biasa.
+3. Bedah fail jahat guna Ghidra: cara penyulitan (RC4), kunci driver, dan cara ia bersembunyi.
+4. Cuba paksa ia dedah alamat server penggodam guna emulasi, Wine+FEX dan sandbox Triage. Semua tanpa sambungan internet sebenar.
+5. Sahkan dengan VirusTotal dan Triage.
 
-## 🤝 Nak tolong? (Jemputan untuk komuniti Malaysia)
+Setiap pengesanan ada ujian automatik yang jalan atas Windows Server 2022 dan 2025 setiap kali kod berubah.
 
-Repo ni **terbuka untuk semua** — developer, vibecoder, penggiat cybersecurity Malaysia. Mari kita jaga rakyat sama-sama. 🇲🇾
+</details>
 
-Macam mana nak sumbang:
-- **Jumpa varian baru / sampel kempen ni?** Buka [Issue](https://github.com/afu-it/wa-zip-cleaner/issues) atau hantar hash/IOC. (Jangan upload malware mentah terus — bagi hash atau pautan VirusTotal/Triage je.)
-- **Pandai coding?** Tambah pengesanan baru dalam `wa-zip-cleaner.ps1`, atau peraturan dalam `winos4-whatsapp.yar`, pastu buka **Pull Request**. Ada ujian automatik — pastikan ia hijau.
-- **Pandai menulis / design?** Tolong perbaiki panduan ni, terjemah, atau buat poster amaran untuk orang ramai.
-- **Cybersecurity pro?** Tolong sahkan/perbaiki analisis dalam [docs/REPORT.md](docs/REPORT.md), atau kongsi IOC ke feed komuniti (MalwareBazaar/ThreatFox).
+<details>
+<summary><b>Had alat ni</b></summary>
 
-Setiap sumbangan, kecil atau besar, membantu lindungi lebih ramai mangsa. Terima kasih. 🙏
+- Alamat server penggodam belum dapat. Ia tersorok dalam bahagian bersulit yang cuma terbuka masa malware hidup, dan sandbox pun tak dedahkannya. Kemungkinan server tu dah ditutup. Kalau awak ada sampel dari kempen yang sama dan servernya masih hidup, sila hantar.
+- Alat ni kenal versi yang kami bedah (Oktober 2026). Versi baru mungkin berbeza sikit, jadi kami tambah pengesanan umum (contohnya fail Hidden+System di tempat pelik) untuk tangkap varian baru.
+- Kalau alat ni jumpa driver yang matikan antivirus, cara paling selamat ialah backup data dan install semula Windows. Alat ni akan beritahu.
+- Ini bukan antivirus penuh. Ia khusus untuk kempen malware WhatsApp ni sahaja. Untuk imbasan menyeluruh, guna Kaspersky atau Malwarebytes.
 
----
+</details>
 
-## ℹ️ Tentang projek ni (About)
+<details>
+<summary><b>Apa yang alat ni periksa</b></summary>
 
-**WA-ZIP Cleaner** ialah projek **komuniti, percuma, sumber terbuka (MIT)** — dibuat selepas satu kempen malware WhatsApp sebenar yang sasarkan rakyat Malaysia (fail "Click here to view*.zip").
-
-**Kenapa ia wujud:** ramai mangsa bukan orang IT. Bila dah terbuka fail tu, diorang tak tahu nak buat apa, dan alat profesional selalunya mahal atau susah. Jadi kami buat satu alat **ringkas, percuma, boleh guna sendiri** — plus analisis terbuka supaya komuniti keselamatan boleh sama-sama kesan & blok kempen ni.
-
-**Apa ia BUKAN:**
-- Bukan untuk dijual — percuma selamanya.
-- Bukan antivirus penuh — ia alat khusus untuk kempen malware WhatsApp ni sahaja.
-- Bukan sulap — setiap pengesanan datang dari analisis sebenar (lihat [docs/REPORT.md](docs/REPORT.md)) dan ada ujian automatik.
-
-**Dibuat oleh & untuk komuniti Malaysia** — developer, vibecoder, dan penggiat cybersecurity. Kalau ia tolong walau seorang mangsa, berbaloi. 🇲🇾
-
----
-
-## 🔎 Apa alat ni semak (7 bahagian)
-
-| # | Semak | Contoh |
+| # | Periksa | Contoh |
 |---|---|---|
 | 1 | Program sedang jalan | `rundll32 ...,_vmclientcore@16`, `rime.dll` palsu di luar Program Files |
 | 2 | Cakera maya (VHD) | `Click here to view*.vhd` |
 | 3 | Registry | `Console\0` (nama nilai 32-hex), `Console\IpDate`, `IpDates_info`, `Magisk`, `FaCai2024` |
-| 4 | Driver / servis | `ZyArk`, `ardrv`; servis yang lancar penterjemah skrip dari folder pengguna |
-| 5 | Auto-start | kunci Run (termasuk yang tunjuk ke fail Tersembunyi+Sistem), task berjadual, folder Startup |
-| 6 | Fail | hash SHA-256 dikenali, nama umpan, `hidserv.dll` di luar System32, fail Tersembunyi+Sistem, pemasang Visual C++ palsu |
+| 4 | Driver dan servis | `ZyArk`, `ardrv`; servis yang lancar skrip dari folder pengguna |
+| 5 | Auto-start | kunci Run (termasuk yang tunjuk ke fail Hidden+System), task berjadual, folder Startup |
+| 6 | Fail | hash SHA-256 dikenali, nama umpan, `hidserv.dll` di luar System32, fail Hidden+System, pemasang Visual C++ palsu |
 | 7 | Alat kawalan jauh berkaitan | agen ManageEngine UEMS dari kempen VBS WhatsApp (amaran sahaja) |
 
-Butiran teknikal & IOC: **[IOCS.md](IOCS.md)** · **[docs/iocs.csv](docs/iocs.csv)** · Peraturan YARA: **[winos4-whatsapp.yar](winos4-whatsapp.yar)**
+Butiran teknikal: [IOCS.md](IOCS.md), [docs/iocs.csv](docs/iocs.csv). Peraturan YARA: [winos4-whatsapp.yar](winos4-whatsapp.yar)
 
----
+</details>
 
-## English (short)
+<details>
+<summary><b>Nak tolong?</b></summary>
 
-Free scanner/cleaner for Windows PCs that opened the WhatsApp **"Click here to view*.zip"** malware (Winos 4.0 / Silver Fox / ValleyRAT). **Mac, iPhone, Android are not affected.**
+Projek ni percuma dan terbuka. Developer, vibecoder dan orang cybersecurity Malaysia dijemput menyumbang.
 
-**Easiest:** download (green **Code → Download ZIP**), extract, double-click **`MULA-SINI.bat`**, click **Yes**, wait, and type **`Y`** to clean if something is found.
+- Jumpa varian baru? Buka [Issue](https://github.com/afu-it/wa-zip-cleaner/issues) dengan hash atau pautan VirusTotal/Triage. Jangan upload fail malware terus.
+- Reti coding? Tambah pengesanan dalam `wa-zip-cleaner.ps1` atau peraturan dalam `winos4-whatsapp.yar`, pastu buka Pull Request. Pastikan ujian automatik lulus.
+- Reti menulis atau design? Baiki panduan ni, terjemah, atau buat poster amaran.
+- Orang cybersecurity? Semak analisis dalam [docs/REPORT.md](docs/REPORT.md), atau kongsi IOC ke MalwareBazaar/ThreatFox.
 
-**PowerShell:** open PowerShell as Admin, `cd` into the folder, then:
+</details>
+
+<details>
+<summary><b>English</b></summary>
+
+Free scanner and cleaner for Windows PCs that opened the WhatsApp `Click here to view*.zip` malware (Winos 4.0 / Silver Fox / ValleyRAT). Phones and Macs are not affected.
+
+Press **Windows + X**, open **Terminal (Admin)**, paste the command from the top of this page, and press Enter. If it reports a threat, type `Y` to quarantine it.
+
+Or download the repo, extract it, and double-click `MULA-SINI.bat`.
+
+Manual:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\wa-zip-cleaner.ps1        # scan
 powershell -ExecutionPolicy Bypass -File .\wa-zip-cleaner.ps1 -Fix   # quarantine
 ```
-After cleaning: log out WhatsApp linked devices, change bank/email passwords, restart, rescan. Full analysis: [docs/REPORT.md](docs/REPORT.md). Contributions from the Malaysian dev/security community are very welcome — see the Contribute section above.
 
-## License
-MIT. No warranty. Use at your own risk.
+After cleaning: log out of WhatsApp linked devices, change bank and email passwords, restart, and scan again. Full analysis: [docs/REPORT.md](docs/REPORT.md).
+
+</details>
+
+## Lesen
+
+MIT. Tiada jaminan. Guna atas risiko sendiri.
