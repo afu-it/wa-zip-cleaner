@@ -6,6 +6,39 @@ Free scanner & cleaner for Windows PCs that opened the WhatsApp **"Click here to
 > Mac, iPhone dan Android **tidak** terjejas. Fail ini hanya berfungsi di Windows.
 > Mac, iPhone and Android are **not** affected. This file only works on Windows.
 
+---
+
+## 🟢 CARA PALING SENANG (untuk sesiapa je, tak perlu pandai komputer)
+
+Dengar sini. Kalau komputer Windows awak ada buka fail pelik dari WhatsApp tu, buat macam ni je, step by step:
+
+**1. Download alat ni.**
+Tekan butang hijau **`< > Code`** kat atas page ni → pilih **Download ZIP**. Nanti turun satu fail zip.
+
+**2. Buka (extract) fail zip tu.**
+Cari fail yang baru turun dalam folder *Downloads*. Klik kanan → **Extract All** → **Extract**. Nanti jadi satu folder.
+
+**3. Double-click fail `MULA-SINI.bat`.**
+Dalam folder tu, cari fail nama **`MULA-SINI`**. Double-click je.
+- Windows akan tanya "nak bagi kebenaran?" — tekan **Yes**. (Jangan takut, ni normal.)
+- Kalau Windows kata "Windows protected your PC" — tekan **More info** → **Run anyway**.
+
+**4. Tunggu je.**
+Tetingkap hitam akan keluar dan mula imbas. Ambil masa **2 sampai 10 minit**. Jangan tutup, pergi minum air dulu. 😄
+
+**5. Baca apa dia cakap:**
+- Kalau keluar **BERSIH** → alhamdulillah, takde apa. Habis.
+- Kalau keluar **BAHAYA** → dia akan tanya nak bersihkan tak. **Taip `Y`, tekan Enter.** Dia bersihkan sendiri.
+
+**6. Lepas bersih — WAJIB buat (guna TELEFON, bukan komputer yang kena tu):**
+- WhatsApp kat telefon → **Peranti dipaut (Linked devices)** → **Log keluar semua**.
+- Tukar password **bank online** dan **email** awak.
+- Restart komputer, pastu double-click `MULA-SINI.bat` sekali lagi sampai keluar **BERSIH**.
+
+Itu je. Satu fail, satu klik. Kalau tak faham mana-mana, tunjuk je page ni kat orang yang reti sikit.
+
+> ⚠️ Kalau alat ni jumpa "driver yang matikan antivirus", paling selamat **backup data & install semula Windows**. Dia akan bagitau kalau kena buat macam tu.
+
 **Bukti & analisis penuh (screenshot VirusTotal + Triage):** [docs/REPORT.md](docs/REPORT.md)
 
 ---
