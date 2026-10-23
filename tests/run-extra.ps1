@@ -72,6 +72,13 @@ for ($i = 0; $i -lt 30; $i++) {
 }
 Check ([bool]$loaded) 'test setup: fake rime.dll loaded in host process'
 
+# E. Renamed VHD lures, a generic VHD, and a WSL disk that must be ignored
+Set-Content "$dl\Notice.vhd" 'dummy'
+Set-Content "$dl\Other.vhdx" 'dummy'
+$wsl = Join-Path $env:LOCALAPPDATA 'Packages\CanonicalGroupLimited.Test\LocalState'
+New-Item -ItemType Directory -Force -Path $wsl | Out-Null
+Set-Content "$wsl\ext4.vhdx" 'dummy'
+
 Write-Host '=== Scan ===' -ForegroundColor Cyan
 $r = Scan "$env:TEMP\x1.json"
 Check (Has $r 'File' 'HIGH' 'HashTest\\invoice-copy\.dat$' 'TEST-BAD') 'hash match: known-bad file'
@@ -83,6 +90,9 @@ Check (Has $r 'Service' 'HIGH' '^ardrv$') 'ardrv service outside OPSWAT folder'
 Check (-not ($r.All | Where-Object { $_.Target -eq 'OpswatLegitTest' })) 'ardrv in OPSWAT folder ignored'
 Check (Has $r 'Info' 'WARN' 'ManageEngine') 'ManageEngine agent warning'
 Check (Has $r 'File' 'HIGH' 'Click here to view7\.zip$') 'locked lure file detected'
+Check (Has $r 'File' 'HIGH' 'Downloads\\Notice\.vhd$') 'Notice.vhd lure is HIGH'
+Check (Has $r 'File' 'WARN' 'Downloads\\Other\.vhdx$') 'other VHD in user folder is WARN'
+Check (-not ($r.All | Where-Object { $_.Target -match 'ext4\.vhdx' })) 'WSL ext4.vhdx ignored'
 
 Write-Host '=== Fix while file is locked ===' -ForegroundColor Cyan
 $r = Scan "$env:TEMP\x2.json" -Fix
@@ -103,6 +113,7 @@ Check (-not (Test-Path $locked)) 'previously locked file quarantined on second r
 Write-Host '=== .bat launchers ===' -ForegroundColor Cyan
 # Clear WARN-only leftovers so a clean result reads BERSIH.
 & sc.exe delete MEUemsTest | Out-Null; & sc.exe delete OpswatLegitTest | Out-Null
+Remove-Item "$dl\Other.vhdx", "$wsl\ext4.vhdx" -Force -ErrorAction SilentlyContinue
 Remove-Item "$rd" -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item "$hd" -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item Env:\WAZIP_TEST_IOCS

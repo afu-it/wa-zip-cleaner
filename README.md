@@ -67,6 +67,10 @@ Jadi jangan hafal nama. Kenal dari perangai dia:
 
 Kalau ragu-ragu, call orang yang hantar tu dan tanya betul ke dia hantar. Dokumen urusan patut datang guna email atau sistem rasmi, dan anda boleh minta macam tu.
 
+Bank OCBC dan UOB pun dah bagi amaran: jangan buka fail `.vbs`, `.zip`, `.msi` atau `.exe` yang datang dari WhatsApp.
+
+**Tip: off auto-download dalam WhatsApp.** Kalau auto-download off, fail tak masuk phone sendiri, jadi dia tak sampai ke Google Drive dan PC anda. Caranya: WhatsApp > **Settings** > **Storage and data** > **Media auto-download**, pastu tutup semua (mobile data, Wi-Fi, roaming).
+
 </details>
 
 <details>
@@ -166,7 +170,7 @@ Infection chain: VHD dalam zip, KafanInputService (signed) sideload `rime.dll`, 
 | 3 | Registry | `Console\0` (value name 32-hex), `Console\IpDate`, `IpDates_info`, `Magisk`, `FaCai2024` |
 | 4 | Driver / servis | `ZyArk`, `ardrv`; servis yang launch script interpreter dari user folder |
 | 5 | Autostart | Run keys (termasuk yang point ke fail Hidden+System), scheduled task, Startup folder |
-| 6 | Fail | SHA-256 dikenali, nama umpan, `hidserv.dll` luar System32, fail Hidden+System, installer Visual C++ palsu |
+| 6 | Fail | SHA-256 dikenali, nama umpan (`Click here to view*`, `Notice*.vhd`), fail `.vhd`/`.vhdx` lain dalam user folder (warning, kecuali WSL), `hidserv.dll` luar System32, fail Hidden+System, installer Visual C++ palsu |
 | 7 | RMM berkaitan | agent ManageEngine UEMS dari kempen VBS WhatsApp (warning je) |
 
 IOC: [IOCS.md](IOCS.md), [docs/iocs.csv](docs/iocs.csv). YARA: [winos4-whatsapp.yar](winos4-whatsapp.yar). Tests jalan kat Windows Server 2022 dan 2025.
