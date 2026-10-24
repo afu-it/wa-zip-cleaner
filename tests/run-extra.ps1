@@ -91,8 +91,21 @@ for ($i = 0; $i -lt 20; $i++) {
   Start-Sleep 1
 }
 
+# G. Windows Defender told to skip a program and the fake Microsoft\Update folder (October 2026 wave)
+$stageDir = "$env:APPDATA\Microsoft\Update"
+$defOk = $false
+try {
+  Add-MpPreference -ExclusionProcess 'QtsUpdater.exe' -ErrorAction Stop
+  Add-MpPreference -ExclusionPath $stageDir -ErrorAction Stop
+  $defOk = @((Get-MpPreference).ExclusionProcess) -contains 'QtsUpdater.exe'
+} catch { Write-Host "Defender not available: $($_.Exception.Message)" }
+
 Write-Host '=== Scan ===' -ForegroundColor Cyan
 $r = Scan "$env:TEMP\x1.json"
+if ($defOk) {
+  Check (Has $r 'DefExcl' 'HIGH' 'QtsUpdater\.exe$') 'Defender process exclusion is HIGH'
+  Check (Has $r 'DefExcl' 'HIGH' 'Microsoft\\Update$') 'Defender exclusion of fake Microsoft\Update folder is HIGH'
+} else { Write-Host 'SKIP Defender exclusion checks (Defender unavailable on this runner)' -ForegroundColor Yellow }
 Check (Has $r 'File' 'HIGH' 'HashTest\\invoice-copy\.dat$' 'TEST-BAD') 'hash match: known-bad file'
 Check (Has $r 'File' 'HIGH' 'HashTest\\helper\.exe$' 'TEST-LEGIT') 'hash match: abused legit file outside vendor folder'
 Check (-not ($r.All | Where-Object { $_.Target -match 'ProgramData\\OPSWAT\\helper\.exe' })) 'hash match: legit file inside vendor folder ignored'
@@ -118,6 +131,11 @@ Check (-not (Test-Path "$env:SystemRoot\System32\drivers\ardrv.sys")) 'ardrv.sys
 Check ([bool](Get-Service MEUemsTest -ErrorAction SilentlyContinue)) 'ManageEngine left for the user to decide'
 Check (Test-Path 'C:\ProgramData\OPSWAT\helper.exe') 'vendor-folder legit file untouched'
 Check (-not (Get-Process -Id $cli.Id -ErrorAction SilentlyContinue)) 'C2-connected process stopped'
+if ($defOk) {
+  $mp = Get-MpPreference
+  Check (-not (@($mp.ExclusionProcess) -contains 'QtsUpdater.exe')) 'Defender process exclusion removed'
+  Check (-not (@($mp.ExclusionPath) -contains $stageDir)) 'Defender folder exclusion removed'
+}
 Remove-Item Env:\WAZIP_TEST_C2
 
 Write-Host '=== Release lock, fix again ===' -ForegroundColor Cyan

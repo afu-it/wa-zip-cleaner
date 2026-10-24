@@ -39,7 +39,9 @@ $expect = @(
   @('File', 'WAZipTest\\hidserv\.dll$'),
   @('RegValue', 'Console\|Magisk$'), @('RegValue', 'Run\|WinHelperRun$'),
   @('RegValue', 'Run\|MicrosoftUpdate$'), @('Process', 'PDF_C2089'), @('File', 'Update\\PDF_C2089_20260911100446\.exe$'),
-  @('File', 'Update\\active_desktop_render_x64\.dll$'), @('File', 'DOC_7748_20260924152821\.zip$'), @('File', 'PDF_C2841_20260911100446\.img$')
+  @('File', 'Update\\active_desktop_render_x64\.dll$'), @('File', 'DOC_7748_20260924152821\.zip$'), @('File', 'PDF_C2841_20260911100446\.img$'),
+  @('File', 'PDF_FTFWCI_20261009125351\.vhd$'), @('File', '20261019-MYS2026Y1019E51AC\.zip$'), @('File', '20261019\.MYS2026Y1019A7F2E\.zip$'),
+  @('File', 'WAZipOct\\eneio64\.dat$'), @('Task', 'WAZipDefTask$')
 )
 foreach ($e in $expect) {
   $hit = $r.High | Where-Object { $_.Kind -eq $e[0] -and $_.Target -match $e[1] }

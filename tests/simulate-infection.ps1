@@ -64,6 +64,15 @@ Start-Process -FilePath "$stage\PDF_C2089_20260911100446.exe" -ArgumentList '-n 
 Set-Content -Path "$dl\DOC_7748_20260924152821.zip" -Value 'dummy'
 Set-Content -Path "$dl\PDF_C2841_20260911100446.img" -Value 'dummy'
 
+# October 2026 wave: new lure names, payload .dat, and a hidden task that adds Defender exclusions (never run)
+Set-Content -Path "$dl\PDF_FTFWCI_20261009125351.vhd" -Value 'dummy'
+Set-Content -Path "$dl\20261019-MYS2026Y1019E51AC.zip" -Value 'dummy'
+Set-Content -Path "$dl\20261019.MYS2026Y1019A7F2E.zip" -Value 'dummy'
+New-Item -ItemType Directory -Force -Path 'C:\ProgramData\WAZipOct' | Out-Null
+Set-Content -Path 'C:\ProgramData\WAZipOct\eneio64.dat' -Value 'dummy'
+$act = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -WindowStyle Hidden -Command `"Add-MpPreference -ExclusionProcess 'QtsUpdater.exe'`""
+Register-ScheduledTask -TaskName 'WAZipDefTask' -Action $act -Trigger (New-ScheduledTaskTrigger -AtLogOn) -Force | Out-Null
+
 # Mounted lure VHD
 $vhd = "$dl\Click here to view10.6.vhd"
 "create vdisk file=`"$vhd`" maximum=8 type=fixed`nattach vdisk" | Out-File -Encoding ASCII "$env:TEMP\dp.txt"

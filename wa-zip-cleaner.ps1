@@ -55,8 +55,10 @@ if ($env:WAZIP_TEST_IOCS -and (Test-Path -LiteralPath $env:WAZIP_TEST_IOCS)) {
     if ($e.Vendor) { $entry.Vendor = $e.Vendor; $AbusedLegit += $entry } else { $KnownBad += $entry }
   }
 }
-$PersistRegex ='rime\.dll|_vmclientcore@16|KafanInput|vcRuntimeMinimum_x86\.exe|\\H\d{8,}\.exe|ZyArk|\\ardrv\.sys|\\AppData\\Roaming\\Microsoft\\Update\\[^\\]+\.exe|active_desktop_(launcher|render)'
-$LureRegex    = '^(Click here to view.*\.(zip|vhd|vhdx)|Notice.*\.vhdx?|(PDF|DOC)_C?\d{3,6}_20\d{12}\.(zip|img|iso|exe))$'
+$PersistRegex ='rime\.dll|_vmclientcore@16|KafanInput|vcRuntimeMinimum_x86\.exe|\\H\d{8,}\.exe|ZyArk|\\ardrv\.sys|\\AppData\\Roaming\\Microsoft\\Update\\[^\\]+\.exe|active_desktop_(launcher|render)|Add-MpPreference|eneio64\.dat|plcc3a\.dat'
+$LureRegex    = '^(Click here to view.*\.(zip|vhd|vhdx)|Notice.*\.vhdx?|(PDF|DOC)_[A-Z0-9]{3,8}_20\d{12}\.(zip|img|iso|exe|vhd|vhdx)|20\d{6}[.-]MYS20\d{2}Y\d{4}[A-Z0-9]{4,6}\.(zip|img|iso|vhd|vhdx))$'
+# Programs the October 2026 wave tells Windows Defender to skip. No real program needs these excluded.
+$ExclProcRegex = '(?i)^(QtsUpdater|svchost|rundll32|powershell|cmd|wscript|cscript|mshta|regsvr32|explorer)\.exe$'
 # Known attacker servers (C2). A process talking to one of these is the malware.
 $C2Ips = @('134.122.155.135')
 if ($env:WAZIP_TEST_C2) { $C2Ips += $env:WAZIP_TEST_C2 }
@@ -213,6 +215,7 @@ function Scan-Persistence {
     $txt = ($t.Actions | ForEach-Object { "$($_.Execute) $($_.Arguments)" }) -join ' ; '
     if ($txt -match $PersistRegex) { Add-Finding 'Task' 'HIGH' "$($t.TaskPath)$($t.TaskName)" "Scheduled task: $txt" @{ Path = $t.TaskPath; Name = $t.TaskName } }
   }
+  Scan-DefenderExclusions
   $startups = @("$env:ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp")
   $startups += Get-ChildItem "$env:SystemDrive\Users" -Directory -ErrorAction SilentlyContinue |
     ForEach-Object { Join-Path $_.FullName 'AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup' }
@@ -221,6 +224,34 @@ function Scan-Persistence {
       $body = ''
       if ($_.Extension -match '\.(bat|cmd|vbs|js|ps1|lnk)$') { $body = [IO.File]::ReadAllText($_.FullName) -replace "`0", '' }
       if ("$($_.Name) $body" -match $PersistRegex) { Add-Finding 'File' 'HIGH' $_.FullName 'Startup folder entry pointing at malware.' }
+    }
+  }
+}
+
+# The malware tells Windows Defender to ignore svchost.exe/QtsUpdater.exe, so antivirus scans come back clean.
+function Scan-DefenderExclusions {
+  $policy = @{}
+  foreach ($kind in 'Processes', 'Paths') {
+    $k = "HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Exclusions\$kind"
+    if (-not (Test-Path -LiteralPath $k)) { continue }
+    foreach ($n in (Get-Item -LiteralPath $k).GetValueNames()) {
+      $policy[$n] = $true
+      $bad = if ($kind -eq 'Processes') { (Split-Path $n -Leaf) -match $ExclProcRegex -or $n -match $PersistRegex } else { $n -match '(?i)\\AppData\\Roaming\\Microsoft\\Update' -or $n -match $PersistRegex }
+      if ($bad) { Add-Finding 'RegValue' 'HIGH' "$k|$n" 'Windows Defender policy told to ignore this (malware hiding from antivirus).' }
+    }
+  }
+  $mp = try { Get-MpPreference -ErrorAction Stop } catch { $null }
+  if (-not $mp) { return }
+  foreach ($v in @($mp.ExclusionProcess) | Where-Object { $_ -and -not $policy[$_] }) {
+    if ((Split-Path $v -Leaf) -match $ExclProcRegex -or $v -match $PersistRegex) {
+      Add-Finding 'DefExcl' 'HIGH' "Process|$v" 'Windows Defender told to ignore this program (malware hiding from antivirus).' @{ Type = 'Process'; Value = $v }
+    }
+  }
+  foreach ($v in @($mp.ExclusionPath) | Where-Object { $_ -and -not $policy[$_] }) {
+    if ($v -match '(?i)\\AppData\\Roaming\\Microsoft\\Update' -or $v -match $PersistRegex) {
+      Add-Finding 'DefExcl' 'HIGH' "Path|$v" 'Windows Defender told to ignore this folder (malware hiding from antivirus).' @{ Type = 'Path'; Value = $v }
+    } elseif ($v -match '(?i)^[a-z]:\\Users\\|%(APPDATA|LOCALAPPDATA|TEMP|USERPROFILE)%') {
+      Add-Finding 'DefExcl' 'WARN' "Path|$v" 'Windows Defender skips this user folder. Remove the exclusion unless you added it yourself.' @{ Type = 'Path'; Value = $v }
     }
   }
 }
@@ -249,6 +280,7 @@ function Scan-Files {
             $f.FullName -notmatch '(?i)\\AppData\\Local\\(Docker\\|Packages\\(?!5319275A\.WhatsAppDesktop))') {
           Add-Finding 'File' 'WARN' $f.FullName 'Virtual disk (VHD) in a user folder. The WhatsApp ZIP hides its payload in a VHD; delete it unless you made it.'; return }
         if ($f.Name -match $VbsLureRegex) { Add-Finding 'File' 'HIGH' $f.FullName 'Script disguised as a document (WhatsApp VBS campaign).'; return }
+        if ($f.Name -match '(?i)^(eneio64|plcc3a)\.dat$') { Add-Finding 'File' 'HIGH' $f.FullName 'Encrypted payload from the October 2026 WhatsApp ZIP wave.'; return }
         if ($f.Name -match '^dd_vcredist_x86_.*_vcRuntimeMinimum_x86\.exe$') { Add-Finding 'File' 'HIGH' $f.FullName 'Fake Visual C++ installer (Winos4.0 next stage).'; return }
         if ($f.Name -ieq 'rime.dll' -and $f.DirectoryName -notmatch '\\Program Files( \(x86\))?\\') {
           $sev = if (Get-ChildItem -LiteralPath $f.DirectoryName -Filter *.exe -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^(KafanInputService|H\d{8,})\.exe$' }) { 'HIGH' } else { 'WARN' }
@@ -319,7 +351,7 @@ function Invoke-Fix($qdir) {
   New-Item -ItemType Directory -Force -Path $qdir | Out-Null
   $log = New-Object System.Collections.Generic.List[object]
   $i = 0
-  foreach ($f in $Findings | Sort-Object { @('Process', 'Vhd', 'Task', 'RegValue', 'Service', 'RegKey', 'File').IndexOf($_.Kind) }) {
+  foreach ($f in $Findings | Sort-Object { @('Process', 'Vhd', 'Task', 'DefExcl', 'RegValue', 'Service', 'RegKey', 'File').IndexOf($_.Kind) }) {
     if ($f.Severity -ne 'HIGH' -or $f.Kind -eq 'Info') { continue }
     $i++
     try {
@@ -331,6 +363,11 @@ function Invoke-Fix($qdir) {
           Export-ScheduledTask -TaskPath $f.Extra.Path -TaskName $f.Extra.Name | Out-File -Encoding Unicode $xml
           Unregister-ScheduledTask -TaskPath $f.Extra.Path -TaskName $f.Extra.Name -Confirm:$false -ErrorAction Stop
           $log.Add(@{ Kind = 'Task'; Target = $f.Target; Backup = $xml; Path = $f.Extra.Path; Name = $f.Extra.Name })
+        }
+        'DefExcl' {
+          if ($f.Extra.Type -eq 'Process') { Remove-MpPreference -ExclusionProcess $f.Extra.Value -ErrorAction Stop }
+          else { Remove-MpPreference -ExclusionPath $f.Extra.Value -ErrorAction Stop }
+          $log.Add(@{ Kind = 'DefExcl'; Target = $f.Target; Type = $f.Extra.Type; Value = $f.Extra.Value })
         }
         'RegValue' {
           $key, $val = $f.Target -split '\|', 2
@@ -384,6 +421,10 @@ function Invoke-Restore($mf) {
     switch ($it.Kind) {
       'File' { Move-Item -LiteralPath $it.Backup -Destination $it.Target -Force; Say "  Dipulih: $($it.Target)" "  Restored: $($it.Target)" Green }
       'Reg'  { & reg.exe import $it.Backup | Out-Null; Say "  Registry dipulih: $($it.Target)" "  Registry restored: $($it.Target)" Green }
+      'DefExcl' {
+        if ($it.Type -eq 'Process') { Add-MpPreference -ExclusionProcess $it.Value } else { Add-MpPreference -ExclusionPath $it.Value }
+        Say "  Pengecualian Defender dipulih: $($it.Value)" "  Defender exclusion restored: $($it.Value)" Green
+      }
       'Task' { Register-ScheduledTask -TaskPath $it.Path -TaskName $it.Name -Xml (Get-Content -Raw $it.Backup) | Out-Null; Say "  Task dipulih: $($it.Target)" "  Task restored: $($it.Target)" Green }
     }
   }
@@ -455,6 +496,10 @@ if ($high.Count) {
   Write-Host ''
   Say 'PENTING: dari telefon/PC lain, tukar kata laluan bank & emel, dan log keluar WhatsApp Web (Peranti dipaut > Log keluar semua).' `
       'IMPORTANT: from another device, change bank/email passwords and log out WhatsApp Web (Linked devices > Log out all).' Yellow
+  if ($Findings | Where-Object { $_.Kind -eq 'DefExcl' -or $_.Detail -match 'Defender' }) {
+    Say 'Malware ni suruh Windows Defender abaikan dia, sebab tu scan antivirus nampak bersih. Lepas bersihkan dan restart, buat Full scan Windows Defender sekali lagi.' `
+        'This malware told Windows Defender to ignore it, which is why antivirus scans looked clean. After cleaning and restarting, run a Windows Defender full scan again.' Yellow
+  }
   if ($Findings | Where-Object { $_.Kind -eq 'Service' }) {
     Say 'Driver pembunuh antivirus dijumpai. Paling selamat: backup data & pasang semula Windows.' `
         'An antivirus-killer driver was found. Safest option: back up data and reinstall Windows.' Yellow

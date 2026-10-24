@@ -42,7 +42,17 @@ Lure names follow `PDF_C<digits>_<yyyymmddhhmmss>.zip` and `DOC_<digits>_<yyyymm
 - C2: `134.122.155.135:443`, retries about every 3 s
 - Config marker `@@RAPID_CFG_START@@`; PDB `D:\buildbot\build1\desktop_screen\build\bin\active_desktop_launcher_x64.pdb`
 
+## October 2026 wave (Malaysia, reported by @a.xydiel on Threads)
+Lure message: "Kindly forward the attached Statement of Account to your Finance Manager for review. Please open it on a computer, as full details may not be visible on mobile."
+- Lure names: `PDF_FTFWCI_20261009125351.vhd`, `PDF_EXZ12S_20261022110417.zip`/`.vhd`, `20261019-MYS2026Y1019E51AC.zip`/`.vhd`, `20261019.MYS2026Y1019A7F2E.zip`, `101.zip`
+- Payload files: `plcc3a.dat`, `eneio64.dat` (run with `rundll32.exe`)
+- Persistence and AV evasion: `schtasks /Create /SC ONLOGON /RL HIGHEST` with an empty task name, running hidden PowerShell `Add-MpPreference -ExclusionPath ... -ExclusionProcess 'QtsUpdater.exe','svchost.exe'`; also touches `HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet`
+- UAC bypass through `CoGetObject` (COM elevation moniker) then `ShellExec`
+- One victim's PC stayed quiet for 12 days, then sent the ZIP to every contact
+- No hashes published yet
+
 ## References
+- @a.xydiel on Threads, 22 and 24 Oct 2026: https://www.threads.com/@a.xydiel/post/DeyKrHwk2D6 and https://www.threads.com/@a.xydiel/post/De4hGk6E7sg
 - Pelagos Intel, SilverFox in the Desktop (2026-09-27): https://research.pelagos-intel.com/silverfox-in-the-desktop
 - eSentire, Winos4.0 online module staging component: https://www.esentire.com/blog/winos4-0-online-module-staging-component-used-in-cleversoar-campaign
 - The Star, 29 Sep 2026: https://www.thestar.com.my/tech/tech-news/2026/09/29/malaysians-report-being-targeted-by-malware-file-sent-through-whatsapp

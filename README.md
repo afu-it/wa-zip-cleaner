@@ -1,6 +1,6 @@
 # WA-ZIP Cleaner
 
-Ada orang hantar fail zip kat WhatsApp (contoh `Click here to view....zip`, `Notice.zip`, `PDF_C2841_20260911100446.zip` atau `DOC_7748_20260924152821.zip`), dan anda terbuka kat laptop atau PC Windows? Relax. Tool free ni akan scan PC anda, dan kalau ada malware tu, dia buang terus.
+Ada orang hantar fail zip kat WhatsApp (contoh `Click here to view....zip`, `Notice.zip`, `PDF_C2841_20260911100446.zip`, `20261019-MYS2026Y1019E51AC.zip` atau `101.zip`), dan anda terbuka kat laptop atau PC Windows? Relax. Tool free ni akan scan PC anda, dan kalau ada malware tu, dia buang terus.
 
 Kalau anda buka kat phone (Android, iPhone) atau Mac, takpe, anda selamat. Malware ni cuma kacau Windows je.
 
@@ -26,7 +26,7 @@ Defender memang dah ada dalam Windows, tak payah download apa-apa.
 
 ## Langkah 2: Scan dengan tool ni (copy paste 1 line je)
 
-Defender tak semestinya tangkap malware ni, sebab dia guna program yang sah untuk tipu antivirus. Tool ni cari kesan malware WhatsApp ni secara khusus.
+Defender tak semestinya tangkap malware ni, sebab dia guna program yang sah untuk tipu antivirus. Versi Oktober siap suruh Defender abaikan dia, jadi scan nampak bersih padahal tak. Tool ni cari kesan malware WhatsApp ni secara khusus, termasuk arahan yang suruh Defender abaikan dia, dan buang arahan tu.
 
 > **Hati-hati:** ada hacker yang suruh mangsa copy paste arahan dalam PowerShell untuk pasang malware. Jangan copy paste arahan dari orang yang anda tak kenal. Arahan bawah ni cuma ambil fail dari GitHub rasmi projek ni, dan code dia terbuka untuk sesiapa semak. Kalau ragu-ragu, tunjuk page ni kat orang IT yang anda percaya dan minta dia buat untuk anda.
 
@@ -70,7 +70,7 @@ Bawah ni info tambahan. Klik tajuk untuk buka.
 <details>
 <summary><b>Macam mana nak kenal fail jahat ni (sebelum terbuka)</b></summary>
 
-Nama fail selalu bertukar. Antara yang dah orang jumpa: `Click here to view....zip`, `Notice.zip` (dalam dia ada `Notice.vhd`), `PDF_C2841_20260911100446.zip` dan `DOC_7748_20260924152821.zip` (nombor pelik campur tarikh), fail `.vbs` macam `Work Snapshot.vbs`, dan fail yang nama dia macam penyata akaun, invoice, resit, purchase order, gaji, claim, LHDN atau KWSP. Ada juga yang buat-buat datang dari agensi kerajaan.
+Nama fail selalu bertukar. Antara yang dah orang jumpa: `Click here to view....zip`, `Notice.zip` (dalam dia ada `Notice.vhd`), `PDF_C2841_20260911100446.zip` dan `DOC_7748_20260924152821.zip`, `PDF_EXZ12S_20261022110417.zip`, `20261019.MYS2026Y1019A7F2E.zip` (huruf dan nombor pelik campur tarikh), `101.zip`, fail `.vbs` macam `Work Snapshot.vbs`, dan fail yang nama dia macam penyata akaun, invoice, resit, purchase order, gaji, claim, LHDN atau KWSP. Ada juga yang buat-buat datang dari agensi kerajaan. Bulan Oktober ada mesej macam ni: *"Kindly forward the attached Statement of Account to your Finance Manager for review. Please open it on a computer"*. Kalau orang suruh buka kat komputer, itu tanda bahaya.
 
 Jadi jangan hafal nama. Kenal dari perangai dia:
 
@@ -188,8 +188,8 @@ Versi 2 ([Pelagos Intel](https://research.pelagos-intel.com/silverfox-in-the-des
 | 2 | VHD | `Click here to view*.vhd` |
 | 3 | Registry | `Console\0` (value name 32-hex), `Console\IpDate`, `IpDates_info`, `Magisk`, `FaCai2024` |
 | 4 | Driver / servis | `ZyArk`, `ardrv`; servis yang launch script interpreter dari user folder |
-| 5 | Autostart | Run keys (termasuk yang point ke fail Hidden+System, dan `MicrosoftUpdate` ke `%APPDATA%\Microsoft\Update\`), scheduled task, Startup folder |
-| 6 | Fail | SHA-256 dikenali, nama umpan (`Click here to view*`, `Notice*.vhd`), fail `.vhd`/`.vhdx` lain dalam user folder (warning, kecuali WSL), `hidserv.dll` luar System32, fail Hidden+System, installer Visual C++ palsu |
+| 5 | Autostart & Defender | Run keys (termasuk yang point ke fail Hidden+System, dan `MicrosoftUpdate` ke `%APPDATA%\Microsoft\Update\`), scheduled task (termasuk task hidden yang jalankan `Add-MpPreference`), Startup folder; pengecualian Defender untuk `svchost.exe`, `QtsUpdater.exe` dan program sistem lain |
+| 6 | Fail | SHA-256 dikenali, nama umpan (`Click here to view*`, `Notice*.vhd`, `PDF_XXXXXX_<tarikh>`, `<tarikh>-MYS2026Y...`), payload `eneio64.dat` / `plcc3a.dat`, fail `.vhd`/`.vhdx` lain dalam user folder (warning, kecuali WSL), `hidserv.dll` luar System32, fail Hidden+System, installer Visual C++ palsu |
 | 7 | RMM berkaitan | agent ManageEngine UEMS dari kempen VBS WhatsApp (warning; force remove bila user taip `BUANG` atau guna `-RemoveManageEngine`) |
 
 IOC: [IOCS.md](IOCS.md), [docs/iocs.csv](docs/iocs.csv). YARA: [winos4-whatsapp.yar](winos4-whatsapp.yar). Tests jalan kat Windows Server 2022 dan 2025.
@@ -211,11 +211,11 @@ Projek ni free dan open source. Sesiapa pun boleh tolong: developer, vibecoder, 
 <details>
 <summary><b>English</b></summary>
 
-Free scanner and cleaner for Windows PCs that opened a WhatsApp ZIP lure such as `Click here to view*.zip` or `Notice.zip` (ValleyRAT / Winos 4.0 / Silver Fox). Phones and Macs are not affected, but a phone that auto-saves to a cloud drive synced to a PC can still deliver the file to that PC.
+Free scanner and cleaner for Windows PCs that opened a WhatsApp ZIP lure such as `Click here to view*.zip`, `Notice.zip`, `PDF_EXZ12S_20261022110417.zip` or `20261019-MYS2026Y1019E51AC.zip` (ValleyRAT / Winos 4.0 / Silver Fox). Phones and Macs are not affected, but a phone that auto-saves to a cloud drive synced to a PC can still deliver the file to that PC.
 
 This tool covers the VHD and VBS variants. It does not detect the shortcut (`.lnk`) variant known as SORVEPOTEL, which Trend Micro reported in Brazil (no confirmed Malaysian cases yet), so also run a Windows Defender full scan.
 
-First run a Windows Defender full scan. Then press **Windows + X**, open **Terminal (Admin)**, paste the command from the top of this page, and press Enter. If it finds something, type `Y` to quarantine it. Only paste commands from sources you trust; if unsure, ask an IT person you trust to run it. A clean result does not prove the PC is safe, since the malware can change.
+The October 2026 wave tells Windows Defender to ignore `svchost.exe` and `QtsUpdater.exe`, so a Defender scan can look clean; this tool finds and removes those exclusions. First run a Windows Defender full scan. Then press **Windows + X**, open **Terminal (Admin)**, paste the command from the top of this page, and press Enter. If it finds something, type `Y` to quarantine it. Only paste commands from sources you trust; if unsure, ask an IT person you trust to run it. A clean result does not prove the PC is safe, since the malware can change.
 
 Or download the repo, extract it, and double-click `MULA-SINI.bat`.
 
