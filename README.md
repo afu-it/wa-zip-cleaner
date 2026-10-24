@@ -1,6 +1,6 @@
 # WA-ZIP Cleaner
 
-Ada orang hantar fail zip kat WhatsApp (contoh `Click here to view....zip` atau `Notice.zip`), dan anda terbuka kat laptop atau PC Windows? Relax. Tool free ni akan scan PC anda, dan kalau ada malware tu, dia buang terus.
+Ada orang hantar fail zip kat WhatsApp (contoh `Click here to view....zip`, `Notice.zip`, `PDF_C2841_20260911100446.zip` atau `DOC_7748_20260924152821.zip`), dan anda terbuka kat laptop atau PC Windows? Relax. Tool free ni akan scan PC anda, dan kalau ada malware tu, dia buang terus.
 
 Kalau anda buka kat phone (Android, iPhone) atau Mac, takpe, anda selamat. Malware ni cuma kacau Windows je.
 
@@ -69,7 +69,7 @@ Bawah ni info tambahan. Klik tajuk untuk buka.
 <details>
 <summary><b>Macam mana nak kenal fail jahat ni (sebelum terbuka)</b></summary>
 
-Nama fail selalu bertukar. Antara yang dah orang jumpa: `Click here to view....zip`, `Notice.zip` (dalam dia ada `Notice.vhd`), dan fail yang nama dia macam penyata akaun, invoice, resit atau purchase order.
+Nama fail selalu bertukar. Antara yang dah orang jumpa: `Click here to view....zip`, `Notice.zip` (dalam dia ada `Notice.vhd`), `PDF_C2841_20260911100446.zip` dan `DOC_7748_20260924152821.zip` (nombor pelik campur tarikh), dan fail yang nama dia macam penyata akaun, invoice, resit atau purchase order.
 
 Jadi jangan hafal nama. Kenal dari perangai dia:
 
@@ -174,7 +174,11 @@ powershell -ExecutionPolicy Bypass -File .\wa-zip-cleaner.ps1 -Restore -Manifest
 
 Path `manifest.json` keluar masa `-Fix`. Exit code: `0` bersih, `1` ada jumpa, `2` error.
 
-Infection chain: VHD dalam zip, KafanInputService (signed) sideload `rime.dll`, payload dalam registry `Console\0` jalan fileless, BYOVD driver (ZyArk/Baidu, ardrv/OPSWAT), persistence guna servis palsu `hidserv.dll`.
+Ada 2 versi Silver Fox yang tool ni kenal.
+
+Versi 1 (kami bedah): VHD dalam zip, KafanInputService (signed) sideload `rime.dll`, payload dalam registry `Console\0` jalan fileless, BYOVD driver (ZyArk/Baidu, ardrv/OPSWAT), persistence guna servis palsu `hidserv.dll`.
+
+Versi 2 ([Pelagos Intel](https://research.pelagos-intel.com/silverfox-in-the-desktop)): IMG dalam zip, KuGou `active_desktop_launcher.exe` (signed) load `active_desktop_render_x64.dll`, staging dalam `%APPDATA%\Microsoft\Update\`, Run value `MicrosoftUpdate`, C2 `134.122.155.135:443`.
 
 | # | Check | Contoh |
 |---|---|---|
@@ -182,7 +186,7 @@ Infection chain: VHD dalam zip, KafanInputService (signed) sideload `rime.dll`, 
 | 2 | VHD | `Click here to view*.vhd` |
 | 3 | Registry | `Console\0` (value name 32-hex), `Console\IpDate`, `IpDates_info`, `Magisk`, `FaCai2024` |
 | 4 | Driver / servis | `ZyArk`, `ardrv`; servis yang launch script interpreter dari user folder |
-| 5 | Autostart | Run keys (termasuk yang point ke fail Hidden+System), scheduled task, Startup folder |
+| 5 | Autostart | Run keys (termasuk yang point ke fail Hidden+System, dan `MicrosoftUpdate` ke `%APPDATA%\Microsoft\Update\`), scheduled task, Startup folder |
 | 6 | Fail | SHA-256 dikenali, nama umpan (`Click here to view*`, `Notice*.vhd`), fail `.vhd`/`.vhdx` lain dalam user folder (warning, kecuali WSL), `hidserv.dll` luar System32, fail Hidden+System, installer Visual C++ palsu |
 | 7 | RMM berkaitan | agent ManageEngine UEMS dari kempen VBS WhatsApp (warning je) |
 

@@ -7,3 +7,8 @@ sha256,12b9470634bb7f76419c70ee9a510147cd6bcfce920f2abee5afdd13901b383d,encrypte
 sha256,46883bc25c77678f60c1b836f4c438d87158c9af6b229f533522f635a0d5276e,ZyArk.sys AV-killer (Baidu BdArKit)
 sha256,1c5129b4d63f2d5252b5b02a0a7d655dac3b6eac23dd4ed92b4dd55f243387ff,ardrv.sys AV-killer (OPSWAT)
 mutex,7D29FD842A3F8A91A6A69DD152086C2A,Winos4.0 stager mutex
+sha256,9f2caeda208c9d729b44f31c32b5e1eeef18d84d6e36b04afe15d894d3809672,KuGou variant lure ZIP PDF_C2841_20260911100446.zip (Pelagos)
+sha256,e2bf8b7cd396ee950a5b6911ea098c2e49d4ed002a6c04d5d660ccd4f7d66baa,KuGou variant IMG (Pelagos)
+sha256,f712c2a8b4abf2e299a2b480020333deb0f43364e9686cda78b1243c62e4830d,KuGou active_desktop_launcher.exe side-load host (Pelagos)
+sha256,c1e184615241fe69db3bf4093a22c7c0bf5d6072d2f51e558142b844e871084f,active_desktop_render_x64.dll SilverFox loader (Pelagos)
+ip,134.122.155.135,KuGou variant C2 port 443 (Pelagos)

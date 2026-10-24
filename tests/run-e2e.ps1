@@ -37,7 +37,9 @@ $expect = @(
   @('File', 'Account Statement\.vbs$'), @('File', 'vcRuntimeMinimum_x86\.exe$'), @('File', 'WAZipTest\\rime\.dll$'),
   @('Process', 'cmd\.exe'), @('Vhd', 'Click here to view10\.6\.vhd$'),
   @('File', 'WAZipTest\\hidserv\.dll$'),
-  @('RegValue', 'Console\|Magisk$'), @('RegValue', 'Run\|WinHelperRun$')
+  @('RegValue', 'Console\|Magisk$'), @('RegValue', 'Run\|WinHelperRun$'),
+  @('RegValue', 'Run\|MicrosoftUpdate$'), @('Process', 'PDF_C2089'), @('File', 'Update\\PDF_C2089_20260911100446\.exe$'),
+  @('File', 'Update\\active_desktop_render_x64\.dll$'), @('File', 'DOC_7748_20260924152821\.zip$'), @('File', 'PDF_C2841_20260911100446\.img$')
 )
 foreach ($e in $expect) {
   $hit = $r.High | Where-Object { $_.Kind -eq $e[0] -and $_.Target -match $e[1] }
@@ -56,6 +58,7 @@ Check (-not (Test-Path 'HKCU:\Console\0')) 'Console\0 removed'
 Check (-not (Get-ScheduledTask -TaskName WAZipTestTask -ErrorAction SilentlyContinue)) 'task removed'
 Check (-not (Test-Path "$env:USERPROFILE\Downloads\Click here to view10.6_9999.zip")) 'lure zip quarantined'
 Check (Test-Path "$env:USERPROFILE\Downloads\normal-document.pdf") 'normal file untouched'
+Check (-not (Test-Path "$env:APPDATA\Microsoft\Update\active_desktop_render_x64.dll")) 'KuGou-variant loader quarantined'
 Check (-not (Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match '_vmclientcore@16' })) 'malware-marked process stopped'
 & sc.exe query ZyArk | Out-Null
 Check ($LASTEXITCODE -ne 0) 'ZyArk service deleted'

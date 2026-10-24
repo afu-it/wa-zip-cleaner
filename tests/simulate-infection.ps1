@@ -53,6 +53,16 @@ Set-Content -Path "$dl\normal-document.pdf" -Value 'keep me'
 # Running process whose command line carries the malware marker
 Start-Process -FilePath 'cmd.exe' -ArgumentList '/c ping -n 900 127.0.0.1 >nul & rem _vmclientcore@16' -WindowStyle Hidden
 
+# SilverFox KuGou variant: staged loader pair, MicrosoftUpdate Run value, running process, new lure names
+$stage = Join-Path $env:APPDATA 'Microsoft\Update'
+New-Item -ItemType Directory -Force -Path $stage | Out-Null
+Copy-Item "$env:SystemRoot\System32\PING.EXE" "$stage\PDF_C2089_20260911100446.exe"
+Set-Content -Path "$stage\active_desktop_render_x64.dll" -Value 'dummy'
+New-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'MicrosoftUpdate' -Value "`"$stage\PDF_C2089_20260911100446.exe`"" -Force | Out-Null
+Start-Process -FilePath "$stage\PDF_C2089_20260911100446.exe" -ArgumentList '-n 900 127.0.0.1' -WindowStyle Hidden
+Set-Content -Path "$dl\DOC_7748_20260924152821.zip" -Value 'dummy'
+Set-Content -Path "$dl\PDF_C2841_20260911100446.img" -Value 'dummy'
+
 # Mounted lure VHD
 $vhd = "$dl\Click here to view10.6.vhd"
 "create vdisk file=`"$vhd`" maximum=8 type=fixed`nattach vdisk" | Out-File -Encoding ASCII "$env:TEMP\dp.txt"

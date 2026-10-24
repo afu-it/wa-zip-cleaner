@@ -25,6 +25,24 @@ Driver resources are RC4-encrypted; key = ASCII hex string `335D0F051BA4D8B0E57D
 - Injection with `VirtualAllocEx` + `WriteProcessMemory`.
 - C2 address not recovered: the `.dat` is decrypted by virtualised code.
 
+## Second variant: SilverFox KuGou loader (Pelagos Intel, Sep 2026)
+
+Also delivered over WhatsApp in Malaysia. Not analysed by us; IOCs from the Pelagos Intel report.
+Lure names follow `PDF_C<digits>_<yyyymmddhhmmss>.zip` and `DOC_<digits>_<yyyymmddhhmmss>.zip`. The ZIP holds an IMG disk image.
+
+| File | SHA-256 | Notes |
+|---|---|---|
+| `PDF_C2841_20260911100446.zip` | `9f2caeda208c9d729b44f31c32b5e1eeef18d84d6e36b04afe15d894d3809672` | Lure sent over WhatsApp |
+| IMG inside the ZIP | `e2bf8b7cd396ee950a5b6911ea098c2e49d4ed002a6c04d5d660ccd4f7d66baa` | Disk image |
+| `PDF_C2089_20260911100446.exe` | `f712c2a8b4abf2e299a2b480020333deb0f43364e9686cda78b1243c62e4830d` | Signed KuGou `active_desktop_launcher.exe` (Guangzhou Kugou Technology, thumbprint `757BDD02CBA91CA59C46E2098A5479C1ABC1FDBE`), sideload host |
+| `active_desktop_render_x64.dll` | `c1e184615241fe69db3bf4093a22c7c0bf5d6072d2f51e558142b844e871084f` | Unsigned loader posing as DWM helper |
+
+- Staging: `%APPDATA%\Microsoft\Update\`
+- Persistence: `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` value `MicrosoftUpdate`
+- C2: `134.122.155.135:443`, retries about every 3 s
+- Config marker `@@RAPID_CFG_START@@`; PDB `D:\buildbot\build1\desktop_screen\build\bin\active_desktop_launcher_x64.pdb`
+
 ## References
+- Pelagos Intel, SilverFox in the Desktop (2026-09-27): https://research.pelagos-intel.com/silverfox-in-the-desktop
 - eSentire, Winos4.0 online module staging component: https://www.esentire.com/blog/winos4-0-online-module-staging-component-used-in-cleversoar-campaign
 - The Star, 29 Sep 2026: https://www.thestar.com.my/tech/tech-news/2026/09/29/malaysians-report-being-targeted-by-malware-file-sent-through-whatsapp
