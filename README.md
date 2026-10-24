@@ -39,6 +39,7 @@ Defender tak semestinya tangkap malware ni, sebab dia guna program yang sah untu
 
 3. Tunggu dalam 2 sampai 10 minit. Jangan tutup tetingkap tu.
    - Keluar **BERSIH**: tool ni tak jumpa kesan malware yang dia kenal.
+   - Kalau dia jumpa **ManageEngine** (program remote yang hacker pasang), dia akan tanya. Kalau office anda tak pernah pasang, taip `BUANG` dan Enter, tool akan buang dia walaupun dia minta PIN. Kalau office anda yang pasang, tekan Enter je, tool tak sentuh.
    - Keluar **BAHAYA**: taip `Y`, tekan Enter. Tool ni akan buang malware tu. Fail jahat tu dia pindah ke folder quarantine (`C:\WAZipQuarantine`), bukan delete terus, so kalau tersalah buang boleh restore balik.
 
 **BERSIH tak bermaksud PC confirm selamat.** Hacker boleh tukar malware ni bila-bila masa, dan tool ni cuma kenal versi yang kami dah bedah. Kalau anda memang dah buka fail tu kat PC, tetap buat langkah tukar password kat bawah, dan kalau ragu-ragu, minta orang IT periksa.
@@ -142,7 +143,7 @@ Jangan suruh saya format Windows dulu. Tanya satu soalan satu masa kalau perlu.
 - Tool ni detect jenis fail **VHD** (yang kami kaji) dan jenis fail **VBS** (Kaspersky lapor kat Malaysia bulan Jun). Ada satu lagi jenis guna **shortcut (`.lnk`)**, nama dia SORVEPOTEL, yang Trend Micro jumpa kat Brazil. Belum ada bukti jenis ni tersebar kat Malaysia, dan tool ni tak detect jenis tu. Sebab tu buat juga full scan Windows Defender.
 - Dia kenal versi malware yang kami jumpa bulan Oktober 2026. Kalau hacker ubah sikit, kami dah tambah detection yang lebih umum, tapi tak boleh janji 100%.
 - Ada mangsa lain yang jumpa program curi data nama `888.exe` dalam kempen yang sama. Program ni ambil password Chrome, Edge dan sesi WhatsApp. Tool ni belum detect `888.exe`. Sebab tu kalau keluar BAHAYA, tukar semua password walaupun tool ni dah bersihkan.
-- ManageEngine yang hacker pasang tak boleh di-uninstall cara biasa, sebab dia minta PIN yang cuma hacker ada. Tool ni tak buang ManageEngine sendiri, sebab ada office yang memang guna dia. Kalau office anda tak pasang, tool ni akan tunjuk cara buang: guna Revo Uninstaller Free, disable servis ManageEngine dalam `services.msc`, dan padam task dia dalam Task Scheduler. Paling selamat tetap format Windows.
+- ManageEngine yang hacker pasang tak boleh di-uninstall cara biasa, sebab dia minta PIN yang cuma hacker ada. Tool ni boleh paksa buang dia (program, servis, task, folder dan entri Apps), tapi cuma lepas anda taip `BUANG`, sebab ada office yang memang guna ManageEngine. Semua yang dibuang ada backup. Buang ManageEngine tak bermaksud PC dah bersih, jadi tetap fikir untuk format.
 - Kami belum jumpa alamat server hacker tu. Mungkin server tu dah mati.
 
 </details>
@@ -169,6 +170,7 @@ Buka PowerShell as Admin, `cd` ke folder repo, then:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\wa-zip-cleaner.ps1        # scan je
 powershell -ExecutionPolicy Bypass -File .\wa-zip-cleaner.ps1 -Fix   # quarantine
+powershell -ExecutionPolicy Bypass -File .\wa-zip-cleaner.ps1 -RemoveManageEngine   # paksa buang ManageEngine tanpa tanya
 powershell -ExecutionPolicy Bypass -File .\wa-zip-cleaner.ps1 -Restore -Manifest "C:\WAZipQuarantine\<tarikh>\manifest.json"
 ```
 
@@ -188,7 +190,7 @@ Versi 2 ([Pelagos Intel](https://research.pelagos-intel.com/silverfox-in-the-des
 | 4 | Driver / servis | `ZyArk`, `ardrv`; servis yang launch script interpreter dari user folder |
 | 5 | Autostart | Run keys (termasuk yang point ke fail Hidden+System, dan `MicrosoftUpdate` ke `%APPDATA%\Microsoft\Update\`), scheduled task, Startup folder |
 | 6 | Fail | SHA-256 dikenali, nama umpan (`Click here to view*`, `Notice*.vhd`), fail `.vhd`/`.vhdx` lain dalam user folder (warning, kecuali WSL), `hidserv.dll` luar System32, fail Hidden+System, installer Visual C++ palsu |
-| 7 | RMM berkaitan | agent ManageEngine UEMS dari kempen VBS WhatsApp (warning je) |
+| 7 | RMM berkaitan | agent ManageEngine UEMS dari kempen VBS WhatsApp (warning; force remove bila user taip `BUANG` atau guna `-RemoveManageEngine`) |
 
 IOC: [IOCS.md](IOCS.md), [docs/iocs.csv](docs/iocs.csv). YARA: [winos4-whatsapp.yar](winos4-whatsapp.yar). Tests jalan kat Windows Server 2022 dan 2025.
 
