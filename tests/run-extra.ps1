@@ -5,12 +5,14 @@ $root = Split-Path -Parent $PSScriptRoot
 $tool = Join-Path $root 'wa-zip-cleaner.ps1'
 $q = 'C:\WAZipQuarantineExtra'
 $fail = 0
+$env:WAZIP_NO_PROMPT = '1'
 function Check($ok, $msg) {
   if ($ok) { Write-Host "PASS $msg" -ForegroundColor Green } else { Write-Host "FAIL $msg" -ForegroundColor Red; $script:fail++ }
 }
-function Scan($report, [switch]$Fix) {
+function Scan($report, [switch]$Fix, [switch]$RemoveME) {
   $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $tool, '-QuarantineRoot', $q, '-ReportPath', $report)
   if ($Fix) { $a += '-Fix' }
+  if ($RemoveME) { $a += '-RemoveManageEngine' }
   & powershell @a | Out-Host
   $code = $LASTEXITCODE
   $items = @()
@@ -122,6 +124,24 @@ Write-Host '=== Release lock, fix again ===' -ForegroundColor Cyan
 Stop-Process -Id $locker.Id -Force; Start-Sleep 2
 $r = Scan "$env:TEMP\x3.json" -Fix
 Check (-not (Test-Path $locked)) 'previously locked file quarantined on second run'
+
+Write-Host '=== Force-remove ManageEngine ===' -ForegroundColor Cyan
+# Look-alike agent: folder, service, scheduled task and Apps entry (nothing real is installed).
+$meDir = "${env:ProgramFiles(x86)}\ManageEngine\UEMS_Agent"
+New-Item -ItemType Directory -Force -Path "$meDir\bin" | Out-Null
+Set-Content "$meDir\bin\dcagentservice.exe" 'dummy'
+& sc.exe create MEUemsAgentTest start= demand DisplayName= "ManageEngine UEMS - Agent Test" binPath= "`"$meDir\bin\dcagentservice.exe`"" | Out-Null
+Register-ScheduledTask -TaskName 'ManageEngine UEMS Test' -Action (New-ScheduledTaskAction -Execute "$meDir\bin\dcagentservice.exe") -Trigger (New-ScheduledTaskTrigger -AtLogOn) -Force | Out-Null
+$meUn = 'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\{WAZIP-ME-TEST}'
+New-Item -Path $meUn -Force | Out-Null
+New-ItemProperty -Path $meUn -Name DisplayName -Value 'ManageEngine UEMS - Agent' -Force | Out-Null
+$r = Scan "$env:TEMP\x4.json" -Fix
+Check (Test-Path $meDir) 'ManageEngine kept when the user did not confirm'
+$r = Scan "$env:TEMP\x5.json" -RemoveME
+Check (-not (Test-Path $meDir)) 'ManageEngine folder quarantined'
+& sc.exe query MEUemsAgentTest | Out-Null; Check ($LASTEXITCODE -ne 0) 'ManageEngine service deleted'
+Check (-not (Get-ScheduledTask -TaskName 'ManageEngine UEMS Test' -ErrorAction SilentlyContinue)) 'ManageEngine task removed'
+Check (-not (Test-Path $meUn)) 'ManageEngine Apps entry removed'
 
 Write-Host '=== .bat launchers ===' -ForegroundColor Cyan
 # Clear WARN-only leftovers so a clean result reads BERSIH.

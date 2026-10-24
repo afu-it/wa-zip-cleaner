@@ -21,6 +21,7 @@
 [CmdletBinding()]
 param(
   [switch]$Fix,
+  [switch]$RemoveManageEngine,
   [switch]$Restore,
   [string]$Manifest,
   [string]$QuarantineRoot = "$env:SystemDrive\WAZipQuarantine",
@@ -284,6 +285,35 @@ function Scan-ManageEngine {
   }
 }
 
+# Force-remove a ManageEngine UEMS agent the user did not install. Its own uninstaller asks
+# for a PIN only the attacker has, so take it apart piece by piece; everything is backed up.
+function Add-ManageEngineRemoval {
+  $rx = '(?i)ManageEngine|UEMS|DesktopCentral|Endpoint Central'
+  foreach ($p in Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { [string]$_.ExecutablePath -match $rx }) {
+    Add-Finding 'Process' 'HIGH' "$($p.Name) (PID $($p.ProcessId))" 'ManageEngine process' @{ Pid = $p.ProcessId; Path = $p.ExecutablePath }
+  }
+  foreach ($svc in Get-ChildItem 'HKLM:\SYSTEM\CurrentControlSet\Services' -ErrorAction SilentlyContinue) {
+    $pr = Get-ItemProperty -LiteralPath $svc.PSPath -ErrorAction SilentlyContinue
+    if ("$($svc.PSChildName) $($pr.DisplayName) $($pr.ImagePath)" -match $rx) {
+      Add-Finding 'Service' 'HIGH' $svc.PSChildName 'ManageEngine service' @{ RegPath = $svc.PSPath; Image = '' }
+    }
+  }
+  foreach ($t in Get-ScheduledTask -ErrorAction SilentlyContinue) {
+    $txt = "$($t.TaskPath)$($t.TaskName) " + (($t.Actions | ForEach-Object { "$($_.Execute) $($_.Arguments)" }) -join ' ')
+    if ($txt -match $rx) { Add-Finding 'Task' 'HIGH' "$($t.TaskPath)$($t.TaskName)" 'ManageEngine task' @{ Path = $t.TaskPath; Name = $t.TaskName } }
+  }
+  foreach ($k in 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall', 'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall') {
+    foreach ($u in Get-ChildItem -LiteralPath $k -ErrorAction SilentlyContinue) {
+      if ((Get-ItemProperty -LiteralPath $u.PSPath -ErrorAction SilentlyContinue).DisplayName -match $rx) {
+        Add-Finding 'RegKey' 'HIGH' ($u.PSPath -replace '^Microsoft\.PowerShell\.Core\\Registry::', 'Registry::') 'ManageEngine uninstall entry'
+      }
+    }
+  }
+  foreach ($d in "${env:ProgramFiles(x86)}\ManageEngine\UEMS_Agent", "$env:ProgramFiles\ManageEngine\UEMS_Agent") {
+    if (Test-Path -LiteralPath $d) { Add-Finding 'File' 'HIGH' $d 'ManageEngine agent folder' }
+  }
+}
+
 # --------------------------------------------------------------- fixes ---
 function Invoke-Fix($qdir) {
   New-Item -ItemType Directory -Force -Path $qdir | Out-Null
@@ -397,6 +427,21 @@ foreach ($f in $Findings) {
 Write-Host ''
 Say "Jumpa: $($high.Count) bahaya, $($warn.Count) amaran." "Found: $($high.Count) high, $($warn.Count) warnings." White
 
+$me = $Findings | Where-Object { $_.Kind -eq 'Info' -and $_.Target -match 'ManageEngine' }
+if ($me -and ($Fix -or $RemoveManageEngine)) {
+  $go = [bool]$RemoveManageEngine
+  if (-not $go -and -not $env:WAZIP_NO_PROMPT) {
+    Write-Host ''
+    Say 'ManageEngine dijumpai. Kalau office/syarikat anda yang pasang, JANGAN buang. Kalau anda tak pernah pasang, taip BUANG dan Enter:' `
+        'ManageEngine found. If your company installed it, do NOT remove it. If you never installed it, type BUANG and press Enter:' Yellow
+    $go = (Read-Host) -ceq 'BUANG'
+  }
+  if ($go) {
+    Add-ManageEngineRemoval
+    $high = @($Findings | Where-Object Severity -eq 'HIGH')
+    $Fix = $true
+  }
+}
 if ($Fix -and $high.Count) {
   $qdir = Join-Path $QuarantineRoot $stamp
   $mf = Invoke-Fix $qdir
