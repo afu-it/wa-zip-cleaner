@@ -58,7 +58,7 @@ $PersistRegex ='rime\.dll|_vmclientcore@16|KafanInput|vcRuntimeMinimum_x86\.exe|
 $LureRegex    = '^(Click here to view.*\.(zip|vhd|vhdx)|Notice.*\.vhdx?|(PDF|DOC)_C?\d{3,6}_20\d{12}\.(zip|img|iso|exe))$'
 # SilverFox KuGou variant (Pelagos Intel, Sep 2026) stages here and runs from a Run value named MicrosoftUpdate.
 $StageRegex   = '(?i)\\AppData\\Roaming\\Microsoft\\Update\\[^\\]+\.(exe|dll)$'
-$VbsLureRegex = '(Account Statement|Debt Statement|Financial Report|Penyata|Invoice|Invois|Payment).*\.(vbs|vbe|js|wsf)$'
+$VbsLureRegex = '(?i)(Account Statement|Debt Statement|Financial Report|Penyata|Invoice|Invois|Payment|Work Snapshot|Salary|Gaji|Claim|Tuntutan|LHDN|KWSP|EPF).*\.(vbs|vbe|js|wsf)$'
 
 # ------------------------------------------------------------- helpers ---
 function Say([string]$ms, [string]$en, [string]$color = 'Gray') {
@@ -407,6 +407,10 @@ if ($high.Count) {
     Say 'Driver pembunuh antivirus dijumpai. Paling selamat: backup data & pasang semula Windows.' `
         'An antivirus-killer driver was found. Safest option: back up data and reinstall Windows.' Yellow
   }
+}
+if ($Findings | Where-Object { $_.Kind -eq 'Info' -and $_.Target -match 'ManageEngine' }) {
+  Say 'ManageEngine dijumpai. Kalau office anda tak pasang, buang begini: (1) pasang Revo Uninstaller Free, buang ManageEngine guna Revo (uninstall biasa minta PIN hacker); (2) buka services.msc, set semua servis ManageEngine ke Disabled; (3) buka Task Scheduler, padam task ManageEngine; (4) restart dan imbas semula. Paling selamat: backup data & pasang semula Windows.' `
+      'ManageEngine found. If your company did not install it: (1) install Revo Uninstaller Free and remove ManageEngine with it (normal uninstall asks for the attacker''s PIN); (2) open services.msc and set every ManageEngine service to Disabled; (3) open Task Scheduler and delete ManageEngine tasks; (4) restart and scan again. Safest: back up data and reinstall Windows.' Yellow
 }
 Stop-Transcript | Out-Null
 exit 1

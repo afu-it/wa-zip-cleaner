@@ -69,7 +69,7 @@ Bawah ni info tambahan. Klik tajuk untuk buka.
 <details>
 <summary><b>Macam mana nak kenal fail jahat ni (sebelum terbuka)</b></summary>
 
-Nama fail selalu bertukar. Antara yang dah orang jumpa: `Click here to view....zip`, `Notice.zip` (dalam dia ada `Notice.vhd`), `PDF_C2841_20260911100446.zip` dan `DOC_7748_20260924152821.zip` (nombor pelik campur tarikh), dan fail yang nama dia macam penyata akaun, invoice, resit atau purchase order.
+Nama fail selalu bertukar. Antara yang dah orang jumpa: `Click here to view....zip`, `Notice.zip` (dalam dia ada `Notice.vhd`), `PDF_C2841_20260911100446.zip` dan `DOC_7748_20260924152821.zip` (nombor pelik campur tarikh), fail `.vbs` macam `Work Snapshot.vbs`, dan fail yang nama dia macam penyata akaun, invoice, resit, purchase order, gaji, claim, LHDN atau KWSP. Ada juga yang buat-buat datang dari agensi kerajaan.
 
 Jadi jangan hafal nama. Kenal dari perangai dia:
 
@@ -142,7 +142,7 @@ Jangan suruh saya format Windows dulu. Tanya satu soalan satu masa kalau perlu.
 - Tool ni detect jenis fail **VHD** (yang kami kaji) dan jenis fail **VBS** (Kaspersky lapor kat Malaysia bulan Jun). Ada satu lagi jenis guna **shortcut (`.lnk`)**, nama dia SORVEPOTEL, yang Trend Micro jumpa kat Brazil. Belum ada bukti jenis ni tersebar kat Malaysia, dan tool ni tak detect jenis tu. Sebab tu buat juga full scan Windows Defender.
 - Dia kenal versi malware yang kami jumpa bulan Oktober 2026. Kalau hacker ubah sikit, kami dah tambah detection yang lebih umum, tapi tak boleh janji 100%.
 - Ada mangsa lain yang jumpa program curi data nama `888.exe` dalam kempen yang sama. Program ni ambil password Chrome, Edge dan sesi WhatsApp. Tool ni belum detect `888.exe`. Sebab tu kalau keluar BAHAYA, tukar semua password walaupun tool ni dah bersihkan.
-- ManageEngine yang hacker pasang kadang-kadang tak boleh di-uninstall, sebab dia minta kod. Kalau jadi macam tu, format Windows.
+- ManageEngine yang hacker pasang tak boleh di-uninstall cara biasa, sebab dia minta PIN yang cuma hacker ada. Tool ni tak buang ManageEngine sendiri, sebab ada office yang memang guna dia. Kalau office anda tak pasang, tool ni akan tunjuk cara buang: guna Revo Uninstaller Free, disable servis ManageEngine dalam `services.msc`, dan padam task dia dalam Task Scheduler. Paling selamat tetap format Windows.
 - Kami belum jumpa alamat server hacker tu. Mungkin server tu dah mati.
 
 </details>

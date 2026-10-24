@@ -47,6 +47,7 @@ $dl = Join-Path $env:USERPROFILE 'Downloads'
 New-Item -ItemType Directory -Force -Path $dl | Out-Null
 Set-Content -Path "$dl\Click here to view10.6_9999.zip" -Value 'dummy'
 Set-Content -Path "$dl\Account Statement.vbs" -Value "' dummy"
+Set-Content -Path "$dl\Work Snapshot.vbs" -Value "' dummy"
 Set-Content -Path "$env:TEMP\dd_vcredist_x86_20261022_1_vcRuntimeMinimum_x86.exe" -Value 'dummy'
 Set-Content -Path "$dl\normal-document.pdf" -Value 'keep me'
 

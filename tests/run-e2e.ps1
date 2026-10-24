@@ -34,7 +34,7 @@ $expect = @(
   @('RegKey', 'Console\\0$'), @('RegValue', 'Console\|IpDate$'), @('RegKey', 'IpDates_info$'),
   @('RegValue', 'Run\|WAZipTestRun$'), @('Task', 'WAZipTestTask$'), @('File', 'wazip-test\.bat$'),
   @('Service', '^ZyArk$'), @('File', 'ZyArk\.dat$'), @('File', 'Click here to view10\.6_9999\.zip$'),
-  @('File', 'Account Statement\.vbs$'), @('File', 'vcRuntimeMinimum_x86\.exe$'), @('File', 'WAZipTest\\rime\.dll$'),
+  @('File', 'Account Statement\.vbs$'), @('File', 'Work Snapshot\.vbs$'), @('File', 'vcRuntimeMinimum_x86\.exe$'), @('File', 'WAZipTest\\rime\.dll$'),
   @('Process', 'cmd\.exe'), @('Vhd', 'Click here to view10\.6\.vhd$'),
   @('File', 'WAZipTest\\hidserv\.dll$'),
   @('RegValue', 'Console\|Magisk$'), @('RegValue', 'Run\|WinHelperRun$'),
