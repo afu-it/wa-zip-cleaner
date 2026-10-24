@@ -79,6 +79,16 @@ $wsl = Join-Path $env:LOCALAPPDATA 'Packages\CanonicalGroupLimited.Test\LocalSta
 New-Item -ItemType Directory -Force -Path $wsl | Out-Null
 Set-Content "$wsl\ext4.vhdx" 'dummy'
 
+# F. A process holding a TCP connection to a "known C2" (an odd loopback address, never the real one)
+$env:WAZIP_TEST_C2 = '127.77.0.1'
+$srv = Start-Encoded "`$l=[Net.Sockets.TcpListener]::new([Net.IPAddress]::Parse('127.77.0.1'),47123); `$l.Start(); `$c=`$l.AcceptTcpClient(); Start-Sleep 900"
+Start-Sleep 2
+$cli = Start-Encoded "`$t=[Net.Sockets.TcpClient]::new(); `$t.Connect('127.77.0.1',47123); Start-Sleep 900"
+for ($i = 0; $i -lt 20; $i++) {
+  if (Get-NetTCPConnection -RemoteAddress 127.77.0.1 -ErrorAction SilentlyContinue) { break }
+  Start-Sleep 1
+}
+
 Write-Host '=== Scan ===' -ForegroundColor Cyan
 $r = Scan "$env:TEMP\x1.json"
 Check (Has $r 'File' 'HIGH' 'HashTest\\invoice-copy\.dat$' 'TEST-BAD') 'hash match: known-bad file'
@@ -91,6 +101,7 @@ Check (-not ($r.All | Where-Object { $_.Target -eq 'OpswatLegitTest' })) 'ardrv 
 Check (Has $r 'Info' 'WARN' 'ManageEngine') 'ManageEngine agent warning'
 Check (Has $r 'File' 'HIGH' 'Click here to view7\.zip$') 'locked lure file detected'
 Check (Has $r 'File' 'HIGH' 'Downloads\\Notice\.vhd$') 'Notice.vhd lure is HIGH'
+Check (Has $r 'Process' 'HIGH' "PID $($cli.Id)\)" 'attacker server') 'process connected to known C2 is HIGH'
 Check (Has $r 'File' 'WARN' 'Downloads\\Other\.vhdx$') 'other VHD in user folder is WARN'
 Check (-not ($r.All | Where-Object { $_.Target -match 'ext4\.vhdx' })) 'WSL ext4.vhdx ignored'
 
@@ -104,6 +115,8 @@ Check (-not (Get-Process -Id $rimeHost.Id -ErrorAction SilentlyContinue)) 'rime.
 Check (-not (Test-Path "$env:SystemRoot\System32\drivers\ardrv.sys")) 'ardrv.sys driver file quarantined'
 Check ([bool](Get-Service MEUemsTest -ErrorAction SilentlyContinue)) 'ManageEngine left for the user to decide'
 Check (Test-Path 'C:\ProgramData\OPSWAT\helper.exe') 'vendor-folder legit file untouched'
+Check (-not (Get-Process -Id $cli.Id -ErrorAction SilentlyContinue)) 'C2-connected process stopped'
+Remove-Item Env:\WAZIP_TEST_C2
 
 Write-Host '=== Release lock, fix again ===' -ForegroundColor Cyan
 Stop-Process -Id $locker.Id -Force; Start-Sleep 2
