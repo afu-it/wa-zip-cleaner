@@ -449,7 +449,8 @@ function Scan-Files {
         if ($f.FullName -match '(?i)\\Users\\Public\\Documents\\[^\\]+\\' -and $f.Name -match '(?i)(\.(vbs|vbe)|^UEMSAgent\.(msi|mst)|^DCAgentServerInfo\.json)$') {
           Add-Finding 'File' 'HIGH' $f.FullName 'Hidden script or ManageEngine installer kit from the WhatsApp VBS campaign.'; return }
         if ($f.FullName -match '(?i)\\ProgramData\\EDS\d{4}\\') { Add-Finding 'File' 'HIGH' $f.FullName 'Hidden work folder of the WhatsApp VBS dropper (Microsoft, Mar 2026).'; return }
-        if ($f.Name -match '(?i)\.(dll|exe)$' -and $f.FullName -match '(?i)\\(ProgramData|Users\\Public)\\' -and $f.Name -notmatch '(?i)^(curl|bitsadmin)\.exe$' -and [string]$f.VersionInfo.OriginalFilename -match '(?i)^(curl|bitsadmin)\.exe') {
+        # Reading version info opens the file, so only try DLLs (and sc.exe) the size of curl or bitsadmin.
+        if (($f.Extension -ieq '.dll' -or $f.Name -ieq 'sc.exe') -and $f.Length -gt 150KB -and $f.Length -lt 1MB -and $f.FullName -match '(?i)\\(ProgramData|Users\\Public)\\' -and [string]$f.VersionInfo.OriginalFilename -match '(?i)^(curl|bitsadmin)\.exe') {
           Add-Finding 'File' 'HIGH' $f.FullName 'curl or bitsadmin renamed to a Windows DLL name (WhatsApp VBS campaign downloader).'; return }
         if ($f.Name -match $VbsLureRegex) { Add-Finding 'File' 'HIGH' $f.FullName 'Script disguised as a document (WhatsApp VBS campaign).'; return }
         if ($f.Extension -ieq '.sys' -and ($lol = Get-LolMatch $f.FullName)) {
