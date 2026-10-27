@@ -101,6 +101,23 @@ try {
   $defOk = @((Get-MpPreference).ExclusionProcess) -contains 'QtsUpdater.exe'
 } catch { Write-Host "Defender not available: $($_.Exception.Message)" }
 
+# H. LOLDrivers matches (random bytes listed in a test copy of the list), a remote-control
+# program service, and the Microsoft driver blocklist switched off. Nothing is loaded or started.
+$drvDir = "$env:SystemRoot\System32\drivers"
+$mal = New-Object byte[] 4099; (New-Object Random 3).NextBytes($mal); [IO.File]::WriteAllBytes("$drvDir\wazlolm.sys", $mal)
+$vul = New-Object byte[] 4101; (New-Object Random 4).NextBytes($vul); [IO.File]::WriteAllBytes("$drvDir\wazlolv.sys", $vul)
+& sc.exe create WazLolMal type= kernel start= demand binPath= "System32\drivers\wazlolm.sys" | Out-Null
+& sc.exe create WazLolVuln type= kernel start= demand binPath= "\SystemRoot\System32\drivers\wazlolv.sys" | Out-Null
+@('sha256,kind,name',
+  "$((Get-FileHash "$drvDir\wazlolm.sys").Hash.ToLower()),malicious,test-malicious.sys",
+  "$((Get-FileHash "$drvDir\wazlolv.sys").Hash.ToLower()),vulnerable,test-vulnerable.sys") | Set-Content -Encoding ASCII "$env:TEMP\test-lol.csv"
+$env:WAZIP_TEST_LOLDRIVERS = "$env:TEMP\test-lol.csv"
+& sc.exe create WazRmmTest start= demand binPath= "C:\Program Files (x86)\AnyDesk\AnyDesk.exe --service" | Out-Null
+$ciKey = 'HKLM:\SYSTEM\CurrentControlSet\Control\CI\Config'
+$ciOld = (Get-ItemProperty -LiteralPath $ciKey -ErrorAction SilentlyContinue).VulnerableDriverBlocklistEnable
+New-Item -Path $ciKey -Force -ErrorAction SilentlyContinue | Out-Null
+New-ItemProperty -Path $ciKey -Name VulnerableDriverBlocklistEnable -Value 0 -PropertyType DWord -Force | Out-Null
+
 Write-Host '=== Scan ===' -ForegroundColor Cyan
 $r = Scan "$env:TEMP\x1.json"
 if ($defOk) {
@@ -120,6 +137,10 @@ Check (Has $r 'File' 'HIGH' 'Downloads\\Notice\.vhd$') 'Notice.vhd lure is HIGH'
 Check (Has $r 'Process' 'HIGH' "PID $($cli.Id)\)" 'attacker server') 'process connected to known C2 is HIGH'
 Check (Has $r 'File' 'WARN' 'Downloads\\Other\.vhdx$') 'other VHD in user folder is WARN'
 Check (-not ($r.All | Where-Object { $_.Target -match 'ext4\.vhdx' })) 'WSL ext4.vhdx ignored'
+Check (Has $r 'Service' 'HIGH' '^WazLolMal$' 'LOLDrivers') 'LOLDrivers malicious driver service is HIGH'
+Check (Has $r 'Service' 'WARN' '^WazLolVuln$' 'vulnerable') 'LOLDrivers vulnerable driver service is WARN'
+Check (Has $r 'Info' 'WARN' 'Remote-control program: AnyDesk') 'remote-control program (AnyDesk) is WARN'
+Check (Has $r 'Info' 'WARN' 'Blocklist is OFF') 'driver blocklist switched off is WARN'
 
 Write-Host '=== Fix while file is locked ===' -ForegroundColor Cyan
 $r = Scan "$env:TEMP\x2.json" -Fix
@@ -132,6 +153,9 @@ Check (-not (Test-Path "$env:SystemRoot\System32\drivers\ardrv.sys")) 'ardrv.sys
 Check ([bool](Get-Service MEUemsTest -ErrorAction SilentlyContinue)) 'ManageEngine left for the user to decide'
 Check (Test-Path 'C:\ProgramData\OPSWAT\helper.exe') 'vendor-folder legit file untouched'
 Check (-not (Get-Process -Id $cli.Id -ErrorAction SilentlyContinue)) 'C2-connected process stopped'
+& sc.exe query WazLolMal | Out-Null; Check ($LASTEXITCODE -ne 0) 'malicious driver service deleted'
+Check (-not (Test-Path "$drvDir\wazlolm.sys")) 'malicious driver file quarantined'
+& sc.exe query WazLolVuln | Out-Null; Check ($LASTEXITCODE -eq 0) 'vulnerable driver left for the user to decide'
 if ($defOk) {
   $mp = Get-MpPreference
   Check (-not (@($mp.ExclusionProcess) -contains 'QtsUpdater.exe')) 'Defender process exclusion removed'
@@ -170,6 +194,11 @@ Check (-not (Test-Path $meUn)) 'ManageEngine Apps entry removed'
 Write-Host '=== .bat launchers ===' -ForegroundColor Cyan
 # Clear WARN-only leftovers so a clean result reads BERSIH.
 & sc.exe delete MEUemsTest | Out-Null; & sc.exe delete OpswatLegitTest | Out-Null
+& sc.exe delete WazLolVuln | Out-Null; & sc.exe delete WazRmmTest | Out-Null
+Remove-Item "$drvDir\wazlolv.sys" -Force -ErrorAction SilentlyContinue
+Remove-Item Env:\WAZIP_TEST_LOLDRIVERS
+if ($null -eq $ciOld) { Remove-ItemProperty -LiteralPath $ciKey -Name VulnerableDriverBlocklistEnable -ErrorAction SilentlyContinue }
+else { Set-ItemProperty -LiteralPath $ciKey -Name VulnerableDriverBlocklistEnable -Value $ciOld }
 Remove-Item "$dl\Other.vhdx", "$wsl\ext4.vhdx" -Force -ErrorAction SilentlyContinue
 Remove-Item "$rd" -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item "$hd" -Recurse -Force -ErrorAction SilentlyContinue
@@ -178,6 +207,7 @@ Set-Content "$dl\Click here to view8.zip" 'dummy'
 Push-Location $root
 $out = cmd /c "echo.| 1-SCAN-IMBAS.bat" 2>&1 | Out-String
 Check ($out -match 'Click here to view8\.zip' -and $out -match 'HIGH') '1-SCAN-IMBAS.bat runs and reports the lure'
+Check ($out -notmatch 'LOLDrivers list') 'real LOLDrivers list loads from data\loldrivers.csv'
 Check (Test-Path "$dl\Click here to view8.zip") '1-SCAN-IMBAS.bat changes nothing'
 $out = cmd /c "echo.| 2-CLEAN-BERSIH.bat" 2>&1 | Out-String
 Check (-not (Test-Path "$dl\Click here to view8.zip")) '2-CLEAN-BERSIH.bat quarantines the lure'

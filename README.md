@@ -64,7 +64,7 @@ Defender tak semestinya tangkap malware ni, sebab malware ni guna program yang s
 
 10. Tengok tulisan kat bawah sekali:
     - **BERSIH** (hijau): tool tak jumpa malware ni. Boleh tutup tetingkap.
-    - **Cuma ada amaran** (kuning): tool tak buang apa-apa. Baca ayat kuning tu dan ikut nasihat dia. Kalau dia sebut **ManageEngine** dan ni PC office, tunjuk skrin tu kat orang IT office anda.
+    - **Cuma ada amaran** (kuning): tool tak buang apa-apa. Baca ayat kuning tu dan ikut nasihat dia. Kalau dia sebut **ManageEngine** dan ni PC office, tunjuk skrin tu kat orang IT office anda. Kalau dia sebut **Remote-control program** (contoh AnyDesk, TeamViewer) dan anda tak pernah pasang, buang program tu (cara kat bawah, bahagian *Program yang tak boleh di-uninstall*).
     - **BAHAYA** (tulisan merah `[HIGH]`): kat bawah sekali keluar *Taip Y dan Enter untuk bersihkan*. Taip `Y`, tekan **Enter**, pergi langkah 11.
 11. Tunggu sampai keluar **Kuarantin siap**. Fail jahat tu tak delete terus. Tool pindahkan dia ke folder `C:\WAZipQuarantine`, jadi kalau tersalah buang, boleh pulihkan balik.
 12. **Restart PC** (Start > Power > Restart).
@@ -194,6 +194,21 @@ Jangan suruh saya format Windows dulu. Tanya satu soalan satu masa kalau perlu.
 </details>
 
 <details>
+<summary><b>Program yang tak boleh di-uninstall (ManageEngine, AnyDesk dan lain-lain)</b></summary>
+
+Kalau tool ni bagi amaran pasal program kawalan jauh yang anda tak pernah pasang, dan uninstall biasa minta PIN atau password:
+
+1. Download **Bulk Crap Uninstaller** dari [bcuninstaller.com](https://www.bcuninstaller.com/). Ni program percuma dan open source.
+2. Buka dia, tunggu senarai program keluar.
+3. Cari nama program tu (contoh *ManageEngine* atau *AnyDesk*) dalam kotak carian.
+4. Klik kanan nama tu, pilih **Uninstall manually**. Program ni buang fail, servis dan registry tanpa minta PIN.
+5. Restart PC, pastu jalankan tool ni sekali lagi.
+
+Untuk ManageEngine, lagi senang: jalankan tool ni dan jawab **2** (PC sendiri). Tool akan paksa buang dia.
+
+</details>
+
+<details>
 <summary><b>Macam mana kami check malware ni</b></summary>
 
 1. Buka fail zip tu dalam komputer berasingan, tanpa jalankan malware tu.
@@ -234,10 +249,18 @@ Versi 2 ([Pelagos Intel](https://research.pelagos-intel.com/silverfox-in-the-des
 | 1 | Process | `rundll32 ...,_vmclientcore@16`, `rime.dll` palsu luar Program Files |
 | 2 | VHD | `Click here to view*.vhd` |
 | 3 | Registry | `Console\0` (value name 32-hex), `Console\IpDate`, `IpDates_info`, `Magisk`, `FaCai2024` |
-| 4 | Driver / servis | `ZyArk`, `ardrv`; servis yang launch script interpreter dari user folder |
+| 4 | Driver / servis | `ZyArk`, `ardrv`; servis yang launch script interpreter dari user folder; semua kernel driver di-hash dengan senarai [LOLDrivers](https://www.loldrivers.io) (`data/loldrivers.csv`, ~2,200 hash: malicious = HIGH, vulnerable = warning); Microsoft Vulnerable Driver Blocklist yang dimatikan (warning) |
 | 5 | Autostart & Defender | Run keys (termasuk yang point ke fail Hidden+System, dan `MicrosoftUpdate` ke `%APPDATA%\Microsoft\Update\`), scheduled task (termasuk task hidden yang jalankan `Add-MpPreference`), Startup folder; pengecualian Defender untuk `svchost.exe`, `QtsUpdater.exe` dan program sistem lain |
 | 6 | Fail | SHA-256 dikenali, nama umpan (`Click here to view*`, `Notice*.vhd`, `PDF_XXXXXX_<tarikh>`, `<tarikh>-MYS2026Y...`), payload `eneio64.dat` / `plcc3a.dat`, fail `.vhd`/`.vhdx` lain dalam user folder (warning, kecuali WSL), `hidserv.dll` luar System32, fail Hidden+System, installer Visual C++ palsu |
-| 7 | RMM berkaitan | agent ManageEngine UEMS dari kempen VBS WhatsApp (PC office: warning sahaja; PC sendiri: HIGH dan force remove; juga `-RemoveManageEngine`) |
+| 7 | RMM berkaitan | agent ManageEngine UEMS dari kempen VBS WhatsApp (PC office: warning sahaja; PC sendiri: HIGH dan force remove; juga `-RemoveManageEngine`); program remote lain dari senarai [LOLRMM](https://lolrmm.io) (AnyDesk, TeamViewer, RustDesk, ToDesk, SunLogin, ScreenConnect, dll.: warning sahaja) |
+
+Senarai LOLDrivers dikemas kini dengan `python3 tools/update-loldrivers.py`. Kalau script jalan sorang (one-liner), dia download `data/loldrivers.csv` dari repo ni; kalau gagal, check driver tu dilangkau.
+
+Alat lain yang berguna untuk orang IT:
+
+- [PersistenceSniper](https://github.com/last-byte/PersistenceSniper): semak lebih 50 tempat autostart Windows, bagus untuk cari benda yang tool ni terlepas.
+- [Elastic `Windows_Trojan_Winos.yar`](https://github.com/elastic/protections-artifacts/blob/main/yara/rules/Windows_Trojan_Winos.yar): YARA rule Winos dari Elastic (lesen Elastic, jadi kami link je, tak salin).
+- [Bulk Crap Uninstaller](https://github.com/Klocman/Bulk-Crap-Uninstaller): force uninstall program yang uninstaller dia minta PIN.
 
 IOC: [IOCS.md](IOCS.md), [docs/iocs.csv](docs/iocs.csv). YARA: [winos4-whatsapp.yar](winos4-whatsapp.yar). Tests jalan kat Windows Server 2022 dan 2025.
 
@@ -266,7 +289,7 @@ The October 2026 wave tells Windows Defender to ignore `svchost.exe` and `QtsUpd
 
 Or download the repo, extract it, and double-click `MULA-SINI.bat`.
 
-If anything is found: from your phone, log out of WhatsApp Linked devices, change every password saved in or typed into Chrome/Edge on that PC, sign out other sessions and turn on 2FA. If the tool warns about ManageEngine or an antivirus-killing driver, back up your documents and reinstall Windows. If WhatsApp keeps sending the lure after the PC is clean or reinstalled, the attacker is reusing stolen sessions, not the PC: log out every Linked device, turn on WhatsApp Two-step verification, sign out of other Google sessions and change passwords; as a last resort delete the WhatsApp account and register the same number again. Another victim of this campaign found a data stealer (`888.exe`) that this tool does not detect yet. Full analysis: [docs/REPORT.md](docs/REPORT.md).
+If anything is found: from your phone, log out of WhatsApp Linked devices, change every password saved in or typed into Chrome/Edge on that PC, sign out other sessions and turn on 2FA. If the tool warns about a remote-control program you did not install (ManageEngine, AnyDesk, TeamViewer and others), remove it with [Bulk Crap Uninstaller](https://www.bcuninstaller.com/) (right-click > Uninstall manually). Drivers are also checked against the [LOLDrivers](https://www.loldrivers.io) list. If the tool warns about ManageEngine or an antivirus-killing driver, back up your documents and reinstall Windows. If WhatsApp keeps sending the lure after the PC is clean or reinstalled, the attacker is reusing stolen sessions, not the PC: log out every Linked device, turn on WhatsApp Two-step verification, sign out of other Google sessions and change passwords; as a last resort delete the WhatsApp account and register the same number again. Another victim of this campaign found a data stealer (`888.exe`) that this tool does not detect yet. Full analysis: [docs/REPORT.md](docs/REPORT.md).
 
 </details>
 

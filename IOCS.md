@@ -52,6 +52,10 @@ Lure message: "Kindly forward the attached Statement of Account to your Finance 
 - No hashes published yet
 
 ## References
+
+- LOLDrivers, vulnerable and malicious driver list used by the scanner (`data/loldrivers.csv`): https://www.loldrivers.io
+- LOLRMM, remote-management tools abused by attackers: https://lolrmm.io
+- Elastic YARA rule for Winos (Elastic License 2.0, linked not copied): https://github.com/elastic/protections-artifacts/blob/main/yara/rules/Windows_Trojan_Winos.yar
 - @a.xydiel on Threads, 22 and 24 Oct 2026: https://www.threads.com/@a.xydiel/post/DeyKrHwk2D6 and https://www.threads.com/@a.xydiel/post/De4hGk6E7sg
 - Pelagos Intel, SilverFox in the Desktop (2026-09-27): https://research.pelagos-intel.com/silverfox-in-the-desktop
 - eSentire, Winos4.0 online module staging component: https://www.esentire.com/blog/winos4-0-online-module-staging-component-used-in-cleversoar-campaign

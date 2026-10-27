@@ -66,6 +66,16 @@ $C2Ips = @('134.122.155.135')
 if ($env:WAZIP_TEST_C2) { $C2Ips += $env:WAZIP_TEST_C2 }
 # SilverFox KuGou variant (Pelagos Intel, Sep 2026) stages here and runs from a Run value named MicrosoftUpdate.
 $StageRegex   = '(?i)\\AppData\\Roaming\\Microsoft\\Update\\[^\\]+\.(exe|dll)$'
+# Remote-control programs (names from LOLRMM, lolrmm.io). Fine when you or your IT installed them;
+# scammers and RAT crews also use them to control a PC.
+$RmmTools = [ordered]@{
+  'AnyDesk' = '^anydesk'; 'TeamViewer' = '^teamviewer'; 'RustDesk' = '^rustdesk'; 'HopToDesk' = '^hoptodesk'
+  'ToDesk' = '^todesk'; 'SunLogin (Oray)' = '^(sunlogin|orayremote)'; 'GotoHTTP' = '^gotohttp'; 'UltraViewer' = '^ultraviewer'
+  'ScreenConnect / ConnectWise' = '^screenconnect\.'; 'Splashtop' = '^(splashtop|strwinclt|srserver|srmanager|sragent)'
+  'SimpleHelp' = '^(simplehelpcustomer|simpleservice)'; 'Atera' = '^ateraagent'; 'MeshCentral' = '^meshagent'
+  'Tactical RMM' = '^tacticalrmm'; 'Remote Utilities' = '^rut(serv|view)'; 'Ammyy Admin' = '^ammyy'; 'AeroAdmin' = '^aeroadmin'
+  'Supremo' = '^supremo'; 'Zoho Assist' = '^(zaservice|zmagent)'; 'NetSupport' = '\\netsupport\\'; 'Action1' = '\\windows\\action1\\'
+}
 $VbsLureRegex = '(?i)(Account Statement|Debt Statement|Financial Report|Penyata|Invoice|Invois|Payment|Work Snapshot|Salary|Gaji|Claim|Tuntutan|LHDN|KWSP|EPF).*\.(vbs|vbe|js|wsf)$'
 
 # ------------------------------------------------------------- helpers ---
@@ -103,6 +113,33 @@ function Get-UserHives {
   Get-ChildItem Registry::HKEY_USERS -ErrorAction SilentlyContinue |
     Where-Object { $_.PSChildName -match '^S-1-5-21-[\d-]+$' } |
     ForEach-Object { "Registry::HKEY_USERS\$($_.PSChildName)" }
+}
+
+# Service ImagePath (\??\C:\..., \SystemRoot\..., System32\...) to a plain file path.
+function Resolve-ImagePath([string]$img) {
+  $img = $img.Trim().Trim('"')
+  ($img -replace '^\\\?\?\\', '' -replace '^\\SystemRoot', $env:SystemRoot -replace '^System32', "$env:SystemRoot\System32").Trim('"')
+}
+
+# Vulnerable and malicious Windows drivers from LOLDrivers (loldrivers.io). Refresh with tools/update-loldrivers.py.
+function Get-LolDrivers {
+  $src = if ($env:WAZIP_TEST_LOLDRIVERS) { $env:WAZIP_TEST_LOLDRIVERS } else { Join-Path $PSScriptRoot 'data\loldrivers.csv' }
+  if (-not (Test-Path -LiteralPath $src)) {
+    $src = Join-Path $env:TEMP 'wazip-loldrivers.csv'
+    try {
+      [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+      Invoke-WebRequest -UseBasicParsing -TimeoutSec 30 -Uri 'https://raw.githubusercontent.com/afu-it/wa-zip-cleaner/main/data/loldrivers.csv' -OutFile $src -ErrorAction Stop
+    } catch { return $null }
+  }
+  $idx = @{}
+  foreach ($row in Import-Csv -LiteralPath $src) { $idx[$row.sha256.ToLower()] = $row }
+  $idx
+}
+
+function Get-LolMatch([string]$path) {
+  if (-not $LolDrivers -or -not $path -or -not (Test-Path -LiteralPath $path -PathType Leaf)) { return $null }
+  $h = (Get-FileHash -LiteralPath $path -Algorithm SHA256 -ErrorAction SilentlyContinue).Hash
+  if ($h) { $LolDrivers[$h.ToLower()] }
 }
 
 function ConvertTo-RegExePath([string]$psPath) {
@@ -162,6 +199,18 @@ function Scan-Services {
             $img -match '(?i)\\(Users|ProgramData|AppData|Temp|Public)\\') {
       Add-Finding 'Service' 'WARN' $name "Service runs a script interpreter from a user folder: $img" @{ RegPath = $svc.PSPath; Image = $img }
     }
+    elseif ($p.Type -in 1, 2 -and ($lol = Get-LolMatch (Resolve-ImagePath $img))) {
+      if ($lol.kind -eq 'malicious') {
+        Add-Finding 'Service' 'HIGH' $name "Malicious driver listed by LOLDrivers: $($lol.name)" @{ RegPath = $svc.PSPath; Image = $img }
+      } else {
+        Add-Finding 'Service' 'WARN' $name "Known-vulnerable driver ($($lol.name), LOLDrivers). Attackers load drivers like this to switch off antivirus. If you do not know which program installed it, uninstall that program." @{ RegPath = $svc.PSPath; Image = $img }
+      }
+    }
+  }
+  # Microsoft's blocklist stops known-bad drivers from loading. Malware or tweak tools may switch it off.
+  $ci = Get-ItemProperty -LiteralPath 'HKLM:\SYSTEM\CurrentControlSet\Control\CI\Config' -ErrorAction SilentlyContinue
+  if ($ci -and $null -ne $ci.VulnerableDriverBlocklistEnable -and $ci.VulnerableDriverBlocklistEnable -eq 0) {
+    Add-Finding 'Info' 'WARN' 'Microsoft Vulnerable Driver Blocklist is OFF' 'Turn it on: Windows Security > Device security > Core isolation details > Microsoft Vulnerable Driver Blocklist, then restart.'
   }
   $drv = Join-Path $env:SystemRoot 'System32\drivers\ZyArk.dat'
   if (Test-Path -LiteralPath $drv) { Add-Finding 'File' 'HIGH' $drv 'ZyArk driver data file.' }
@@ -282,6 +331,9 @@ function Scan-Files {
             $f.FullName -notmatch '(?i)\\AppData\\Local\\(Docker\\|Packages\\(?!5319275A\.WhatsAppDesktop))') {
           Add-Finding 'File' 'WARN' $f.FullName 'Virtual disk (VHD) in a user folder. The WhatsApp ZIP hides its payload in a VHD; delete it unless you made it.'; return }
         if ($f.Name -match $VbsLureRegex) { Add-Finding 'File' 'HIGH' $f.FullName 'Script disguised as a document (WhatsApp VBS campaign).'; return }
+        if ($f.Extension -ieq '.sys' -and ($lol = Get-LolMatch $f.FullName)) {
+          $sev = if ($lol.kind -eq 'malicious') { 'HIGH' } else { 'WARN' }
+          Add-Finding 'File' $sev $f.FullName "Driver listed by LOLDrivers ($($lol.kind)): $($lol.name). Attackers use these to switch off antivirus."; return }
         if ($f.Name -match '(?i)^(eneio64|plcc3a)\.dat$') { Add-Finding 'File' 'HIGH' $f.FullName 'Encrypted payload from the October 2026 WhatsApp ZIP wave.'; return }
         if ($f.Name -match '^dd_vcredist_x86_.*_vcRuntimeMinimum_x86\.exe$') { Add-Finding 'File' 'HIGH' $f.FullName 'Fake Visual C++ installer (Winos4.0 next stage).'; return }
         if ($f.Name -ieq 'rime.dll' -and $f.DirectoryName -notmatch '\\Program Files( \(x86\))?\\') {
@@ -307,7 +359,8 @@ function Scan-Vhd {
 }
 
 function Scan-ManageEngine {
-  Say '[7/7] Semak alat kawalan jauh (kempen VBS WhatsApp)...' '[7/7] Checking remote-control agents (WhatsApp VBS campaign)...' Cyan
+  Say '[7/7] Semak program kawalan jauh (ManageEngine, AnyDesk, dll)...' '[7/7] Checking remote-control programs (ManageEngine, AnyDesk, etc.)...' Cyan
+  Scan-Rmm
   $hits = @()
   $hits += Get-Service -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -match 'ManageEngine|UEMS' }
   foreach ($p in "${env:ProgramFiles(x86)}\ManageEngine\UEMS_Agent", "$env:ProgramFiles\ManageEngine\UEMS_Agent") {
@@ -320,6 +373,20 @@ function Scan-ManageEngine {
       default    { 'Remote-management agent found. If your company did NOT install it, the WhatsApp VBS campaign gave attackers remote control. Its normal uninstaller asks for the attacker''s PIN.' }
     }
     Add-Finding 'Info' 'WARN' 'ManageEngine UEMS Agent' $d
+  }
+}
+
+function Scan-Rmm {
+  $paths = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | ForEach-Object { [string]$_.ExecutablePath })
+  $paths += Get-CimInstance Win32_Service -ErrorAction SilentlyContinue | ForEach-Object {
+    $pn = [string]$_.PathName
+    if ($pn -match '^"([^"]+)"') { $Matches[1] } elseif ($pn -match '^(\S+\.exe)') { $Matches[1] } else { $pn } }
+  foreach ($tool in $RmmTools.Keys) {
+    $hit = $paths | Where-Object { $_ -and (($_ -split '\\')[-1] -match $RmmTools[$tool] -or $_ -match $RmmTools[$tool]) } | Select-Object -First 1
+    if (-not $hit) { continue }
+    $d = if ($Owner -eq 'Office') { "Remote-control program ($hit). Ask your IT team if they installed it." }
+         else { "Remote-control program ($hit). Fine if you installed it yourself. If not, someone may be controlling this PC: uninstall it (Bulk Crap Uninstaller can force-remove it) and change your passwords from your phone." }
+    Add-Finding 'Info' 'WARN' "Remote-control program: $tool" $d
   }
 }
 
@@ -394,7 +461,7 @@ function Invoke-Fix($qdir) {
           & sc.exe stop $f.Target | Out-Null
           & sc.exe delete $f.Target | Out-Null
           $log.Add(@{ Kind = 'Reg'; Target = $f.Target; Backup = $reg })
-          $img = ($f.Extra.Image -replace '^\\\?\?\\', '' -replace '^\\SystemRoot', $env:SystemRoot -replace '^System32', "$env:SystemRoot\System32").Trim('"')
+          $img = Resolve-ImagePath $f.Extra.Image
           if ($img -and (Test-Path -LiteralPath $img)) { Add-Finding 'File' 'HIGH' $img 'Driver file of removed service.' }
         }
         'File' {
@@ -472,6 +539,8 @@ if ($Owner -eq 'Office')   { Say 'OK, PC office.' 'OK, office PC.' Gray }
 if ($Owner -eq 'Personal') { Say 'OK, PC sendiri.' 'OK, personal PC.' Gray }
 
 Start-Transcript -Path (Join-Path $QuarantineRoot "scan-$stamp.log") | Out-Null
+$LolDrivers = Get-LolDrivers
+if (-not $LolDrivers) { Say '  (Senarai driver bahaya tak dapat dimuat, semakan driver LOLDrivers dilangkau.)' '  (Could not load the LOLDrivers list; that driver check is skipped.)' DarkGray }
 
 Scan-Processes; Scan-Vhd; Scan-Registry; Scan-Services; Scan-Persistence; Scan-Files; Scan-ManageEngine
 
@@ -545,8 +614,8 @@ if ($me -and $meRemove -and $Fix) {
   Say 'PC office: ManageEngine biasanya IT syarikat yang pasang. Tunjuk skrin ni kat IT office dan tanya betul ke dia yang pasang. Kalau IT kata bukan, jalankan tool ni semula dan jawab 2 (sendiri).' `
       'Office PC: company IT usually installs ManageEngine. Show this screen to your IT team and ask if they installed it. If they did not, run this tool again and answer 2 (personal).' Yellow
 } elseif ($me) {
-  Say 'ManageEngine dijumpai. Kalau PC sendiri, jalankan tool ni semula dan jawab 2 (sendiri), tool akan buang dia. Atau buang sendiri: (1) pasang Revo Uninstaller Free, buang ManageEngine guna Revo (uninstall biasa minta PIN hacker); (2) buka services.msc, set semua servis ManageEngine ke Disabled; (3) buka Task Scheduler, padam task ManageEngine; (4) restart dan imbas semula. Paling selamat: backup data & pasang semula Windows.' `
-      'ManageEngine found. If this is your own PC, run this tool again and answer 2 (personal); it will remove it. Or remove it yourself: (1) install Revo Uninstaller Free and remove ManageEngine with it (normal uninstall asks for the attacker''s PIN); (2) open services.msc and set every ManageEngine service to Disabled; (3) open Task Scheduler and delete ManageEngine tasks; (4) restart and scan again. Safest: back up data and reinstall Windows.' Yellow
+  Say 'ManageEngine dijumpai. Kalau PC sendiri, jalankan tool ni semula dan jawab 2 (sendiri), tool akan buang dia. Atau buang sendiri: (1) pasang Bulk Crap Uninstaller (percuma, bcuninstaller.com), cari ManageEngine, klik kanan > Uninstall manually (uninstall biasa minta PIN hacker); (2) buka services.msc, set semua servis ManageEngine ke Disabled; (3) buka Task Scheduler, padam task ManageEngine; (4) restart dan imbas semula. Paling selamat: backup data & pasang semula Windows.' `
+      'ManageEngine found. If this is your own PC, run this tool again and answer 2 (personal); it will remove it. Or remove it yourself: (1) install Bulk Crap Uninstaller (free, bcuninstaller.com), find ManageEngine, right-click > Uninstall manually (normal uninstall asks for the attacker''s PIN); (2) open services.msc and set every ManageEngine service to Disabled; (3) open Task Scheduler and delete ManageEngine tasks; (4) restart and scan again. Safest: back up data and reinstall Windows.' Yellow
 }
 Stop-Transcript | Out-Null
 if ($high.Count) { exit 1 }
