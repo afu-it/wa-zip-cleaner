@@ -118,6 +118,20 @@ $ciOld = (Get-ItemProperty -LiteralPath $ciKey -ErrorAction SilentlyContinue).Vu
 New-Item -Path $ciKey -Force -ErrorAction SilentlyContinue | Out-Null
 New-ItemProperty -Path $ciKey -Name VulnerableDriverBlocklistEnable -Value 0 -PropertyType DWord -Force | Out-Null
 
+# I. Browser tricks: an extension forced in by policy, a Chrome shortcut that loads a hidden
+# extension, and an extension loaded from a folder.
+$polKey = 'HKLM:\SOFTWARE\Policies\Google\Chrome\ExtensionInstallForcelist'
+New-Item -Path $polKey -Force | Out-Null
+New-ItemProperty -Path $polKey -Name '1' -Value 'abcdefghijklmnopabcdefghijklmnop;https://example.invalid/update.xml' -Force | Out-Null
+$lnk = 'C:\Users\Public\Desktop\Google Chrome WAZip.lnk'
+$s = (New-Object -ComObject WScript.Shell).CreateShortcut($lnk)
+$s.TargetPath = 'C:\Program Files\Google\Chrome\Application\chrome.exe'
+$s.Arguments = '--load-extension="C:\Users\Public\ext"'
+$s.Save()
+$prof = "$env:LOCALAPPDATA\Google\Chrome\User Data\Profile 7"
+New-Item -ItemType Directory -Force -Path $prof | Out-Null
+'{"extensions":{"settings":{"ponmlkjihgfedcbaponmlkjihgfedcba":{"location":4,"path":"C:\\Users\\Public\\ext"}}}}' | Set-Content -Encoding ASCII "$prof\Secure Preferences"
+
 Write-Host '=== Scan ===' -ForegroundColor Cyan
 $r = Scan "$env:TEMP\x1.json"
 if ($defOk) {
@@ -141,6 +155,9 @@ Check (Has $r 'Service' 'HIGH' '^WazLolMal$' 'LOLDrivers') 'LOLDrivers malicious
 Check (Has $r 'Service' 'WARN' '^WazLolVuln$' 'vulnerable') 'LOLDrivers vulnerable driver service is WARN'
 Check (Has $r 'Info' 'WARN' 'Remote-control program: AnyDesk') 'remote-control program (AnyDesk) is WARN'
 Check (Has $r 'Info' 'WARN' 'Blocklist is OFF') 'driver blocklist switched off is WARN'
+Check (Has $r 'RegValue' 'WARN' 'ExtensionInstallForcelist\|1$') 'forced Chrome extension is WARN when owner unknown'
+Check (Has $r 'File' 'HIGH' 'Google Chrome WAZip\.lnk$' 'load-extension') 'Chrome shortcut loading a hidden extension is HIGH'
+Check (Has $r 'Info' 'WARN' 'Chrome extension ponmlkjihgfedcba' 'from a folder') 'extension loaded from a folder is WARN'
 
 Write-Host '=== Fix while file is locked ===' -ForegroundColor Cyan
 $r = Scan "$env:TEMP\x2.json" -Fix
@@ -153,6 +170,8 @@ Check (-not (Test-Path "$env:SystemRoot\System32\drivers\ardrv.sys")) 'ardrv.sys
 Check ([bool](Get-Service MEUemsTest -ErrorAction SilentlyContinue)) 'ManageEngine left for the user to decide'
 Check (Test-Path 'C:\ProgramData\OPSWAT\helper.exe') 'vendor-folder legit file untouched'
 Check (-not (Get-Process -Id $cli.Id -ErrorAction SilentlyContinue)) 'C2-connected process stopped'
+Check (-not (Test-Path $lnk)) 'hidden-extension shortcut quarantined'
+Check (Test-Path $polKey) 'forced extension policy kept when owner unknown'
 & sc.exe query WazLolMal | Out-Null; Check ($LASTEXITCODE -ne 0) 'malicious driver service deleted'
 Check (-not (Test-Path "$drvDir\wazlolm.sys")) 'malicious driver file quarantined'
 & sc.exe query WazLolVuln | Out-Null; Check ($LASTEXITCODE -eq 0) 'vulnerable driver left for the user to decide'
@@ -190,6 +209,8 @@ Check (-not (Test-Path $meDir)) 'ManageEngine folder quarantined'
 & sc.exe query MEUemsAgentTest | Out-Null; Check ($LASTEXITCODE -ne 0) 'ManageEngine service deleted'
 Check (-not (Get-ScheduledTask -TaskName 'ManageEngine UEMS Test' -ErrorAction SilentlyContinue)) 'ManageEngine task removed'
 Check (-not (Test-Path $meUn)) 'ManageEngine Apps entry removed'
+Check (Has $r 'RegValue' 'HIGH' 'ExtensionInstallForcelist\|1$') 'forced Chrome extension is HIGH on a personal PC'
+Check (-not ((Get-Item $polKey -ErrorAction SilentlyContinue).GetValueNames() -contains '1')) 'forced extension policy removed on a personal PC'
 
 Write-Host '=== .bat launchers ===' -ForegroundColor Cyan
 # Clear WARN-only leftovers so a clean result reads BERSIH.
@@ -197,6 +218,8 @@ Write-Host '=== .bat launchers ===' -ForegroundColor Cyan
 & sc.exe delete WazLolVuln | Out-Null; & sc.exe delete WazRmmTest | Out-Null
 Remove-Item "$drvDir\wazlolv.sys" -Force -ErrorAction SilentlyContinue
 Remove-Item Env:\WAZIP_TEST_LOLDRIVERS
+Remove-Item $prof -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item 'HKLM:\SOFTWARE\Policies\Google\Chrome' -Recurse -Force -ErrorAction SilentlyContinue
 if ($null -eq $ciOld) { Remove-ItemProperty -LiteralPath $ciKey -Name VulnerableDriverBlocklistEnable -ErrorAction SilentlyContinue }
 else { Set-ItemProperty -LiteralPath $ciKey -Name VulnerableDriverBlocklistEnable -Value $ciOld }
 Remove-Item "$dl\Other.vhdx", "$wsl\ext4.vhdx" -Force -ErrorAction SilentlyContinue

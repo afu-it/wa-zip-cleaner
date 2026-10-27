@@ -76,6 +76,13 @@ $RmmTools = [ordered]@{
   'Tactical RMM' = '^tacticalrmm'; 'Remote Utilities' = '^rut(serv|view)'; 'Ammyy Admin' = '^ammyy'; 'AeroAdmin' = '^aeroadmin'
   'Supremo' = '^supremo'; 'Zoho Assist' = '^(zaservice|zmagent)'; 'NetSupport' = '\\netsupport\\'; 'Action1' = '\\windows\\action1\\'
 }
+# Browsers whose profiles we check. Chromium ones keep profiles under User Data; Opera keeps one in its own folder.
+$BrowserRoots = @(
+  @{ Name = 'Chrome'; Dir = 'AppData\Local\Google\Chrome\User Data'; Proc = 'chrome'; Policy = 'Google\Chrome' }
+  @{ Name = 'Edge'; Dir = 'AppData\Local\Microsoft\Edge\User Data'; Proc = 'msedge'; Policy = 'Microsoft\Edge' }
+  @{ Name = 'Brave'; Dir = 'AppData\Local\BraveSoftware\Brave-Browser\User Data'; Proc = 'brave'; Policy = 'BraveSoftware\Brave' }
+  @{ Name = 'Opera'; Dir = 'AppData\Roaming\Opera Software\Opera Stable'; Proc = 'opera'; Policy = $null }
+)
 $VbsLureRegex = '(?i)(Account Statement|Debt Statement|Financial Report|Penyata|Invoice|Invois|Payment|Work Snapshot|Salary|Gaji|Claim|Tuntutan|LHDN|KWSP|EPF).*\.(vbs|vbe|js|wsf)$'
 
 # ------------------------------------------------------------- helpers ---
@@ -150,7 +157,7 @@ function ConvertTo-RegExePath([string]$psPath) {
 
 # --------------------------------------------------------------- scans ---
 function Scan-Registry {
-  Say '[1/7] Semak registry (tempat malware sorok muatan)...' '[1/7] Checking registry (where the payload hides)...' Cyan
+  Say '[1/8] Semak registry (tempat malware sorok muatan)...' '[1/8] Checking registry (where the payload hides)...' Cyan
   foreach ($hive in Get-UserHives) {
     foreach ($sub in '0', '1') {
       $k = "$hive\Console\$sub"
@@ -183,7 +190,7 @@ function Scan-Registry {
 }
 
 function Scan-Services {
-  Say '[2/7] Semak driver & servis (pembunuh antivirus)...' '[2/7] Checking drivers & services (antivirus killers)...' Cyan
+  Say '[2/8] Semak driver & servis (pembunuh antivirus)...' '[2/8] Checking drivers & services (antivirus killers)...' Cyan
   $root = 'HKLM:\SYSTEM\CurrentControlSet\Services'
   foreach ($svc in Get-ChildItem $root -ErrorAction SilentlyContinue) {
     $p = Get-ItemProperty -LiteralPath $svc.PSPath -ErrorAction SilentlyContinue
@@ -217,7 +224,7 @@ function Scan-Services {
 }
 
 function Scan-Processes {
-  Say '[3/7] Semak program yang sedang berjalan...' '[3/7] Checking running programs...' Cyan
+  Say '[3/8] Semak program yang sedang berjalan...' '[3/8] Checking running programs...' Cyan
   foreach ($p in Get-CimInstance Win32_Process -ErrorAction SilentlyContinue) {
     $cl = [string]$p.CommandLine; $exe = [string]$p.ExecutablePath
     if ($cl -match '_vmclientcore@16' -or $p.Name -eq 'KafanInputService.exe' -or $exe -match '\\H\d{8,}\.exe$' -or $exe -match $StageRegex) {
@@ -239,7 +246,7 @@ function Scan-Processes {
 }
 
 function Scan-Persistence {
-  Say '[4/7] Semak program yang auto-jalan bila PC hidup...' '[4/7] Checking auto-start entries...' Cyan
+  Say '[4/8] Semak program yang auto-jalan bila PC hidup...' '[4/8] Checking auto-start entries...' Cyan
   $runKeys = @('HKLM:\Software\Microsoft\Windows\CurrentVersion\Run', 'HKLM:\Software\Microsoft\Windows\CurrentVersion\RunOnce',
                'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Run', 'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\RunOnce')
   foreach ($hive in Get-UserHives) {
@@ -308,7 +315,7 @@ function Scan-DefenderExclusions {
 }
 
 function Scan-Files {
-  Say '[5/7] Imbas fail (boleh ambil 2-10 minit)...' '[5/7] Scanning files (can take 2-10 minutes)...' Cyan
+  Say '[5/8] Imbas fail (boleh ambil 2-10 minit)...' '[5/8] Scanning files (can take 2-10 minutes)...' Cyan
   $roots = @("$env:ProgramData", "$env:SystemDrive\Users\Public", "$env:SystemRoot\Temp")
   foreach ($u in Get-ChildItem "$env:SystemDrive\Users" -Directory -ErrorAction SilentlyContinue) {
     $roots += 'Downloads', 'Desktop', 'Documents', 'AppData\Roaming', 'AppData\Local\Temp', 'AppData\Local\Packages' |
@@ -350,7 +357,7 @@ function Scan-Files {
 }
 
 function Scan-Vhd {
-  Say '[6/7] Semak cakera maya (VHD) yang sedang dibuka...' '[6/7] Checking mounted virtual disks (VHD)...' Cyan
+  Say '[6/8] Semak cakera maya (VHD) yang sedang dibuka...' '[6/8] Checking mounted virtual disks (VHD)...' Cyan
   foreach ($d in Get-Disk -ErrorAction SilentlyContinue | Where-Object { $_.BusType -eq 'File Backed Virtual' }) {
     $loc = [string]$d.Location
     $sev = if ((Split-Path $loc -Leaf) -match $LureRegex) { 'HIGH' } else { 'WARN' }
@@ -359,7 +366,7 @@ function Scan-Vhd {
 }
 
 function Scan-ManageEngine {
-  Say '[7/7] Semak program kawalan jauh (ManageEngine, AnyDesk, dll)...' '[7/7] Checking remote-control programs (ManageEngine, AnyDesk, etc.)...' Cyan
+  Say '[7/8] Semak program kawalan jauh (ManageEngine, AnyDesk, dll)...' '[7/8] Checking remote-control programs (ManageEngine, AnyDesk, etc.)...' Cyan
   Scan-Rmm
   $hits = @()
   $hits += Get-Service -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -match 'ManageEngine|UEMS' }
@@ -387,6 +394,79 @@ function Scan-Rmm {
     $d = if ($Owner -eq 'Office') { "Remote-control program ($hit). Ask your IT team if they installed it." }
          else { "Remote-control program ($hit). Fine if you installed it yourself. If not, someone may be controlling this PC: uninstall it (Bulk Crap Uninstaller can force-remove it) and change your passwords from your phone." }
     Add-Finding 'Info' 'WARN' "Remote-control program: $tool" $d
+  }
+}
+
+function Get-BrowserProfiles {
+  foreach ($u in Get-ChildItem "$env:SystemDrive\Users" -Directory -ErrorAction SilentlyContinue) {
+    foreach ($b in $BrowserRoots) {
+      $ud = Join-Path $u.FullName $b.Dir
+      if (-not (Test-Path -LiteralPath $ud)) { continue }
+      $dirs = @(Get-ChildItem -LiteralPath $ud -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^(Default|Profile \d+)$' })
+      if (Test-Path -LiteralPath (Join-Path $ud 'Preferences')) { $dirs += Get-Item -LiteralPath $ud }
+      foreach ($d in $dirs) { [pscustomobject]@{ Browser = $b.Name; Proc = $b.Proc; Path = $d.FullName } }
+    }
+    foreach ($d in Get-ChildItem -LiteralPath (Join-Path $u.FullName 'AppData\Roaming\Mozilla\Firefox\Profiles') -Directory -ErrorAction SilentlyContinue) {
+      [pscustomobject]@{ Browser = 'Firefox'; Proc = 'firefox'; Path = $d.FullName }
+    }
+  }
+}
+
+function Scan-Browsers {
+  Say '[8/8] Semak browser (Chrome, Edge, Brave, Opera, Firefox)...' '[8/8] Checking browsers (Chrome, Edge, Brave, Opera, Firefox)...' Cyan
+  # Extensions forced in by policy. Offices do this on purpose; a personal PC never should.
+  foreach ($h in @('HKLM:\SOFTWARE') + @(Get-UserHives | ForEach-Object { "$_\Software" })) {
+    foreach ($b in $BrowserRoots | Where-Object { $_.Policy }) {
+      $k = "$h\Policies\$($b.Policy)\ExtensionInstallForcelist"
+      if (-not (Test-Path -LiteralPath $k)) { continue }
+      $item = Get-Item -LiteralPath $k
+      foreach ($n in $item.GetValueNames()) {
+        $sev = if ($Owner -eq 'Personal') { 'HIGH' } else { 'WARN' }
+        Add-Finding 'RegValue' $sev "$k|$n" "$($b.Name) is forced to install extension $($item.GetValue($n)). Fine if your office IT set it; on a personal PC this is malware."
+      }
+    }
+  }
+  # Browser shortcuts that quietly load an extension from a folder.
+  $sh = New-Object -ComObject WScript.Shell
+  $lnkDirs = @("$env:PUBLIC\Desktop", "$env:ProgramData\Microsoft\Windows\Start Menu\Programs")
+  foreach ($u in Get-ChildItem "$env:SystemDrive\Users" -Directory -ErrorAction SilentlyContinue) {
+    $lnkDirs += 'Desktop', 'AppData\Roaming\Microsoft\Windows\Start Menu\Programs', 'AppData\Roaming\Microsoft\Internet Explorer\Quick Launch' |
+      ForEach-Object { Join-Path $u.FullName $_ }
+  }
+  foreach ($d in $lnkDirs | Where-Object { Test-Path -LiteralPath $_ }) {
+    Get-ChildItem -LiteralPath $d -Recurse -File -Force -Filter *.lnk -ErrorAction SilentlyContinue | ForEach-Object {
+      $l = try { $sh.CreateShortcut($_.FullName) } catch { $null }
+      if ($l -and $l.TargetPath -match '(?i)\\(chrome|msedge|brave|opera|launcher)\.exe$' -and $l.Arguments -match '(?i)--load-extension') {
+        Add-Finding 'File' 'HIGH' $_.FullName "Browser shortcut loads a hidden extension: $($l.Arguments)"
+      }
+    }
+  }
+  # Extensions loaded from a folder instead of the web store.
+  foreach ($p in Get-BrowserProfiles | Where-Object { $_.Browser -ne 'Firefox' }) {
+    foreach ($pf in 'Secure Preferences', 'Preferences') {
+      $file = Join-Path $p.Path $pf
+      if (-not (Test-Path -LiteralPath $file)) { continue }
+      $json = try { Get-Content -Raw -LiteralPath $file -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop } catch { $null }
+      if (-not $json.extensions.settings) { continue }
+      foreach ($e in $json.extensions.settings.PSObject.Properties) {
+        if ($e.Value.location -eq 4 -and $e.Value.path) {
+          Add-Finding 'Info' 'WARN' "$($p.Browser) extension $($e.Name)" "Extension loaded from a folder, not the web store: $($e.Value.path). Remove it in $($p.Browser) > Extensions unless you added it yourself."
+        }
+      }
+    }
+  }
+}
+
+# On an infected PC, log WhatsApp Web out of every browser. The login lives in the site's
+# IndexedDB folder, not in cookies. The attacker's stolen copy keeps working until the phone
+# logs out Linked devices; this stops the PC handing it over again.
+function Add-WhatsAppWebSessions {
+  foreach ($p in Get-BrowserProfiles) {
+    $dirs = if ($p.Browser -eq 'Firefox') { Join-Path $p.Path 'storage\default\https+++web.whatsapp.com' }
+            else { Get-ChildItem -LiteralPath (Join-Path $p.Path 'IndexedDB') -Directory -Filter 'https_web.whatsapp.com_0*' -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName } }
+    foreach ($d in @($dirs) | Where-Object { $_ -and (Test-Path -LiteralPath $_) }) {
+      Add-Finding 'WaSession' 'HIGH' $d "WhatsApp Web login saved in $($p.Browser). Removing it logs this PC out." @{ Proc = $p.Proc }
+    }
   }
 }
 
@@ -424,12 +504,23 @@ function Invoke-Fix($qdir) {
   New-Item -ItemType Directory -Force -Path $qdir | Out-Null
   $log = New-Object System.Collections.Generic.List[object]
   $i = 0
-  foreach ($f in $Findings | Sort-Object { @('Process', 'Vhd', 'Task', 'DefExcl', 'RegValue', 'Service', 'RegKey', 'File').IndexOf($_.Kind) }) {
+  $closed = $false
+  foreach ($f in $Findings | Sort-Object { @('Process', 'WaSession', 'Vhd', 'Task', 'DefExcl', 'RegValue', 'Service', 'RegKey', 'File').IndexOf($_.Kind) }) {
     if ($f.Severity -ne 'HIGH' -or $f.Kind -eq 'Info') { continue }
     $i++
     try {
       switch ($f.Kind) {
         'Process' { Stop-Process -Id $f.Extra.Pid -Force -ErrorAction Stop; $log.Add(@{ Kind = 'Process'; Target = $f.Target }) }
+        'WaSession' {
+          if (-not $closed) {
+            Say '  Browser ditutup untuk log keluar WhatsApp Web (buka balik lepas ni).' '  Closing browsers to log out WhatsApp Web (reopen them afterwards).' Yellow
+            Stop-Process -Name chrome, msedge, brave, opera, firefox -Force -ErrorAction SilentlyContinue
+            Start-Sleep 2; $closed = $true
+          }
+          $dest = Join-Path $qdir ("wa-$i-" + (Split-Path $f.Target -Leaf))
+          Move-Item -LiteralPath $f.Target -Destination $dest -Force -ErrorAction Stop
+          $log.Add(@{ Kind = 'File'; Target = $f.Target; Backup = $dest })
+        }
         'Vhd'     { Dismount-DiskImage -ImagePath $f.Target -ErrorAction Stop | Out-Null; $log.Add(@{ Kind = 'Vhd'; Target = $f.Target }) }
         'Task'    {
           $xml = Join-Path $qdir "task-$i.xml"
@@ -542,7 +633,7 @@ Start-Transcript -Path (Join-Path $QuarantineRoot "scan-$stamp.log") | Out-Null
 $LolDrivers = Get-LolDrivers
 if (-not $LolDrivers) { Say '  (Senarai driver bahaya tak dapat dimuat, semakan driver LOLDrivers dilangkau.)' '  (Could not load the LOLDrivers list; that driver check is skipped.)' DarkGray }
 
-Scan-Processes; Scan-Vhd; Scan-Registry; Scan-Services; Scan-Persistence; Scan-Files; Scan-ManageEngine
+Scan-Processes; Scan-Vhd; Scan-Registry; Scan-Services; Scan-Persistence; Scan-Files; Scan-ManageEngine; Scan-Browsers
 
 # ManageEngine: a personal PC should never have it, an office PC often does.
 $me = $Findings | Where-Object { $_.Kind -eq 'Info' -and $_.Target -match 'ManageEngine' }
@@ -561,6 +652,8 @@ if ($me) {
     if ($RemoveManageEngine) { $Fix = $true }
   }
 }
+
+if ($Findings | Where-Object { $_.Severity -eq 'HIGH' }) { Add-WhatsAppWebSessions }
 
 if ($ReportPath) {
   @($Findings | Select-Object Kind, Severity, Target, Detail) | ConvertTo-Json -Depth 3 | Out-File -Encoding UTF8 $ReportPath
@@ -596,6 +689,11 @@ if ($high.Count) {
   Write-Host ''
   Say 'PENTING: dari telefon/PC lain, tukar kata laluan bank & emel, dan log keluar WhatsApp Web (Peranti dipaut > Log keluar semua).' `
       'IMPORTANT: from another device, change bank/email passwords and log out WhatsApp Web (Linked devices > Log out all).' Yellow
+  if ($Findings | Where-Object { $_.Kind -eq 'WaSession' }) {
+    if ($Fix) { Say 'WhatsApp Web dah dilog keluar dari browser kat PC ni. Hacker masih boleh guna salinan yang dia curi sampai anda log keluar dari phone: WhatsApp > Peranti dipaut > log keluar semua.' `
+                    'WhatsApp Web is logged out of the browsers on this PC. The attacker''s stolen copy works until you log out from your phone: WhatsApp > Linked devices > log out all.' Yellow }
+    else { Say 'Bila taip Y, browser akan tertutup sendiri dan WhatsApp Web kat PC ni akan log keluar.' 'When you type Y, browsers close and WhatsApp Web on this PC is logged out.' Yellow }
+  }
   if ($Findings | Where-Object { $_.Kind -eq 'DefExcl' -or $_.Detail -match 'Defender' }) {
     Say 'Malware ni suruh Windows Defender abaikan dia, sebab tu scan antivirus nampak bersih. Lepas bersihkan dan restart, buat Full scan Windows Defender sekali lagi.' `
         'This malware told Windows Defender to ignore it, which is why antivirus scans looked clean. After cleaning and restarting, run a Windows Defender full scan again.' Yellow

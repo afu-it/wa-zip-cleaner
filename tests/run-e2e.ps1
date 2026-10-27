@@ -42,7 +42,8 @@ $expect = @(
   @('RegValue', 'Run\|MicrosoftUpdate$'), @('Process', 'PDF_C2089'), @('File', 'Update\\PDF_C2089_20260911100446\.exe$'),
   @('File', 'Update\\active_desktop_render_x64\.dll$'), @('File', 'DOC_7748_20260924152821\.zip$'), @('File', 'PDF_C2841_20260911100446\.img$'),
   @('File', 'PDF_FTFWCI_20261009125351\.vhd$'), @('File', '20261019-MYS2026Y1019E51AC\.zip$'), @('File', '20261019\.MYS2026Y1019A7F2E\.zip$'),
-  @('File', 'WAZipOct\\eneio64\.dat$'), @('Task', 'WAZipDefTask$')
+  @('File', 'WAZipOct\\eneio64\.dat$'), @('Task', 'WAZipDefTask$'),
+  @('WaSession', 'Chrome\\User Data\\Default\\IndexedDB\\https_web\.whatsapp\.com_0'), @('WaSession', 'https\+\+\+web\.whatsapp\.com$')
 )
 foreach ($e in $expect) {
   $hit = $r.High | Where-Object { $_.Kind -eq $e[0] -and $_.Target -match $e[1] }
@@ -62,6 +63,9 @@ Check (-not (Get-ScheduledTask -TaskName WAZipTestTask -ErrorAction SilentlyCont
 Check (-not (Test-Path "$env:USERPROFILE\Downloads\Click here to view10.6_9999.zip")) 'lure zip quarantined'
 Check (Test-Path "$env:USERPROFILE\Downloads\normal-document.pdf") 'normal file untouched'
 Check (-not (Test-Path "$env:APPDATA\Microsoft\Update\active_desktop_render_x64.dll")) 'KuGou-variant loader quarantined'
+$waChrome = "$env:LOCALAPPDATA\Google\Chrome\User Data\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb"
+Check (-not (Test-Path $waChrome)) 'WhatsApp Web login removed from Chrome'
+Check (-not (Test-Path "$env:APPDATA\Mozilla\Firefox\Profiles\wazip.default\storage\default\https+++web.whatsapp.com")) 'WhatsApp Web login removed from Firefox'
 Check (-not (Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match '_vmclientcore@16' })) 'malware-marked process stopped'
 & sc.exe query ZyArk | Out-Null
 Check ($LASTEXITCODE -ne 0) 'ZyArk service deleted'
@@ -75,6 +79,7 @@ Write-Host '=== 6. Restore ===' -ForegroundColor Cyan
 Check (Test-Path 'HKCU:\Console\0') 'Console\0 restored'
 Check (Test-Path "$env:USERPROFILE\Downloads\Click here to view10.6_9999.zip") 'lure zip restored'
 Check ([bool](Get-ScheduledTask -TaskName WAZipTestTask -ErrorAction SilentlyContinue)) 'task restored'
+Check (Test-Path "$waChrome\000003.log") 'WhatsApp Web login restored'
 
 Write-Host ''
 if ($fail) { Write-Host "$fail check(s) failed" -ForegroundColor Red; exit 1 }

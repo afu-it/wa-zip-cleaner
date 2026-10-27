@@ -58,14 +58,14 @@ Defender tak semestinya tangkap malware ni, sebab malware ni guna program yang s
    - PC/laptop yang office bagi, dan ada orang IT yang urus: taip `1`, tekan **Enter**.
    - PC/laptop sendiri: taip `2`, tekan **Enter**.
    - Tak pasti: tekan **Enter** je.
-9. Tool mula scan. Tunggu 2 sampai 10 minit. Jangan tutup tetingkap. Tulisan akan bergerak sendiri dari `[1/7]` sampai `[7/7]`.
+9. Tool mula scan. Tunggu 2 sampai 10 minit. Jangan tutup tetingkap. Tulisan akan bergerak sendiri dari `[1/8]` sampai `[8/8]`.
 
 **D. Baca keputusan**
 
 10. Tengok tulisan kat bawah sekali:
     - **BERSIH** (hijau): tool tak jumpa malware ni. Boleh tutup tetingkap.
     - **Cuma ada amaran** (kuning): tool tak buang apa-apa. Baca ayat kuning tu dan ikut nasihat dia. Kalau dia sebut **ManageEngine** dan ni PC office, tunjuk skrin tu kat orang IT office anda. Kalau dia sebut **Remote-control program** (contoh AnyDesk, TeamViewer) dan anda tak pernah pasang, buang program tu (cara kat bawah, bahagian *Program yang tak boleh di-uninstall*).
-    - **BAHAYA** (tulisan merah `[HIGH]`): kat bawah sekali keluar *Taip Y dan Enter untuk bersihkan*. Taip `Y`, tekan **Enter**, pergi langkah 11.
+    - **BAHAYA** (tulisan merah `[HIGH]`): kat bawah sekali keluar *Taip Y dan Enter untuk bersihkan*. Taip `Y`, tekan **Enter**, pergi langkah 11. Chrome, Edge atau browser lain akan tertutup sendiri, sebab tool log keluar WhatsApp Web kat PC ni. Buka balik lepas siap (kalau anda baca panduan ni dalam browser, buka semula page ni).
 11. Tunggu sampai keluar **Kuarantin siap**. Fail jahat tu tak delete terus. Tool pindahkan dia ke folder `C:\WAZipQuarantine`, jadi kalau tersalah buang, boleh pulihkan balik.
 12. **Restart PC** (Start > Power > Restart).
 13. Lepas PC hidup balik, buat Langkah 2 sekali lagi dari mula, sampai keluar **BERSIH**.
@@ -253,6 +253,7 @@ Versi 2 ([Pelagos Intel](https://research.pelagos-intel.com/silverfox-in-the-des
 | 5 | Autostart & Defender | Run keys (termasuk yang point ke fail Hidden+System, dan `MicrosoftUpdate` ke `%APPDATA%\Microsoft\Update\`), scheduled task (termasuk task hidden yang jalankan `Add-MpPreference`), Startup folder; pengecualian Defender untuk `svchost.exe`, `QtsUpdater.exe` dan program sistem lain |
 | 6 | Fail | SHA-256 dikenali, nama umpan (`Click here to view*`, `Notice*.vhd`, `PDF_XXXXXX_<tarikh>`, `<tarikh>-MYS2026Y...`), payload `eneio64.dat` / `plcc3a.dat`, fail `.vhd`/`.vhdx` lain dalam user folder (warning, kecuali WSL), `hidserv.dll` luar System32, fail Hidden+System, installer Visual C++ palsu |
 | 7 | RMM berkaitan | agent ManageEngine UEMS dari kempen VBS WhatsApp (PC office: warning sahaja; PC sendiri: HIGH dan force remove; juga `-RemoveManageEngine`); program remote lain dari senarai [LOLRMM](https://lolrmm.io) (AnyDesk, TeamViewer, RustDesk, ToDesk, SunLogin, ScreenConnect, dll.: warning sahaja) |
+| 8 | Browser | Chrome/Edge/Brave/Opera/Firefox: extension yang dipaksa pasang guna policy (PC sendiri: HIGH dan dibuang; office/tak pasti: warning), shortcut browser dengan `--load-extension` (HIGH), extension yang dimuat dari folder bukan web store (warning). Kalau PC dijangkiti (ada HIGH), sesi WhatsApp Web (folder IndexedDB `web.whatsapp.com`) dalam semua browser dikuarantin supaya PC ni log keluar; browser ditutup dulu |
 
 Senarai LOLDrivers dikemas kini dengan `python3 tools/update-loldrivers.py`. Kalau script jalan sorang (one-liner), dia download `data/loldrivers.csv` dari repo ni; kalau gagal, check driver tu dilangkau.
 

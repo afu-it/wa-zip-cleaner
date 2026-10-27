@@ -73,6 +73,13 @@ Set-Content -Path 'C:\ProgramData\WAZipOct\eneio64.dat' -Value 'dummy'
 $act = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -WindowStyle Hidden -Command `"Add-MpPreference -ExclusionProcess 'QtsUpdater.exe'`""
 Register-ScheduledTask -TaskName 'WAZipDefTask' -Action $act -Trigger (New-ScheduledTaskTrigger -AtLogOn) -Force | Out-Null
 
+# WhatsApp Web logins in a Chrome and a Firefox profile (stand-in folders, no real session)
+$waChrome = "$env:LOCALAPPDATA\Google\Chrome\User Data\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb"
+$waFox = "$env:APPDATA\Mozilla\Firefox\Profiles\wazip.default\storage\default\https+++web.whatsapp.com"
+New-Item -ItemType Directory -Force -Path $waChrome, $waFox | Out-Null
+Set-Content -Path "$waChrome\000003.log" -Value 'dummy'
+Set-Content -Path "$waFox\.metadata-v2" -Value 'dummy'
+
 # Mounted lure VHD
 $vhd = "$dl\Click here to view10.6.vhd"
 "create vdisk file=`"$vhd`" maximum=8 type=fixed`nattach vdisk" | Out-File -Encoding ASCII "$env:TEMP\dp.txt"
