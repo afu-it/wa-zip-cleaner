@@ -60,7 +60,14 @@ Same Silver Fox group, targeting India, Indonesia, Russia, South Africa (and Jap
 - Domains: abc.fetish-friends.com, abc.3mkorealtd.com, abc.sudsmama.com, abc.woopami.com, abc.ilptour.com, abc.petitechanson.com, abc.doublemobile.com, mcagov.cc, roldco.com, vnc.kcii2.com, abc.haijing88.com
 - Kaspersky publishes MD5 only; the scanner matches SHA-256, so these are detected by name and behaviour.
 
+## Thunder.exe / libexpat.dll variant (CloudSEK, 24 Dec 2025, India)
+Income-tax lure PDF opens `ggwk[.]cc`, which serves `tax affairs.exe` (NSIS installer). It drops signed Xunlei `Thunder.exe` beside a fake `libexpat.dll` in `%TEMP%`; the DLL disables Windows Update (`wuauserv`), decrypts `box.ini`, hollows `explorer.exe` (Donut), and runs ValleyRAT. Plugins go in `HKCU\Console\0\d33f351a4aeea5e608853d1a56661059` and are injected into `tracerpt.exe`.
+- SHA-256: 77ea62ff74a66f61a511eb6b6edac20be9822fa9cc1e7354a8cd6379c7b9d2d2 (stage 1), fa388a6cdd28ad5dd83acd674483828251f21cbefaa801e839ba39af24a6ac19 (stage 2), f74017b406e993bea5212615febe23198b09ecd73ab79411a9f6571ba1f94cfa (stage 3), 068e49e734c2c7be4fb3f01a40bb8beb2d5f4677872fabbced7741245a7ea97c (stage 4)
+- C2: b.yuxuanow.top (103.20.195.147), ggwk.cc (45.207.231.94); related tax-themed domains itdd.club, xzghjec.com, gov-a.work/.fit/.club, gvo-b.club, gov-c.club, govk.club, swjc2025bjkb.cn, 2025swmm.cn
+
 ## References
+
+- CloudSEK, Silver Fox targeting India using tax-themed phishing lures (2025-12-24): https://www.cloudsek.com/blog/silver-fox-targeting-india-using-tax-themed-phishing-lures
 
 - Kaspersky Securelist, Silver Fox uses the new ABCDoor backdoor (Apr 2026): https://securelist.com/silver-fox-tax-notification-campaign/119575/
 

@@ -117,6 +117,8 @@ $ciKey = 'HKLM:\SYSTEM\CurrentControlSet\Control\CI\Config'
 $ciOld = (Get-ItemProperty -LiteralPath $ciKey -ErrorAction SilentlyContinue).VulnerableDriverBlocklistEnable
 New-Item -Path $ciKey -Force -ErrorAction SilentlyContinue | Out-Null
 New-ItemProperty -Path $ciKey -Name VulnerableDriverBlocklistEnable -Value 0 -PropertyType DWord -Force | Out-Null
+$wuKey = 'HKLM:\SYSTEM\CurrentControlSet\Services\wuauserv'
+Set-ItemProperty -LiteralPath $wuKey -Name Start -Value 4
 
 # I. Browser tricks: an extension forced in by policy, a Chrome shortcut that loads a hidden
 # extension, and an extension loaded from a folder.
@@ -155,6 +157,7 @@ Check (Has $r 'Service' 'HIGH' '^WazLolMal$' 'LOLDrivers') 'LOLDrivers malicious
 Check (Has $r 'Service' 'WARN' '^WazLolVuln$' 'vulnerable') 'LOLDrivers vulnerable driver service is WARN'
 Check (Has $r 'Info' 'WARN' 'Remote-control program: AnyDesk') 'remote-control program (AnyDesk) is WARN'
 Check (Has $r 'Info' 'WARN' 'Blocklist is OFF') 'driver blocklist switched off is WARN'
+Check (Has $r 'Info' 'WARN' 'Windows Update is disabled') 'Windows Update switched off is WARN'
 Check (Has $r 'RegValue' 'WARN' 'ExtensionInstallForcelist\|1$') 'forced Chrome extension is WARN when owner unknown'
 Check (Has $r 'File' 'HIGH' 'Google Chrome WAZip\.lnk$' 'load-extension') 'Chrome shortcut loading a hidden extension is HIGH'
 Check (Has $r 'Info' 'WARN' 'Chrome extension ponmlkjihgfedcba' 'from a folder') 'extension loaded from a folder is WARN'
@@ -218,6 +221,7 @@ Write-Host '=== .bat launchers ===' -ForegroundColor Cyan
 & sc.exe delete WazLolVuln | Out-Null; & sc.exe delete WazRmmTest | Out-Null
 Remove-Item "$drvDir\wazlolv.sys" -Force -ErrorAction SilentlyContinue
 Remove-Item Env:\WAZIP_TEST_LOLDRIVERS
+Set-ItemProperty -LiteralPath $wuKey -Name Start -Value 3
 Remove-Item $prof -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item 'HKLM:\SOFTWARE\Policies\Google\Chrome' -Recurse -Force -ErrorAction SilentlyContinue
 if ($null -eq $ciOld) { Remove-ItemProperty -LiteralPath $ciKey -Name VulnerableDriverBlocklistEnable -ErrorAction SilentlyContinue }

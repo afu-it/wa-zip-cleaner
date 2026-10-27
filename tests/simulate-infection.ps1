@@ -94,6 +94,12 @@ Set-Content -Path "$dl\Review the file.exe" -Value 'dummy'
 Add-Content -Path "$env:SystemRoot\System32\drivers\etc\hosts" -Value "`r`n127.0.0.1 abc.fetish-friends.com"
 Resolve-DnsName abc.fetish-friends.com -ErrorAction SilentlyContinue | Out-Null
 
+# CloudSEK variant: signed Thunder.exe next to a fake libexpat.dll in Temp
+$tdir = "$env:TEMP\nsWAZip.tmp"
+New-Item -ItemType Directory -Force -Path $tdir | Out-Null
+Set-Content -Path "$tdir\Thunder.exe" -Value 'dummy'
+Set-Content -Path "$tdir\libexpat.dll" -Value 'dummy'
+
 # Mounted lure VHD
 $vhd = "$dl\Click here to view10.6.vhd"
 "create vdisk file=`"$vhd`" maximum=8 type=fixed`nattach vdisk" | Out-File -Encoding ASCII "$env:TEMP\dp.txt"
