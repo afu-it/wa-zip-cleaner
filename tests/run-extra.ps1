@@ -65,7 +65,7 @@ Set-Content "$env:SystemRoot\System32\drivers\ardrv.sys" 'dummy'
 # D. Lure file held open by a running process (stands in for malware resisting removal)
 $locked = "$dl\Click here to view7.zip"
 Set-Content $locked 'dummy'
-$lock = "`$f=[IO.File]::Open('$locked','Open','Read','None'); Start-Sleep 900"
+$lock = "`$f=[IO.File]::Open('$locked','Open','Read','None'); Start-Sleep 3600"
 $locker = Start-Encoded $lock
 # Wait until the fake rime.dll is really loaded before scanning.
 for ($i = 0; $i -lt 30; $i++) {
@@ -84,9 +84,9 @@ Set-Content "$wsl\ext4.vhdx" 'dummy'
 
 # F. A process holding a TCP connection to a "known C2" (an odd loopback address, never the real one)
 $env:WAZIP_TEST_C2 = '127.77.0.1'
-$srv = Start-Encoded "`$l=[Net.Sockets.TcpListener]::new([Net.IPAddress]::Parse('127.77.0.1'),47123); `$l.Start(); `$c=`$l.AcceptTcpClient(); Start-Sleep 900"
+$srv = Start-Encoded "`$l=[Net.Sockets.TcpListener]::new([Net.IPAddress]::Parse('127.77.0.1'),47123); `$l.Start(); `$c=`$l.AcceptTcpClient(); Start-Sleep 3600"
 Start-Sleep 2
-$cli = Start-Encoded "`$t=[Net.Sockets.TcpClient]::new(); `$t.Connect('127.77.0.1',47123); Start-Sleep 900"
+$cli = Start-Encoded "`$t=[Net.Sockets.TcpClient]::new(); `$t.Connect('127.77.0.1',47123); Start-Sleep 3600"
 for ($i = 0; $i -lt 20; $i++) {
   if (Get-NetTCPConnection -RemoteAddress 127.77.0.1 -ErrorAction SilentlyContinue) { break }
   Start-Sleep 1
