@@ -106,6 +106,14 @@ $lnkS.TargetPath = "$env:SystemRoot\System32\cmd.exe"
 $lnkS.Arguments = '/D/C "for %Y in (nc) do powershell -w hid -e%Y SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQA"'
 $lnkS.Save()
 
+# SORVEPOTEL stage 2: copied Chrome profile, wppconnect script, chromedriver, Selenium module
+New-Item -ItemType Directory -Force -Path 'C:\temp\ChromeWpp\Default' | Out-Null
+Set-Content -Path 'C:\temp\ChromeWpp\Default\Cookies' -Value 'dummy'
+Set-Content -Path 'C:\temp\wppconnect-wa.js' -Value 'dummy'
+Set-Content -Path 'C:\temp\chromedriver.exe' -Value 'dummy'
+$selMod = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'WindowsPowerShell\Modules\Selenium'
+New-Item -ItemType Directory -Force -Path $selMod | Out-Null
+
 # Mounted lure VHD
 $vhd = "$dl\Click here to view10.6.vhd"
 "create vdisk file=`"$vhd`" maximum=8 type=fixed`nattach vdisk" | Out-File -Encoding ASCII "$env:TEMP\dp.txt"

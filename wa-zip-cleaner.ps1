@@ -382,6 +382,7 @@ function Scan-Files {
         if ($f.Name -ieq 'libexpat.dll' -and $f.DirectoryName -notmatch '\\Program Files( \(x86\))?\\' -and
             (Test-Path -LiteralPath (Join-Path $f.DirectoryName 'Thunder.exe'))) {
           Add-Finding 'File' 'HIGH' $f.FullName 'Fake libexpat.dll next to Thunder.exe (DLL sideloading, Silver Fox).'; return }
+        if ($f.Name -ieq 'wppconnect-wa.js') { Add-Finding 'File' 'HIGH' $f.FullName 'WhatsApp automation script the worm uses to message all your contacts.'; return }
         if ($f.Name -match $ExeLureRegex) { Add-Finding 'File' 'HIGH' $f.FullName 'Fake document program (Silver Fox tax/statement lure).'; return }
         if ($f.Name -match $VbsLureRegex) { Add-Finding 'File' 'HIGH' $f.FullName 'Script disguised as a document (WhatsApp VBS campaign).'; return }
         if ($f.Extension -ieq '.sys' -and ($lol = Get-LolMatch $f.FullName)) {
@@ -486,6 +487,21 @@ function Scan-Browsers {
         Add-Finding 'File' 'HIGH' $_.FullName "Browser shortcut loads a hidden extension: $($l.Arguments)"
       }
     }
+  }
+  # SORVEPOTEL stage 2 (Brazil): copies the Chrome profile to C:\temp\ChromeWpp and drives
+  # WhatsApp Web with Selenium + wppconnect to message every contact and upload the contact list.
+  foreach ($d in "$env:SystemDrive\temp", "$env:SystemDrive\tmp" | Where-Object { Test-Path -LiteralPath $_ }) {
+    $wpp = Test-Path -LiteralPath "$d\wppconnect-wa.js"
+    if (Test-Path -LiteralPath "$d\ChromeWpp") { Add-Finding 'File' 'HIGH' "$d\ChromeWpp" 'Copy of your Chrome profile (with the WhatsApp login) made by the WhatsApp worm to send messages as you.' }
+    if ($wpp) { Add-Finding 'File' 'HIGH' "$d\wppconnect-wa.js" 'WhatsApp automation script the worm uses to message all your contacts.' }
+    if ($wpp -and (Test-Path -LiteralPath "$d\chromedriver.exe")) { Add-Finding 'File' 'HIGH' "$d\chromedriver.exe" 'Browser-control program used by the WhatsApp worm.' }
+  }
+  foreach ($p in Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^(chrome|chromedriver)\.exe$' -and [string]$_.CommandLine -match '(?i)ChromeWpp|wppconnect' }) {
+    Add-Finding 'Process' 'HIGH' "$($p.Name) (PID $($p.ProcessId))" 'Chrome driven by the WhatsApp worm.' @{ Pid = $p.ProcessId; Path = $p.ExecutablePath }
+  }
+  foreach ($u in Get-ChildItem "$env:SystemDrive\Users" -Directory -ErrorAction SilentlyContinue) {
+    $m = Join-Path $u.FullName 'Documents\WindowsPowerShell\Modules\Selenium'
+    if (Test-Path -LiteralPath $m) { Add-Finding 'Info' 'WARN' "Selenium PowerShell module: $m" 'The WhatsApp worm installs this to control Chrome. Remove that folder unless you use Selenium yourself.' }
   }
   # Extensions loaded from a folder instead of the web store.
   foreach ($p in Get-BrowserProfiles | Where-Object { $_.Browser -ne 'Firefox' }) {

