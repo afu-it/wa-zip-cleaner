@@ -79,10 +79,11 @@ $ExclProcRegex = '(?i)^(QtsUpdater|svchost|rundll32|powershell|cmd|wscript|cscri
 # Kaspersky (Apr 2026): ValleyRAT and ABCDoor servers from the Silver Fox tax campaign.
 $C2Ips = @('134.122.155.135', '14.128.53.155', '45.202.1.249', '108.187.37.85', '108.187.42.63', '207.56.138.28', '45.118.133.203', '154.82.81.205', '154.82.81.192', '108.187.41.221',
             '103.20.195.147', '45.207.231.94', '45.207.231.107', '160.124.9.103', '109.176.30.141',
+            '202.61.160.208', '202.61.160.202', '202.61.160.201', '202.61.160.160', '202.61.160.137', '38.55.151.63', '61.18.208.27',
             '165.154.254.44', '23.227.203.148', '77.111.101.169', '23.227.203.179', '140.99.164.81', '92.246.130.15')  # SORVEPOTEL (Trend Micro)  # last four: CloudSEK, Dec 2025
-$C2Domains = '(?i)(^|\.)(fetish-friends\.com|3mkorealtd\.com|sudsmama\.com|woopami\.com|ilptour\.com|petitechanson\.com|doublemobile\.com|mcagov\.cc|roldco\.com|kcii2\.com|haijing88\.com|ggwk\.cc|yuxuanow\.top|itdd\.club|xzghjec\.com|gov-a\.(work|fit|club)|gvo-b\.club|gov-c\.club|govk\.club|swjc2025bjkb\.cn|2025swmm\.cn|zapgrande\.com|sorvetenopo(a)?te\.com|sorvetenoopote\.com|sorvetenopotel\.com|etenopote\.com|expa(h)?nsiveuser\.com|expansivebot\.com|imobiliariaricardoparanhos\.com|casadecampoamazonas\.com|bravexolutions\.com|adoblesecuryt\.com|saogeraldoshoping\.com)$'
+$C2Domains = '(?i)(^|\.)(fetish-friends\.com|3mkorealtd\.com|sudsmama\.com|woopami\.com|ilptour\.com|petitechanson\.com|doublemobile\.com|mcagov\.cc|roldco\.com|kcii2\.com|haijing88\.com|ggwk\.cc|yuxuanow\.top|itdd\.club|xzghjec\.com|gov-a\.(work|fit|club)|gvo-b\.club|gov-c\.club|govk\.club|swjc2025bjkb\.cn|2025swmm\.cn|zapgrande\.com|sorvetenopo(a)?te\.com|sorvetenoopote\.com|sorvetenopotel\.com|etenopote\.com|expa(h)?nsiveuser\.com|expansivebot\.com|imobiliariaricardoparanhos\.com|casadecampoamazonas\.com|bravexolutions\.com|adoblesecuryt\.com|saogeraldoshoping\.com|baskwms\.top|msopsa\.top|shoppes\.help|shaaslong\.one|baoxis\.cc|neescil\.top|velthora\.top|sinjiabo-1398259625\.cos\.ap-singapore\.myqcloud\.com|(bafauac|9ding)\.s3\.ap-southeast-1\.amazonaws\.com|(baolongwes|sdcwww)\.oss-ap-southeast-1\.aliyuncs\.com|(baoyuw2s|hksha3|sjdkjj23|xijkwm2|yifubafu)\.s3\.ap-southeast-1\.amazonaws\.com|(caiwuascw|facaia)\.s3\.us-east-005\.backblazeb2\.com)$'
 # Silver Fox fake-document programs (Kaspersky, Apr 2026: Statement of Account / GST / tax lures).
-$ExeLureRegex = '(?i)^(Review the file|BillReceipt|statement verify ?|Click File|GST ?Suvidha|Related material|MCA-Ministry|RemoteInstaller_[\d_]+_\w+)\.exe$'
+$ExeLureRegex = '(?i)^(Statement|Tax-\d{8,}|Review the file|BillReceipt|statement verify ?|Click File|GST ?Suvidha|Related material|MCA-Ministry|RemoteInstaller_[\d_]+_\w+)\.exe$'
 if ($env:WAZIP_TEST_C2) { $C2Ips += $env:WAZIP_TEST_C2 }
 # SilverFox KuGou variant (Pelagos Intel, Sep 2026) stages here and runs from a Run value named MicrosoftUpdate.
 $StageRegex   = '(?i)\\AppData\\Roaming\\Microsoft\\Update\\[^\\]+\.(exe|dll)$'
@@ -103,7 +104,7 @@ $BrowserRoots = @(
   @{ Name = 'Brave'; Dir = 'AppData\Local\BraveSoftware\Brave-Browser\User Data'; Proc = 'brave'; Policy = 'BraveSoftware\Brave' }
   @{ Name = 'Opera'; Dir = 'AppData\Roaming\Opera Software\Opera Stable'; Proc = 'opera'; Policy = $null }
 )
-$VbsLureRegex = '(?i)(Account Statement|Debt Statement|Financial Report|Penyata|Invoice|Invois|Payment|Work Snapshot|Salary|Gaji|Claim|Tuntutan|LHDN|KWSP|EPF).*\.(vbs|vbe|js|wsf)$'
+$VbsLureRegex = '(?i)(Statement|Debt|Hutang|Outstanding|Balance Sheet|Financial ?Report|Penyata|Invoice|Invois|Payment|Billing|Sila semak|Promissory|Reconciliation|Acknowledg|Application ?form|Income Tax|Cukai|Work Snapshot|Salary|Gaji|Claim|Tuntutan|LHDN|KWSP|EPF).*\.(vbs|vbe|js|wsf)$'
 
 # ------------------------------------------------------------- helpers ---
 function Say([string]$ms, [string]$en, [string]$color = 'Gray') {
@@ -296,6 +297,14 @@ function Scan-Persistence {
   foreach ($t in Get-ScheduledTask -ErrorAction SilentlyContinue) {
     $txt = ($t.Actions | ForEach-Object { "$($_.Execute) $($_.Arguments)" }) -join ' ; '
     if ($txt -match $PersistRegex) { Add-Finding 'Task' 'HIGH' "$($t.TaskPath)$($t.TaskName)" "Scheduled task: $txt" @{ Path = $t.TaskPath; Name = $t.TaskName } }
+    # VulcanRAT (Morphisec via 2-Spyware, Oct 2026) hides as a fake Windows update task that runs vulkaninfo.
+    if ($txt -notmatch $PersistRegex -and ($t.TaskName -match '^USOPrivate( Kit)?$' -or $txt -match '(?i)\\Common Files\\vulkaninfo')) { Add-Finding 'Task' 'HIGH' "$($t.TaskPath)$($t.TaskName)" "Fake Windows update task (VulcanRAT): $txt" @{ Path = $t.TaskPath; Name = $t.TaskName } }
+  }
+  # Microsoft (Mar 2026): the WhatsApp VBS dropper's reg add leaves a junk key that Windows never creates.
+  if (Test-Path -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Win') { Add-Finding 'RegKey' 'HIGH' 'HKLM:\SOFTWARE\Microsoft\Win' 'Junk registry key left by the WhatsApp VBS dropper (Microsoft, Mar 2026).' }
+  foreach ($v in 'vulkaninfo-64.exe', 'vulkan-1.bin', 'vulkan-1.dll') {
+    $p = Join-Path $env:CommonProgramFiles $v
+    if (Test-Path -LiteralPath $p) { Add-Finding 'File' 'HIGH' $p 'VulcanRAT sideloading file in Common Files (WhatsApp Statement.exe lure).' }
   }
   # CloudSEK (Dec 2025): the loader switches off Windows Update so the PC stops getting fixes.
   if ((Get-ItemProperty -LiteralPath 'HKLM:\SYSTEM\CurrentControlSet\Services\wuauserv' -ErrorAction SilentlyContinue).Start -eq 4) {
@@ -368,7 +377,7 @@ function Scan-Files {
     $roots += 'Downloads', 'Desktop', 'Documents', 'AppData\Roaming', 'AppData\Local\Temp', 'AppData\Local\Packages' |
       ForEach-Object { Join-Path $u.FullName $_ }
   }
-  $exts = '\.(zip|vhd|vhdx|img|iso|dll|exe|dat|cnf|sys|tar|vbs|vbe|js|wsf|lnk)$'
+  $exts = '\.(zip|vhd|vhdx|img|iso|dll|exe|dat|cnf|sys|tar|vbs|vbe|js|wsf|lnk|msi|mst)$|^DCAgentServerInfo\.json$'
   $wsh = New-Object -ComObject WScript.Shell
   foreach ($r in $roots | Where-Object { Test-Path -LiteralPath $_ }) {
     Get-ChildItem -LiteralPath $r -Recurse -File -Force -ErrorAction SilentlyContinue |
@@ -405,6 +414,14 @@ function Scan-Files {
           Add-Finding 'File' $sev $f.FullName 'chromedriver in the Temp folder: the WhatsApp worm uses it to control Chrome and message your contacts.'; return }
         if ($f.Name -match '(?i)^wppconnect(-wa)?\.js$') { Add-Finding 'File' 'HIGH' $f.FullName 'WhatsApp automation script the worm uses to message all your contacts.'; return }
         if ($f.Name -match $ExeLureRegex) { Add-Finding 'File' 'HIGH' $f.FullName 'Fake document program (Silver Fox tax/statement lure).'; return }
+        # Securelist (Jun 2026, 80% of victims in Malaysia): scripts sent over WhatsApp install a ManageEngine agent.
+        if ($f.Extension -match '(?i)^\.(vbs|vbe|wsf)$' -and $f.FullName -match '(?i)\\5319275A\.WhatsAppDesktop_[^\\]+\\LocalState\\Sessions\\[^\\]+\\Transfers\\') {
+          Add-Finding 'File' 'HIGH' $f.FullName 'Script file received through WhatsApp. Real documents are never scripts (WhatsApp VBS campaign).'; return }
+        if ($f.FullName -match '(?i)\\Users\\Public\\Documents\\[^\\]+\\' -and $f.Name -match '(?i)(\.(vbs|vbe)|^UEMSAgent\.(msi|mst)|^DCAgentServerInfo\.json)$') {
+          Add-Finding 'File' 'HIGH' $f.FullName 'Hidden script or ManageEngine installer kit from the WhatsApp VBS campaign.'; return }
+        if ($f.FullName -match '(?i)\\ProgramData\\EDS\d{4}\\') { Add-Finding 'File' 'HIGH' $f.FullName 'Hidden work folder of the WhatsApp VBS dropper (Microsoft, Mar 2026).'; return }
+        if ($f.Name -match '(?i)\.(dll|exe)$' -and $f.FullName -match '(?i)\\(ProgramData|Users\\Public)\\' -and $f.Name -notmatch '(?i)^(curl|bitsadmin)\.exe$' -and [string]$f.VersionInfo.OriginalFilename -match '(?i)^(curl|bitsadmin)\.exe') {
+          Add-Finding 'File' 'HIGH' $f.FullName 'curl or bitsadmin renamed to a Windows DLL name (WhatsApp VBS campaign downloader).'; return }
         if ($f.Name -match $VbsLureRegex) { Add-Finding 'File' 'HIGH' $f.FullName 'Script disguised as a document (WhatsApp VBS campaign).'; return }
         if ($f.Extension -ieq '.sys' -and ($lol = Get-LolMatch $f.FullName)) {
           $sev = if ($lol.kind -eq 'malicious') { 'HIGH' } else { 'WARN' }
@@ -441,12 +458,22 @@ function Scan-ManageEngine {
   foreach ($p in "${env:ProgramFiles(x86)}\ManageEngine\UEMS_Agent", "$env:ProgramFiles\ManageEngine\UEMS_Agent") {
     if (Test-Path -LiteralPath $p) { $hits += $p }
   }
+  # Securelist (Jun 2026): the attacker's agent ships a server-info file pointing at their own servers.
+  # A match means this agent is the attacker's, so it is removed even on an office PC.
+  $script:MeAttacker = $false
+  foreach ($p in $hits | Where-Object { $_ -is [string] }) {
+    $cfg = Get-ChildItem -LiteralPath $p -Recurse -File -Include *.json, *.conf, *.ini, *.xml, *.txt, *.props -ErrorAction SilentlyContinue | Where-Object { $_.Length -lt 2MB }
+    if ($cfg -and ($cfg | Select-String -SimpleMatch -Pattern $C2Ips -List -ErrorAction SilentlyContinue)) { $script:MeAttacker = $true }
+  }
+  if ($hits.Count -and (Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -ErrorAction SilentlyContinue).ConsentPromptBehaviorAdmin -eq 0) {
+    Add-Finding 'Info' 'WARN' 'Admin permission prompt is switched off' 'The WhatsApp VBS campaign switches this off before installing ManageEngine. Turn it back on: search UAC > Change User Account Control settings > move the slider up one step.'
+  }
   if ($hits.Count) {
-    $d = switch ($Owner) {
+    $d = if ($script:MeAttacker) { 'Remote-management agent connected to a known attacker server (WhatsApp VBS campaign). This tool will force-remove it.' } else { switch ($Owner) {
       'Office'   { 'Remote-management agent found. Company IT often installs it; ask your IT team to confirm. This tool leaves it alone on an office PC.' }
       'Personal' { 'Remote-management agent on a personal PC: the WhatsApp VBS campaign uses it to control PCs remotely. This tool will force-remove it.' }
       default    { 'Remote-management agent found. If your company did NOT install it, the WhatsApp VBS campaign gave attackers remote control. Its normal uninstaller asks for the attacker''s PIN.' }
-    }
+    } }
     Add-Finding 'Info' 'WARN' 'ManageEngine UEMS Agent' $d
   }
 }
@@ -722,7 +749,7 @@ Scan-Processes; Scan-Vhd; Scan-Registry; Scan-Services; Scan-Persistence; Scan-F
 $me = $Findings | Where-Object { $_.Kind -eq 'Info' -and $_.Target -match 'ManageEngine' }
 $meRemove = $false
 if ($me) {
-  $meRemove = [bool]$RemoveManageEngine -or $Owner -eq 'Personal'
+  $meRemove = [bool]$RemoveManageEngine -or $Owner -eq 'Personal' -or $script:MeAttacker
   if (-not $meRemove -and $Fix -and -not $Owner -and -not $env:WAZIP_NO_PROMPT) {
     Write-Host ''
     Say 'ManageEngine dijumpai. Kalau office/syarikat anda yang pasang, JANGAN buang. Kalau anda tak pernah pasang, taip BUANG dan Enter:' `

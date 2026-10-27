@@ -46,6 +46,8 @@ $expect = @(
   @('File', 'AppData\\Local\\appclient$'), @('RegValue', 'Run\|AppClient$'), @('RegValue', 'Environment\|UserInitMprLogonScript$'),
   @('RegKey', 'Software\\CarEmu$'), @('File', 'nsWAZip\.tmp\\libexpat\.dll$'), @('File', 'DOC-50998906_17774E7A\.lnk$'),
   @('File', 'Startup\\HealthApp-0d97b7\.bat$'), @('File', 'Startup\\Updater\.bat$'), @('File', 'wazsel\\chromedriver\.exe$'), @('File', 'ORCAMENTO_114418\.zip$'), @('File', '20260921125639-A901C2F58FFEBD\.zip$'), @('File', 'Downloads\\desk_compositor_x64\.dll$'),
+  @('File', 'Transfers\\2026-10\\scan0042\.vbs$'), @('File', 'MSUpdate_48213\\setup1\.vbs$'), @('File', 'MSUpdate_48213\\UEMSAgent\.msi$'), @('File', 'MSUpdate_48213\\wininet\.dll$'), @('File', 'Sila semak bil anda\.vbs$'),
+  @('RegKey', 'SOFTWARE\\Microsoft\\Win$'), @('File', 'EDS8738\\netapi\.dll$'), @('File', 'Common Files\\vulkan-1\.bin$'), @('Task', 'USOPrivate$'),
   @('File', '^C:\\temp\\ChromeWpp$'), @('File', '^C:\\temp\\wppconnect-wa\.js$'), @('File', '^C:\\temp\\chromedriver\.exe$'), @('File', 'Downloads\\Review the file\.exe$'),
   @('WaSession', 'Chrome\\User Data\\Default\\IndexedDB\\https_web\.whatsapp\.com_0'), @('WaSession', 'https\+\+\+web\.whatsapp\.com$')
 )

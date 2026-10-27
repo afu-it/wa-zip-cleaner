@@ -95,6 +95,21 @@ Pulled with a Triage researcher account (`family:valleyrat`, then pivot on C2 IP
 
 C2: `14.128.53.155` (ports 21131, 21132, 443, 449; extracted ValleyRAT config), `45.202.1.249` (contacted by both timestamp ZIPs and `L3914012809.exe`). The October Malaysian `Click here to view*.zip` (`550d08c8…`) is also in Triage as `sample-malware.zip`, same hash already listed above.
 
+## WhatsApp VBS + ManageEngine campaign (Securelist 22 Jun 2026, MyCERT MA-1464.062026, Microsoft 31 Mar 2026)
+
+80% of Securelist's victims are in Malaysia. A `.vbs`/`.vbe` arrives over WhatsApp with no text, makes a hidden folder `C:\Users\Public\Documents\MSUpdate_<5 digits>` (or `Temp_*`, `Sys*`, `Data*`), copies curl/bitsadmin there as `winhttp.dll`/`wininet.dll`, sets `ConsentPromptBehaviorAdmin` = 0, then silently installs `UEMSAgent.msi` with `UEMSAgent.mst`, `DCAgentServerInfo.json`, `DMRootCA.crt`, `DMRootCA-Server.crt`, `setup1.vbs`.
+
+- C2: `202.61.160.208`, `202.61.160.202`, `202.61.160.201`, `202.61.160.160`, `202.61.160.137`, `38.55.151.63`
+- Domains: `temu.baskwms.top`, `invoice.msopsa.top`, `qse.shoppes.help`, `shaaslong.one`, `baoxis.cc`
+- Payload buckets: `baolongwes`/`sdcwww.oss-ap-southeast-1.aliyuncs.com`; `baoyuw2s`/`hksha3`/`sjdkjj23`/`xijkwm2`/`yifubafu`/`bafauac`/`9ding.s3.ap-southeast-1.amazonaws.com`; `caiwuascw`/`facaia.s3.us-east-005.backblazeb2.com`; `sinjiabo-1398259625.cos.ap-singapore.myqcloud.com`
+- Malay lures: `Penyata bank.vbs`, `Sila semak bil anda.vbs`. Others: `Acknowledgment of Debt.vbs`, `December statement of account.vbs`, `Reconciliation.vbs`, `Customer Statement(A).vbe`, `Statement of Debt(30K)`, `Outstanding Balance Sheet`, `Promissory_Note(b)`, `Income Tax Return Form.vbs`
+- Hashes: Securelist lists 40 MD5 only, no sizes; not usable by the scanner. MyCERT references SHA-256 `65662fbfee31784502f46a4ea3cf58a5146d6f6299b40391cd71c9fc67e3e621`.
+- Microsoft variant: hidden `C:\ProgramData\EDS8738\` with curl as `netapi.dll` and bitsadmin as `sc.exe`, junk key `HKLM\SOFTWARE\Microsoft\Win`, unsigned `Setup.msi`/`WinRAR.msi`/`LinkPoint.msi`/`AnyDesk.msi`, domains `neescil.top`, `velthora.top`.
+
+## VulcanRAT207.A (Morphisec via 2-Spyware, Oct 2026)
+
+WhatsApp ZIP with `Statement.exe` / `Tax-202609078869.exe`. Sideloads through `vulkaninfo-64.exe`, `vulkan-1.dll`, `vulkan-1.bin` in `C:\Program Files\Common Files`, persists as task `\Microsoft\Windows\USOPrivate` (or `USOPrivate Kit`), kills Baidu AV (`bdservicehost.exe`, `bduserhost.exe`) with `GoFly64.sys`. C2 `61.18.208.27:8888`.
+
 ## References
 
 - CloudSEK, Silver Fox targeting India using tax-themed phishing lures (2025-12-24): https://www.cloudsek.com/blog/silver-fox-targeting-india-using-tax-themed-phishing-lures

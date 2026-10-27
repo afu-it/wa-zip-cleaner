@@ -119,6 +119,14 @@ Malware ni hantar fail ke semua contact dan group sekali gus. WhatsApp nampak tu
 
 Lepas akaun dibuka balik, terus buat langkah 1 hingga 5 kat atas (log out Linked devices, on Two-step verification).
 
+### Antivirus kata "bersih", tapi masih rasa tak kena?
+
+Antivirus biasa, Malwarebytes dan VirusTotal **selalu terlepas** malware ni. MyCERT sendiri sebut scan antivirus biasa tak buang program remote (ManageEngine) yang hacker pasang. Jadi keputusan "bersih" dari antivirus tak cukup. Guna tool ni, dan kalau masih ragu, install semula Windows.
+
+Tanda lain PC dah kena: PC jem seminit lepas buka fail tu, fail tak boleh delete sebab "masih berjalan", atau WhatsApp mula hantar zip sendiri **dua tiga hari kemudian**.
+
+**Lapor ke MyCERT (Cyber999):** emel cyber999@cybersecurity.my, telefon 1-300-88-2999, atau +60 19 266 5850 (24 jam). Sertakan screenshot mesej, masa diterima, dan nombor pengirim. Rujukan: [MyCERT MA-1464.062026](https://mycert.org.my/portal/advisory?id=MA-1464.062026).
+
 ---
 
 Bawah ni info tambahan. Klik tajuk untuk buka.

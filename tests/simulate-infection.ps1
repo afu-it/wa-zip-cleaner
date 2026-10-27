@@ -126,6 +126,23 @@ Set-Content -Path "$selTmp\WebDriver.dll" -Value 'dummy'
 Set-Content -Path "$dl\ORCAMENTO_114418.zip" -Value 'dummy'
 Set-Content -Path "$dl\20260921125639-A901C2F58FFEBD.zip" -Value 'dummy'
 Set-Content -Path "$dl\desk_compositor_x64.dll" -Value 'dummy'
+# Securelist WhatsApp VBS + ManageEngine campaign
+$waTr = "$env:LOCALAPPDATA\Packages\5319275A.WhatsAppDesktop_cv1g1gvanyjgm\LocalState\Sessions\WAZ01\Transfers\2026-10"
+New-Item -ItemType Directory -Force -Path $waTr | Out-Null
+Set-Content -Path "$waTr\scan0042.vbs" -Value 'WScript.Echo 1'
+$msu = 'C:\Users\Public\Documents\MSUpdate_48213'
+New-Item -ItemType Directory -Force -Path $msu | Out-Null
+Set-Content -Path "$msu\setup1.vbs" -Value 'WScript.Echo 1'
+Set-Content -Path "$msu\UEMSAgent.msi" -Value 'dummy'
+Copy-Item "$env:SystemRoot\System32\curl.exe" "$msu\wininet.dll"
+Set-Content -Path "$dl\Sila semak bil anda.vbs" -Value 'WScript.Echo 1'
+# Microsoft VBS dropper + VulcanRAT
+New-Item -Path 'HKLM:\SOFTWARE\Microsoft\Win' -Force | Out-Null
+$eds = 'C:\ProgramData\EDS8738'
+New-Item -ItemType Directory -Force -Path $eds | Out-Null
+Copy-Item "$env:SystemRoot\System32\curl.exe" "$eds\netapi.dll"
+Set-Content -Path "$env:CommonProgramFiles\vulkan-1.bin" -Value 'dummy'
+Register-ScheduledTask -TaskName 'USOPrivate' -TaskPath '\Microsoft\Windows\' -Action (New-ScheduledTaskAction -Execute "$env:CommonProgramFiles\vulkaninfo-64.exe") -Force | Out-Null
 
 # Mounted lure VHD
 $vhd = "$dl\Click here to view10.6.vhd"
