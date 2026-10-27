@@ -114,6 +114,17 @@ Set-Content -Path 'C:\temp\chromedriver.exe' -Value 'dummy'
 $selMod = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'WindowsPowerShell\Modules\Selenium'
 New-Item -ItemType Directory -Force -Path $selMod | Out-Null
 
+# SORVEPOTEL (Trend Micro): HealthApp-xxxxxx.bat in Startup, Selenium + chromedriver in Temp, Brazilian lure zip
+$su = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup"
+New-Item -ItemType Directory -Force -Path $su | Out-Null
+Set-Content -Path "$su\HealthApp-0d97b7.bat" -Value '@echo off'
+Set-Content -Path "$su\Updater.bat" -Value '@for %%A in (SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQAIABOAGUAdAAuAFcAZQBi) do powershell -w hid -enc %%A'
+$selTmp = "$env:LOCALAPPDATA\Temp\wazsel"
+New-Item -ItemType Directory -Force -Path $selTmp | Out-Null
+Set-Content -Path "$selTmp\chromedriver.exe" -Value 'dummy'
+Set-Content -Path "$selTmp\WebDriver.dll" -Value 'dummy'
+Set-Content -Path "$dl\ORCAMENTO_114418.zip" -Value 'dummy'
+
 # Mounted lure VHD
 $vhd = "$dl\Click here to view10.6.vhd"
 "create vdisk file=`"$vhd`" maximum=8 type=fixed`nattach vdisk" | Out-File -Encoding ASCII "$env:TEMP\dp.txt"
