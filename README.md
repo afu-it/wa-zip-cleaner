@@ -114,7 +114,7 @@ Bawah ni info tambahan. Klik tajuk untuk buka.
 <details>
 <summary><b>Macam mana nak kenal fail jahat ni (sebelum terbuka)</b></summary>
 
-Nama fail selalu bertukar. Antara yang dah orang jumpa: `Click here to view....zip`, `Notice.zip` (dalam dia ada `Notice.vhd`), `PDF_C2841_20260911100446.zip` dan `DOC_7748_20260924152821.zip`, `PDF_EXZ12S_20261022110417.zip`, `20261019.MYS2026Y1019A7F2E.zip` (huruf dan nombor pelik campur tarikh), `101.zip`, fail `.vbs` macam `Work Snapshot.vbs`, dan fail yang nama dia macam penyata akaun, invoice, resit, purchase order, gaji, claim, LHDN atau KWSP. Ada juga yang buat-buat datang dari agensi kerajaan. Bulan Oktober ada mesej macam ni: *"Kindly forward the attached Statement of Account to your Finance Manager for review. Please open it on a computer"*. Kalau orang suruh buka kat komputer, itu tanda bahaya.
+Nama fail selalu bertukar. Antara yang dah orang jumpa: `Click here to view....zip`, `Notice.zip` (dalam dia ada `Notice.vhd`), `PDF_C2841_20260911100446.zip` dan `DOC_7748_20260924152821.zip`, `PDF_EXZ12S_20261022110417.zip`, `20261019.MYS2026Y1019A7F2E.zip` (huruf dan nombor pelik campur tarikh), `101.zip`, fail `.vbs` macam `Work Snapshot.vbs`, dan fail yang nama dia macam penyata akaun, invoice, resit, purchase order, gaji, claim, LHDN atau KWSP. Ada juga yang buat-buat datang dari agensi kerajaan. Bulan Oktober ada mesej macam ni: *"Kindly forward the attached Statement of Account to your Finance Manager for review. Please open it on a computer"*. Kalau orang suruh buka kat komputer, itu tanda bahaya. Kaspersky pula jumpa kumpulan yang sama hantar `Statement of Account.zip`, `November Statement.zip` dan `December Statement.zip`, dan dalam dia ada program yang menyamar jadi dokumen, contohnya `Review the file.exe` atau `BillReceipt.exe`. Dokumen betul tak pernah jadi `.exe`.
 
 Jadi jangan hafal nama. Kenal dari perangai dia:
 
@@ -204,7 +204,9 @@ Kalau tool ni bagi amaran pasal program kawalan jauh yang anda tak pernah pasang
 4. Klik kanan nama tu, pilih **Uninstall manually**. Program ni buang fail, servis dan registry tanpa minta PIN.
 5. Restart PC, pastu jalankan tool ni sekali lagi.
 
-Untuk ManageEngine, lagi senang: jalankan tool ni dan jawab **2** (PC sendiri). Tool akan paksa buang dia.
+Untuk ManageEngine, lagi senang: jalankan tool ni dan jawab **2** (PC sendiri). Tool akan paksa buang dia. Lepas tu, boleh juga email support ManageEngine dan bagitau akaun mereka digunakan oleh hacker untuk kawal PC anda, supaya mereka boleh tutup akaun hacker tu.
+
+Ada orang cadang GMER untuk buang ManageEngine. Kami tak cadangkan, sebab GMER dah lama tak dikemas kini dan tak sesuai untuk Windows 11. Guna tool ni atau Bulk Crap Uninstaller.
 
 </details>
 
@@ -254,6 +256,7 @@ Versi 2 ([Pelagos Intel](https://research.pelagos-intel.com/silverfox-in-the-des
 | 6 | Fail | SHA-256 dikenali, nama umpan (`Click here to view*`, `Notice*.vhd`, `PDF_XXXXXX_<tarikh>`, `<tarikh>-MYS2026Y...`), payload `eneio64.dat` / `plcc3a.dat`, fail `.vhd`/`.vhdx` lain dalam user folder (warning, kecuali WSL), `hidserv.dll` luar System32, fail Hidden+System, installer Visual C++ palsu |
 | 7 | RMM berkaitan | agent ManageEngine UEMS dari kempen VBS WhatsApp (PC office: warning sahaja; PC sendiri: HIGH dan force remove; juga `-RemoveManageEngine`); program remote lain dari senarai [LOLRMM](https://lolrmm.io) (AnyDesk, TeamViewer, RustDesk, ToDesk, SunLogin, ScreenConnect, dll.: warning sahaja) |
 | 8 | Browser | Chrome/Edge/Brave/Opera/Firefox: extension yang dipaksa pasang guna policy (PC sendiri: HIGH dan dibuang; office/tak pasti: warning), shortcut browser dengan `--load-extension` (HIGH), extension yang dimuat dari folder bukan web store (warning). Kalau PC dijangkiti (ada HIGH), sesi WhatsApp Web (folder IndexedDB `web.whatsapp.com`) dalam semua browser dikuarantin supaya PC ni log keluar; browser ditutup dulu |
+| 9 | ABCDoor ([Kaspersky](https://securelist.com/silver-fox-tax-notification-campaign/119575/)) | folder `%LOCALAPPDATA%\appclient` (pythonw `-m appclient`), Run/task `AppClient`, `HKCU\Environment\UserInitMprLogonScript`, `HKCU\Software\CarEmu`, program umpan `Review the file.exe`/`BillReceipt.exe`/`GST Suvidha.exe` dll, sambungan ke IP C2 Silver Fox, dan domain C2 dalam DNS cache (warning) |
 
 Senarai LOLDrivers dikemas kini dengan `python3 tools/update-loldrivers.py`. Kalau script jalan sorang (one-liner), dia download `data/loldrivers.csv` dari repo ni; kalau gagal, check driver tu dilangkau.
 

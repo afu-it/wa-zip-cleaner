@@ -51,7 +51,18 @@ Lure message: "Kindly forward the attached Statement of Account to your Finance 
 - One victim's PC stayed quiet for 12 days, then sent the ZIP to every contact
 - No hashes published yet
 
+## ABCDoor / RustSL tax-lure campaign (Kaspersky GReAT, 30 Apr 2026)
+Same Silver Fox group, targeting India, Indonesia, Russia, South Africa (and Japan in newer loaders). Not yet seen in Malaysia, but it uses the same "Statement of Account" theme.
+- Lure archives: `Statement of Account.zip` (MD5 f8371097121549feb21e3bcc2eeea522), `November Statement.zip`, `December Statement.zip`, `CBDT.zip`, `ITD.-.rar`; programs inside: `Review the file.exe`, `BillReceipt.exe`, `statement.exe`, `statement verify .exe`, `Click File.exe`, `GST Suvidha.exe`, `MCA-Ministry.exe`, `RemoteInstaller_<date>_whatsapp.exe`
+- ABCDoor: `%LOCALAPPDATA%\appclient\python\pythonw.exe -m appclient`, Run value and task `AppClient` (every minute), `HKCU\Environment\UserInitMprLogonScript`, `HKCU\Software\CarEmu` (`FirstInstallTime`, `InstallChannel`), `%LOCALAPPDATA%\applogs\exception_logs.zip`, `%LOCALAPPDATA%\appclient\111.zip`, `update.bat`; NodeJS dropped to `%USERPROFILE%\.node\node.exe` by the JS loader
+- ValleyRAT registry: `HKCU\Console\0`, `HKCU\Console\IpDate` (already detected)
+- ValleyRAT C2: 108.187.37.85, 108.187.42.63, 207.56.138.28; ABCDoor C2: 45.118.133.203:5000; payload hosts 154.82.81.205, 154.82.81.192, 108.187.41.221
+- Domains: abc.fetish-friends.com, abc.3mkorealtd.com, abc.sudsmama.com, abc.woopami.com, abc.ilptour.com, abc.petitechanson.com, abc.doublemobile.com, mcagov.cc, roldco.com, vnc.kcii2.com, abc.haijing88.com
+- Kaspersky publishes MD5 only; the scanner matches SHA-256, so these are detected by name and behaviour.
+
 ## References
+
+- Kaspersky Securelist, Silver Fox uses the new ABCDoor backdoor (Apr 2026): https://securelist.com/silver-fox-tax-notification-campaign/119575/
 
 - LOLDrivers, vulnerable and malicious driver list used by the scanner (`data/loldrivers.csv`): https://www.loldrivers.io
 - LOLRMM, remote-management tools abused by attackers: https://lolrmm.io

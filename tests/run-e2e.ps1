@@ -43,6 +43,8 @@ $expect = @(
   @('File', 'Update\\active_desktop_render_x64\.dll$'), @('File', 'DOC_7748_20260924152821\.zip$'), @('File', 'PDF_C2841_20260911100446\.img$'),
   @('File', 'PDF_FTFWCI_20261009125351\.vhd$'), @('File', '20261019-MYS2026Y1019E51AC\.zip$'), @('File', '20261019\.MYS2026Y1019A7F2E\.zip$'),
   @('File', 'WAZipOct\\eneio64\.dat$'), @('Task', 'WAZipDefTask$'),
+  @('File', 'AppData\\Local\\appclient$'), @('RegValue', 'Run\|AppClient$'), @('RegValue', 'Environment\|UserInitMprLogonScript$'),
+  @('RegKey', 'Software\\CarEmu$'), @('File', 'Downloads\\Review the file\.exe$'),
   @('WaSession', 'Chrome\\User Data\\Default\\IndexedDB\\https_web\.whatsapp\.com_0'), @('WaSession', 'https\+\+\+web\.whatsapp\.com$')
 )
 foreach ($e in $expect) {
@@ -52,6 +54,7 @@ foreach ($e in $expect) {
 Check (-not ($r.All | Where-Object { $_.Target -match 'normal-document\.pdf' })) 'ignores normal file'
 Check ([bool]($r.All | Where-Object { $_.Kind -eq 'File' -and $_.Severity -eq 'WARN' -and $_.Target -match 'WindowsHelper\.exe$' })) 'detects hidden+system program (WARN)'
 Check ([bool]($r.All | Where-Object { $_.Kind -eq 'Service' -and $_.Severity -eq 'WARN' -and $_.Target -match 'WAZipFakeSvc$' })) 'detects interpreter service from user folder (WARN)'
+Check ([bool]($r.All | Where-Object { $_.Kind -eq 'Info' -and $_.Target -match 'fetish-friends\.com' })) 'attacker domain in DNS cache (WARN)'
 Write-Host "All findings:`n$t"
 
 Write-Host '=== 4. Fix ===' -ForegroundColor Cyan
@@ -65,6 +68,9 @@ Check (Test-Path "$env:USERPROFILE\Downloads\normal-document.pdf") 'normal file 
 Check (-not (Test-Path "$env:APPDATA\Microsoft\Update\active_desktop_render_x64.dll")) 'KuGou-variant loader quarantined'
 $waChrome = "$env:LOCALAPPDATA\Google\Chrome\User Data\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb"
 Check (-not (Test-Path $waChrome)) 'WhatsApp Web login removed from Chrome'
+Check (-not (Test-Path "$env:LOCALAPPDATA\appclient")) 'ABCDoor folder quarantined'
+Check (-not (Test-Path 'HKCU:\Software\CarEmu')) 'ABCDoor CarEmu key removed'
+Check (-not (Get-ItemProperty 'HKCU:\Environment').UserInitMprLogonScript) 'ABCDoor logon script removed'
 Check (-not (Test-Path "$env:APPDATA\Mozilla\Firefox\Profiles\wazip.default\storage\default\https+++web.whatsapp.com")) 'WhatsApp Web login removed from Firefox'
 Check (-not (Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match '_vmclientcore@16' })) 'malware-marked process stopped'
 & sc.exe query ZyArk | Out-Null

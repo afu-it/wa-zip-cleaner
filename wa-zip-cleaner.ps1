@@ -57,12 +57,16 @@ if ($env:WAZIP_TEST_IOCS -and (Test-Path -LiteralPath $env:WAZIP_TEST_IOCS)) {
     if ($e.Vendor) { $entry.Vendor = $e.Vendor; $AbusedLegit += $entry } else { $KnownBad += $entry }
   }
 }
-$PersistRegex ='rime\.dll|_vmclientcore@16|KafanInput|vcRuntimeMinimum_x86\.exe|\\H\d{8,}\.exe|ZyArk|\\ardrv\.sys|\\AppData\\Roaming\\Microsoft\\Update\\[^\\]+\.exe|active_desktop_(launcher|render)|Add-MpPreference|eneio64\.dat|plcc3a\.dat'
+$PersistRegex ='rime\.dll|_vmclientcore@16|KafanInput|vcRuntimeMinimum_x86\.exe|\\H\d{8,}\.exe|ZyArk|\\ardrv\.sys|\\AppData\\Roaming\\Microsoft\\Update\\[^\\]+\.exe|active_desktop_(launcher|render)|Add-MpPreference|eneio64\.dat|plcc3a\.dat|-m\s+appclient|\\appclient\\python\\'
 $LureRegex    = '^(Click here to view.*\.(zip|vhd|vhdx)|Notice.*\.vhdx?|(PDF|DOC)_[A-Z0-9]{3,8}_20\d{12}\.(zip|img|iso|exe|vhd|vhdx)|20\d{6}[.-]MYS20\d{2}Y\d{4}[A-Z0-9]{4,6}\.(zip|img|iso|vhd|vhdx))$'
 # Programs the October 2026 wave tells Windows Defender to skip. No real program needs these excluded.
 $ExclProcRegex = '(?i)^(QtsUpdater|svchost|rundll32|powershell|cmd|wscript|cscript|mshta|regsvr32|explorer)\.exe$'
 # Known attacker servers (C2). A process talking to one of these is the malware.
-$C2Ips = @('134.122.155.135')
+# Kaspersky (Apr 2026): ValleyRAT and ABCDoor servers from the Silver Fox tax campaign.
+$C2Ips = @('134.122.155.135', '108.187.37.85', '108.187.42.63', '207.56.138.28', '45.118.133.203', '154.82.81.205', '154.82.81.192', '108.187.41.221')
+$C2Domains = '(?i)(^|\.)(fetish-friends\.com|3mkorealtd\.com|sudsmama\.com|woopami\.com|ilptour\.com|petitechanson\.com|doublemobile\.com|mcagov\.cc|roldco\.com|kcii2\.com|haijing88\.com)$'
+# Silver Fox fake-document programs (Kaspersky, Apr 2026: Statement of Account / GST / tax lures).
+$ExeLureRegex = '(?i)^(Review the file|BillReceipt|statement verify ?|Click File|GST ?Suvidha|Related material|MCA-Ministry|RemoteInstaller_[\d_]+_\w+)\.exe$'
 if ($env:WAZIP_TEST_C2) { $C2Ips += $env:WAZIP_TEST_C2 }
 # SilverFox KuGou variant (Pelagos Intel, Sep 2026) stages here and runs from a Run value named MicrosoftUpdate.
 $StageRegex   = '(?i)\\AppData\\Roaming\\Microsoft\\Update\\[^\\]+\.(exe|dll)$'
@@ -227,13 +231,17 @@ function Scan-Processes {
   Say '[3/8] Semak program yang sedang berjalan...' '[3/8] Checking running programs...' Cyan
   foreach ($p in Get-CimInstance Win32_Process -ErrorAction SilentlyContinue) {
     $cl = [string]$p.CommandLine; $exe = [string]$p.ExecutablePath
-    if ($cl -match '_vmclientcore@16' -or $p.Name -eq 'KafanInputService.exe' -or $exe -match '\\H\d{8,}\.exe$' -or $exe -match $StageRegex) {
+    if ($cl -match '_vmclientcore@16' -or $cl -match '(?i)-m\s+appclient\b' -or $p.Name -eq 'KafanInputService.exe' -or $exe -match '\\H\d{8,}\.exe$' -or $exe -match $StageRegex) {
       Add-Finding 'Process' 'HIGH' "$($p.Name) (PID $($p.ProcessId))" "Malware process: $cl" @{ Pid = $p.ProcessId; Path = $exe }
     }
   }
   foreach ($c in Get-NetTCPConnection -ErrorAction SilentlyContinue | Where-Object { $C2Ips -contains $_.RemoteAddress }) {
     $pp = Get-Process -Id $c.OwningProcess -ErrorAction SilentlyContinue
     Add-Finding 'Process' 'HIGH' "$($pp.ProcessName) (PID $($c.OwningProcess))" "Connected to known attacker server $($c.RemoteAddress):$($c.RemotePort)" @{ Pid = $c.OwningProcess; Path = $pp.Path }
+  }
+  # The DNS cache shows which servers this PC looked up recently.
+  foreach ($d in Get-DnsClientCache -ErrorAction SilentlyContinue | Where-Object { $_.Entry -match $C2Domains } | Select-Object -ExpandProperty Entry -Unique) {
+    Add-Finding 'Info' 'WARN' "Attacker server looked up: $d" 'This PC contacted a Silver Fox server recently (Kaspersky list). Treat the PC as infected: change passwords from your phone and consider reinstalling Windows.'
   }
   foreach ($proc in Get-Process -ErrorAction SilentlyContinue) {
     try { $mods = $proc.Modules } catch { continue }
@@ -272,6 +280,23 @@ function Scan-Persistence {
   foreach ($t in Get-ScheduledTask -ErrorAction SilentlyContinue) {
     $txt = ($t.Actions | ForEach-Object { "$($_.Execute) $($_.Arguments)" }) -join ' ; '
     if ($txt -match $PersistRegex) { Add-Finding 'Task' 'HIGH' "$($t.TaskPath)$($t.TaskName)" "Scheduled task: $txt" @{ Path = $t.TaskPath; Name = $t.TaskName } }
+  }
+  # ABCDoor (Kaspersky, Apr 2026) runs at logon through UserInitMprLogonScript and keeps settings in Software\CarEmu.
+  foreach ($hive in Get-UserHives) {
+    $logon = [string](Get-ItemProperty -LiteralPath "$hive\Environment" -ErrorAction SilentlyContinue).UserInitMprLogonScript
+    if ($logon) {
+      $sev = if ($logon -match $PersistRegex) { 'HIGH' } else { 'WARN' }
+      Add-Finding 'RegValue' $sev "$hive\Environment|UserInitMprLogonScript" "Logon script runs at every sign-in: $logon"
+    }
+    if (Test-Path -LiteralPath "$hive\Software\CarEmu") { Add-Finding 'RegKey' 'HIGH' "$hive\Software\CarEmu" 'ABCDoor backdoor settings (Silver Fox).' }
+  }
+  foreach ($u in Get-ChildItem "$env:SystemDrive\Users" -Directory -ErrorAction SilentlyContinue) {
+    $ac = Join-Path $u.FullName 'AppData\Local\appclient'
+    if ((Test-Path -LiteralPath "$ac\python\pythonw.exe") -or (Test-Path -LiteralPath "$ac\update.bat")) {
+      Add-Finding 'File' 'HIGH' $ac 'ABCDoor backdoor folder (Python remote-control malware, Silver Fox).'
+    }
+    $el = Join-Path $u.FullName 'AppData\Local\applogs\exception_logs.zip'
+    if (Test-Path -LiteralPath $el) { Add-Finding 'File' 'HIGH' $el 'ABCDoor error log.' }
   }
   Scan-DefenderExclusions
   $startups = @("$env:ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp")
@@ -337,6 +362,7 @@ function Scan-Files {
             $f.FullName -match '(?i)^[a-z]:\\Users\\' -and
             $f.FullName -notmatch '(?i)\\AppData\\Local\\(Docker\\|Packages\\(?!5319275A\.WhatsAppDesktop))') {
           Add-Finding 'File' 'WARN' $f.FullName 'Virtual disk (VHD) in a user folder. The WhatsApp ZIP hides its payload in a VHD; delete it unless you made it.'; return }
+        if ($f.Name -match $ExeLureRegex) { Add-Finding 'File' 'HIGH' $f.FullName 'Fake document program (Silver Fox tax/statement lure).'; return }
         if ($f.Name -match $VbsLureRegex) { Add-Finding 'File' 'HIGH' $f.FullName 'Script disguised as a document (WhatsApp VBS campaign).'; return }
         if ($f.Extension -ieq '.sys' -and ($lol = Get-LolMatch $f.FullName)) {
           $sev = if ($lol.kind -eq 'malicious') { 'HIGH' } else { 'WARN' }

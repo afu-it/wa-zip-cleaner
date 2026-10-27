@@ -80,6 +80,20 @@ New-Item -ItemType Directory -Force -Path $waChrome, $waFox | Out-Null
 Set-Content -Path "$waChrome\000003.log" -Value 'dummy'
 Set-Content -Path "$waFox\.metadata-v2" -Value 'dummy'
 
+# ABCDoor (Kaspersky, Apr 2026): Python backdoor folder, Run value, logon script, CarEmu key,
+# a tax/statement lure program, and a hosts entry so the attacker domain shows in the DNS cache.
+$ac = "$env:LOCALAPPDATA\appclient"
+New-Item -ItemType Directory -Force -Path "$ac\python" | Out-Null
+Set-Content -Path "$ac\python\pythonw.exe" -Value 'dummy'
+$abc = "`"$ac\python\pythonw.exe`" -m appclient"
+New-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'AppClient' -Value $abc -Force | Out-Null
+New-ItemProperty -Path 'HKCU:\Environment' -Name 'UserInitMprLogonScript' -Value $abc -Force | Out-Null
+New-Item -Path 'HKCU:\Software\CarEmu' -Force | Out-Null
+New-ItemProperty -Path 'HKCU:\Software\CarEmu' -Name 'InstallChannel' -Value 'whatsapp_1027' -Force | Out-Null
+Set-Content -Path "$dl\Review the file.exe" -Value 'dummy'
+Add-Content -Path "$env:SystemRoot\System32\drivers\etc\hosts" -Value "`r`n127.0.0.1 abc.fetish-friends.com"
+Resolve-DnsName abc.fetish-friends.com -ErrorAction SilentlyContinue | Out-Null
+
 # Mounted lure VHD
 $vhd = "$dl\Click here to view10.6.vhd"
 "create vdisk file=`"$vhd`" maximum=8 type=fixed`nattach vdisk" | Out-File -Encoding ASCII "$env:TEMP\dp.txt"
