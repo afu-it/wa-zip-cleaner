@@ -405,10 +405,13 @@ function Scan-Files {
   }
   $exts = '\.(zip|vhd|vhdx|img|iso|dll|exe|dat|cnf|sys|tar|vbs|vbe|js|wsf|lnk|msi|mst)$|^DCAgentServerInfo\.json$'
   $wsh = New-Object -ComObject WScript.Shell
+  # WAZIP_TIMING=1 prints how long each folder takes (used to find slow folders on CI and real PCs).
   foreach ($r in $roots | Where-Object { Test-Path -LiteralPath $_ }) {
+    $sw = [Diagnostics.Stopwatch]::StartNew(); $tn = 0
     Get-ChildItem -LiteralPath $r -Recurse -File -Force -ErrorAction SilentlyContinue |
       Where-Object { $_.Name -match $exts } | ForEach-Object {
         $f = $_
+        $tn++
         $ioc = Get-Ioc $f
         if ($ioc -and $ioc.Bad) { Add-Finding 'File' 'HIGH' $f.FullName "Known malware: $($ioc.Name)"; return }
         if ($ioc -and -not $ioc.Bad -and $f.FullName -notmatch [regex]::Escape($ioc.Vendor)) {
@@ -464,6 +467,7 @@ function Scan-Files {
             ($f.Attributes -band [IO.FileAttributes]::Hidden) -and ($f.Attributes -band [IO.FileAttributes]::System)) {
           Add-Finding 'File' 'WARN' $f.FullName 'Hidden+System program in a user folder (common Winos4.0 hiding trick).'; return }
       }
+    if ($env:WAZIP_TIMING) { Write-Host "[timing] $r : $tn files checked, $([int]$sw.Elapsed.TotalSeconds)s" }
   }
 }
 

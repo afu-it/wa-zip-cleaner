@@ -6,6 +6,8 @@ $tool = Join-Path $root 'wa-zip-cleaner.ps1'
 $q = 'C:\WAZipQuarantineExtra'
 $fail = 0
 $env:WAZIP_NO_PROMPT = '1'
+$env:WAZIP_TIMING = '1'
+Get-MpComputerStatus -ErrorAction SilentlyContinue | Format-List RealTimeProtectionEnabled, AMRunningMode, OnAccessProtectionEnabled
 function Check($ok, $msg) {
   if ($ok) { Write-Host "PASS $msg" -ForegroundColor Green } else { Write-Host "FAIL $msg" -ForegroundColor Red; $script:fail++ }
 }
