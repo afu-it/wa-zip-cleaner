@@ -44,7 +44,7 @@ $expect = @(
   @('File', 'PDF_FTFWCI_20261009125351\.vhd$'), @('File', '20261019-MYS2026Y1019E51AC\.zip$'), @('File', '20261019\.MYS2026Y1019A7F2E\.zip$'),
   @('File', 'WAZipOct\\eneio64\.dat$'), @('Task', 'WAZipDefTask$'),
   @('File', 'AppData\\Local\\appclient$'), @('RegValue', 'Run\|AppClient$'), @('RegValue', 'Environment\|UserInitMprLogonScript$'),
-  @('RegKey', 'Software\\CarEmu$'), @('File', 'nsWAZip\.tmp\\libexpat\.dll$'), @('File', 'Downloads\\Review the file\.exe$'),
+  @('RegKey', 'Software\\CarEmu$'), @('File', 'nsWAZip\.tmp\\libexpat\.dll$'), @('File', 'DOC-50998906_17774E7A\.lnk$'), @('File', 'Downloads\\Review the file\.exe$'),
   @('WaSession', 'Chrome\\User Data\\Default\\IndexedDB\\https_web\.whatsapp\.com_0'), @('WaSession', 'https\+\+\+web\.whatsapp\.com$')
 )
 foreach ($e in $expect) {

