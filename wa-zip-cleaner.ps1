@@ -398,7 +398,10 @@ function Scan-DefenderExclusions {
 
 function Scan-Files {
   Say '[5/8] Imbas fail (boleh ambil 2-10 minit)...' '[5/8] Scanning files (can take 2-10 minutes)...' Cyan
-  $roots = @("$env:ProgramData", "$env:SystemDrive\Users\Public", "$env:SystemRoot\Temp")
+  # ProgramData is walked one level down so Docker's Windows container layers (docker\windowsfilter,
+  # tens of thousands of copied Windows files) are skipped. Top-level files are still checked.
+  $roots = @(Get-ChildItem -LiteralPath $env:ProgramData -Force -ErrorAction SilentlyContinue | Where-Object { $_.Name -ne 'docker' } | ForEach-Object { $_.FullName })
+  $roots += "$env:ProgramData\docker\config", "$env:SystemDrive\Users\Public", "$env:SystemRoot\Temp"
   foreach ($u in Get-ChildItem "$env:SystemDrive\Users" -Directory -ErrorAction SilentlyContinue) {
     $roots += 'Downloads', 'Desktop', 'Documents', 'AppData\Roaming', 'AppData\Local\Temp', 'AppData\Local\Packages' |
       ForEach-Object { Join-Path $u.FullName $_ }

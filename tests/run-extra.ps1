@@ -8,9 +8,6 @@ $fail = 0
 $env:WAZIP_NO_PROMPT = '1'
 $env:WAZIP_TIMING = '1'
 Get-MpComputerStatus -ErrorAction SilentlyContinue | Format-List RealTimeProtectionEnabled, AMRunningMode, OnAccessProtectionEnabled
-$pd = Get-ChildItem -LiteralPath $env:ProgramData -Recurse -File -Force -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '\.(dll|exe|sys|lnk|zip|dat)$' }
-$pd | Group-Object Extension | Sort-Object Count -Descending | Select-Object -First 6 Count, Name | Format-Table -AutoSize | Out-String | Write-Host
-$pd | Group-Object { ($_.FullName.Substring($env:ProgramData.Length + 1) -split '\\')[0..1] -join '\' } | Sort-Object Count -Descending | Select-Object -First 8 Count, Name | Format-Table -AutoSize | Out-String -Width 200 | Write-Host
 function Check($ok, $msg) {
   if ($ok) { Write-Host "PASS $msg" -ForegroundColor Green } else { Write-Host "FAIL $msg" -ForegroundColor Red; $script:fail++ }
 }
