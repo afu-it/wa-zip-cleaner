@@ -107,6 +107,18 @@ Kalau satu nombor WhatsApp dipakai kat banyak PC (biasa kat kedai atau office), 
 
 **Kalau dah buat semua ni tapi WhatsApp masih hantar fail jahat:** cara terakhir ialah delete akaun WhatsApp dan daftar balik guna nombor yang sama. Semua session lama akan hilang terus. Kosnya, chat, group dan setting anda hilang, jadi backup dulu chat dan contact yang penting, dan bagitau customer atau kawan yang anda daftar semula. Caranya: WhatsApp > Settings > Account > **Delete account**, lepas tu install semula WhatsApp dan daftar dengan nombor yang sama.
 
+### Nombor WhatsApp kena ban?
+
+Malware ni hantar fail ke semua contact dan group sekali gus. WhatsApp nampak tu macam spam, jadi selalu nombor mangsa kena **ban** (keluar mesej akaun tak dibenarkan guna WhatsApp). Kalau jadi:
+
+1. **Bersihkan PC dulu** guna tool ni sampai keluar **BERSIH**. Kalau tak, lepas akaun dibuka balik, dia akan spam lagi dan kena ban lagi.
+2. Buka WhatsApp kat phone. Kat skrin ban tu, tekan **Request a review** (atau **Support**).
+3. Tulis ringkas: akaun anda kena hack oleh malware dari fail zip WhatsApp, mesej tu bukan anda yang hantar, dan PC dah dibersihkan.
+4. Tunggu jawapan WhatsApp. Biasanya beberapa jam sampai beberapa hari. Jangan hantar review berkali-kali.
+5. Sementara tu, bagitau customer dan kawan guna SMS, call atau media sosial: jangan buka fail zip dari nombor anda.
+
+Lepas akaun dibuka balik, terus buat langkah 1 hingga 5 kat atas (log out Linked devices, on Two-step verification).
+
 ---
 
 Bawah ni info tambahan. Klik tajuk untuk buka.
@@ -294,7 +306,7 @@ The October 2026 wave tells Windows Defender to ignore `svchost.exe` and `QtsUpd
 
 Or download the repo, extract it, and double-click `MULA-SINI.bat`.
 
-If anything is found: from your phone, log out of WhatsApp Linked devices, change every password saved in or typed into Chrome/Edge on that PC, sign out other sessions and turn on 2FA. If the tool warns about a remote-control program you did not install (ManageEngine, AnyDesk, TeamViewer and others), remove it with [Bulk Crap Uninstaller](https://www.bcuninstaller.com/) (right-click > Uninstall manually). Drivers are also checked against the [LOLDrivers](https://www.loldrivers.io) list. If the tool warns about ManageEngine or an antivirus-killing driver, back up your documents and reinstall Windows. If WhatsApp keeps sending the lure after the PC is clean or reinstalled, the attacker is reusing stolen sessions, not the PC: log out every Linked device, turn on WhatsApp Two-step verification, sign out of other Google sessions and change passwords; as a last resort delete the WhatsApp account and register the same number again. Another victim of this campaign found a data stealer (`888.exe`) that this tool does not detect yet. Full analysis: [docs/REPORT.md](docs/REPORT.md).
+If anything is found: from your phone, log out of WhatsApp Linked devices, change every password saved in or typed into Chrome/Edge on that PC, sign out other sessions and turn on 2FA. If the tool warns about a remote-control program you did not install (ManageEngine, AnyDesk, TeamViewer and others), remove it with [Bulk Crap Uninstaller](https://www.bcuninstaller.com/) (right-click > Uninstall manually). Drivers are also checked against the [LOLDrivers](https://www.loldrivers.io) list. If the tool warns about ManageEngine or an antivirus-killing driver, back up your documents and reinstall Windows. If WhatsApp keeps sending the lure after the PC is clean or reinstalled, the attacker is reusing stolen sessions, not the PC: log out every Linked device, turn on WhatsApp Two-step verification, sign out of other Google sessions and change passwords; as a last resort delete the WhatsApp account and register the same number again. If the number gets banned for spam, clean the PC first, then tap **Request a review** on the ban screen and explain the account was hijacked by malware. Another victim of this campaign found a data stealer (`888.exe`) that this tool does not detect yet. Full analysis: [docs/REPORT.md](docs/REPORT.md).
 
 </details>
 
