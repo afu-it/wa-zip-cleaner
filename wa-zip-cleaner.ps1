@@ -56,6 +56,14 @@ $KnownBad = @(
   @{ Sha = '42f21f4389db441c9b57b765320ba628673bd9856002bb20f0359bfd783d48a9'; Size = 463904; Name = 'Encrypted payload _Top.dat (Triage, Sep 2026)' }
   @{ Sha = 'c5d9b6e889ac776410b9e70930bc12afa202843d8ec2aa971204c416a3251c76'; Size = 35896; Name = 'Encrypted payload _Bottom.dat (Triage, Sep 2026)' }
   @{ Sha = '29f67c17b528a877949878a3d0453a34c6f5eee7d872edd33c0996b057b56258'; Size = 726016; Name = 'Encrypted payload _Driver.cnf (Triage, Sep 2026)' }
+  @{ Sha = '65662fbfee31784502f46a4ea3cf58a5146d6f6299b40391cd71c9fc67e3e621'; Size = 7107; Name = 'WhatsApp VBS lure Statement of Debt(30K).vbs (MyCERT MA-1464)' }
+  @{ Sha = '3fb74a2ca0526e34eafa9060f4a548d6c60b79966f4ff9facf47098a3a0391e3'; Size = 6899; Name = 'WhatsApp VBS stage 2 spsx.vbs' }
+  @{ Sha = 'c26a0e6c06cfaff5680d6ce03a1028dfe04259f0c568904dc6e3d6764a9951b1'; Size = 1193; Name = 'WhatsApp VBS stage 2 run.vbs' }
+  @{ Sha = '3d1a86ad729817d85377f59c3d5dcc67ba59af9824ae64aea8e626f6a4956d52'; Size = 1592; Name = 'ManageEngine silent installer setup1.vbs' }
+  @{ Sha = '7d266ee06799032bbd627e19d5dedeeb099deb9666d2557e487599dcd146e8bd'; Size = 32869697; Name = 'ManageEngine installer kit alOffic.zip / temp.zip' }
+  @{ Sha = 'a8000f6bcf5b22fa1b27ca1901f743fe252cfae95b33aab58ac8f70e6755abb4'; Size = 32869803; Name = 'ManageEngine installer kit lose.zip' }
+  @{ Sha = '74e58a7dc7b4d2395175bc4c46dd806ab5b7d0e8131944e953e2f73a2ab925dd'; Size = 900; Name = 'SORVEPOTEL lure COMPROVANTE_*.zip' }
+  @{ Sha = '177bf59f3566ba84a15dfb29a944d256fd65f490f6e5b45b6c313eab60f31d8d'; Size = 1041; Name = 'SORVEPOTEL shortcut COMPROVANTE_*.lnk' }
 )
 # Signed, legitimate files that this malware abuses. Bad only outside their vendor folder.
 $AbusedLegit = @(
@@ -461,6 +469,12 @@ function Scan-ManageEngine {
   # Securelist (Jun 2026): the attacker's agent ships a server-info file pointing at their own servers.
   # A match means this agent is the attacker's, so it is removed even on an office PC.
   $script:MeAttacker = $false
+  # The attacker's agent keeps its root certificates in the hidden Public\Documents work folder.
+  foreach ($k in 'HKLM:\SOFTWARE\WOW6432Node\AdventNet\DesktopCentral\DCAgent', 'HKLM:\SOFTWARE\AdventNet\DesktopCentral\DCAgent') {
+    $vals = Get-ChildItem -LiteralPath $k -Recurse -ErrorAction SilentlyContinue | ForEach-Object { (Get-ItemProperty -LiteralPath $_.PSPath -ErrorAction SilentlyContinue).PSObject.Properties.Value }
+    $vals += (Get-ItemProperty -LiteralPath $k -ErrorAction SilentlyContinue).PSObject.Properties.Value
+    if ($vals | Where-Object { $_ -is [string] -and ($_ -match '(?i)\\Users\\Public\\Documents\\' -or $C2Ips -contains ($_ -replace ':\d+$', '')) }) { $script:MeAttacker = $true }
+  }
   foreach ($p in $hits | Where-Object { $_ -is [string] }) {
     $cfg = Get-ChildItem -LiteralPath $p -Recurse -File -Include *.json, *.conf, *.ini, *.xml, *.txt, *.props -ErrorAction SilentlyContinue | Where-Object { $_.Length -lt 2MB }
     if ($cfg -and ($cfg | Select-String -SimpleMatch -Pattern $C2Ips -List -ErrorAction SilentlyContinue)) { $script:MeAttacker = $true }

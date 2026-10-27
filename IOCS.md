@@ -106,6 +106,8 @@ C2: `14.128.53.155` (ports 21131, 21132, 443, 449; extracted ValleyRAT config), 
 - Hashes: Securelist lists 40 MD5 only, no sizes; not usable by the scanner. MyCERT references SHA-256 `65662fbfee31784502f46a4ea3cf58a5146d6f6299b40391cd71c9fc67e3e621`.
 - Microsoft variant: hidden `C:\ProgramData\EDS8738\` with curl as `netapi.dll` and bitsadmin as `sc.exe`, junk key `HKLM\SOFTWARE\Microsoft\Win`, unsigned `Setup.msi`/`WinRAR.msi`/`LinkPoint.msi`/`AnyDesk.msi`, domains `neescil.top`, `velthora.top`.
 
+Sample `65662fbf…` (VirusTotal, 7107 bytes, `Statement of Debt(30K).vbs`): stages curl as `lib.dll` and bitsadmin as `sys.dll` in `MSUpdate_<5 digits>`, pulls `https://baolongwes.oss-ap-southeast-1.aliyuncs.com/blaoso/owpa.txt` → `run.vbs` → `/kasf/spsx.vbs` → `/blaoso/alOffic.zip`; agent C2 `https://202.61.160.160:8383/`; registry `HKLM\Software\WOW6432Node\AdventNet\DesktopCentral\DCAgent` with `DsRootCertPath`/`ServerRootCertPath` pointing into the `MSUpdate_` folder; mutexes `dcResourceId_Mutex`, `dcCertCreationStatusMutex`. Child hashes with sizes are in `$KnownBad`.
+
 ## VulcanRAT207.A (Morphisec via 2-Spyware, Oct 2026)
 
 WhatsApp ZIP with `Statement.exe` / `Tax-202609078869.exe`. Sideloads through `vulkaninfo-64.exe`, `vulkan-1.dll`, `vulkan-1.bin` in `C:\Program Files\Common Files`, persists as task `\Microsoft\Windows\USOPrivate` (or `USOPrivate Kit`), kills Baidu AV (`bdservicehost.exe`, `bduserhost.exe`) with `GoFly64.sys`. C2 `61.18.208.27:8888`.
