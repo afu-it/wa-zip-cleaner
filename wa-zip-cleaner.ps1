@@ -31,7 +31,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '1.0.0'
+$Version = '2026.10.28'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
