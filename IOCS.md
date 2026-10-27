@@ -108,6 +108,8 @@ C2: `14.128.53.155` (ports 21131, 21132, 443, 449; extracted ValleyRAT config), 
 
 Sample `65662fbf…` (VirusTotal, 7107 bytes, `Statement of Debt(30K).vbs`): stages curl as `lib.dll` and bitsadmin as `sys.dll` in `MSUpdate_<5 digits>`, pulls `https://baolongwes.oss-ap-southeast-1.aliyuncs.com/blaoso/owpa.txt` → `run.vbs` → `/kasf/spsx.vbs` → `/blaoso/alOffic.zip`; agent C2 `https://202.61.160.160:8383/`; registry `HKLM\Software\WOW6432Node\AdventNet\DesktopCentral\DCAgent` with `DsRootCertPath`/`ServerRootCertPath` pointing into the `MSUpdate_` folder; mutexes `dcResourceId_Mutex`, `dcCertCreationStatusMutex`. Child hashes with sizes are in `$KnownBad`.
 
+Triage sweep of 79 runs (setup1.vbs, spsx.vbs, owpa.txt, alOffic.zip): further agent C2 on port 8383 `202.61.160.203`, `202.61.160.145`, `137.220.205.167`, `137.220.205.162`, `137.220.224.63`, `103.140.154.117`, `206.238.68.33`, `43.224.224.151` (also `192.229.81.105`, `192.229.87.219`, left out as shared CDN space); downloads `https://azuheq.s3.ap-southeast-1.amazonaws.com/19881.exe`, `https://www.kammwv.cc/222/9989.exe`, `d156sk07toobyl.cloudfront.net`. 16 more installer-kit zips (all 32.8-32.9 MB, same contents) and the attacker `DCAgentServerInfo.json` (`b57b2334…`, 1670 bytes) are in `$KnownBad`.
+
 ## VulcanRAT207.A (Morphisec via 2-Spyware, Oct 2026)
 
 WhatsApp ZIP with `Statement.exe` / `Tax-202609078869.exe`. Sideloads through `vulkaninfo-64.exe`, `vulkan-1.dll`, `vulkan-1.bin` in `C:\Program Files\Common Files`, persists as task `\Microsoft\Windows\USOPrivate` (or `USOPrivate Kit`), kills Baidu AV (`bdservicehost.exe`, `bduserhost.exe`) with `GoFly64.sys`. C2 `61.18.208.27:8888`.

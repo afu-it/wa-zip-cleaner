@@ -64,6 +64,23 @@ $KnownBad = @(
   @{ Sha = 'a8000f6bcf5b22fa1b27ca1901f743fe252cfae95b33aab58ac8f70e6755abb4'; Size = 32869803; Name = 'ManageEngine installer kit lose.zip' }
   @{ Sha = '74e58a7dc7b4d2395175bc4c46dd806ab5b7d0e8131944e953e2f73a2ab925dd'; Size = 900; Name = 'SORVEPOTEL lure COMPROVANTE_*.zip' }
   @{ Sha = '177bf59f3566ba84a15dfb29a944d256fd65f490f6e5b45b6c313eab60f31d8d'; Size = 1041; Name = 'SORVEPOTEL shortcut COMPROVANTE_*.lnk' }
+  @{ Sha = '03f24d66323fd63b5f675dc48bb413ac688f93f55cd6ea1f72342cec7b795961'; Size = 32869803; Name = 'ManageEngine installer kit ffice.zip (WhatsApp VBS campaign, Triage)' }
+  @{ Sha = '595d90dde0e74566397cffb01d51035336cca27124bea81f3c07179ed221a771'; Size = 32869805; Name = 'ManageEngine installer kit ficeo.zip (WhatsApp VBS campaign, Triage)' }
+  @{ Sha = '6065297689a5072e649970a7b59cadb2201a257cd11261d361e884cda63d74d5'; Size = 32869794; Name = 'ManageEngine installer kit baollaaa.zip (WhatsApp VBS campaign, Triage)' }
+  @{ Sha = 'd73ae223669bea2ffbb614fa947bc076a4d26894a0de87b1f0a9b64deddf678f'; Size = 32869800; Name = 'ManageEngine installer kit sunlloo.zip (WhatsApp VBS campaign, Triage)' }
+  @{ Sha = 'e8e133c761d5aac5af8525286185dae8efe5963ebcd1eed8521682dce4713a8e'; Size = 32869690; Name = 'ManageEngine installer kit chrmgolm.zip (WhatsApp VBS campaign, Triage)' }
+  @{ Sha = 'e7d45a098c6f6cc6f3732342a04a1623fd1600cbf89ed8b40ecff60a9550299e'; Size = 32869689; Name = 'ManageEngine installer kit LocOffice.zip (WhatsApp VBS campaign, Triage)' }
+  @{ Sha = '3cd7b59ce013f160b2184c1c01c043a1e3be6b45e1f68fa87ced7d8782ab7517'; Size = 32869797; Name = 'ManageEngine installer kit 8aa.zip (WhatsApp VBS campaign, Triage)' }
+  @{ Sha = '03643c2de44d47baf485ac13ef19ccd5fa57872b0b54fcc51e92bb1da102dd83'; Size = 32869812; Name = 'ManageEngine installer kit Lfic11e.zip (WhatsApp VBS campaign, Triage)' }
+  @{ Sha = 'ef29a493709ee78d1e27d8146b7315b3a6f673e6f770696993b7712dab2b78e0'; Size = 32869796; Name = 'ManageEngine installer kit azhu.zip (WhatsApp VBS campaign, Triage)' }
+  @{ Sha = '548736f279070da7d9c4681768e915dc5e8771980c90dd523389acd13871cc64'; Size = 32869799; Name = 'ManageEngine installer kit kioop.zip (WhatsApp VBS campaign, Triage)' }
+  @{ Sha = 'fddab5f43dbec60c3a1820567319718a3054fa9a4417b589c4ffbfaa2b4a5691'; Size = 32869795; Name = 'ManageEngine installer kit xiaox.zip (WhatsApp VBS campaign, Triage)' }
+  @{ Sha = 'c232666d44d6b4b22ec8f0b84fd9f3bf7d3a06fec40247c88e1f2b0784b75854'; Size = 32869799; Name = 'ManageEngine installer kit .bin (WhatsApp VBS campaign, Triage)' }
+  @{ Sha = 'd32c6269361615085cf996dd14e0b2c0a07bd5c20dd6e384da55d79bb7a064b9'; Size = 32869805; Name = 'ManageEngine installer kit .bin (WhatsApp VBS campaign, Triage)' }
+  @{ Sha = 'b988bc34d240204a586504d73a04b82e70fa71fab93e26ee85ca89cc1d26ffb8'; Size = 32870031; Name = 'ManageEngine installer kit .bin (WhatsApp VBS campaign, Triage)' }
+  @{ Sha = 'f0ca28df5607f66448229439e0bd2adb0a3a134952ad83bb41aa5e45cdf9eed2'; Size = 32869811; Name = 'ManageEngine installer kit unnamed (WhatsApp VBS campaign, Triage)' }
+  @{ Sha = '6d68cac0477bedd3fdac978e9553dcbac1719ddb1a2e5c5deeb8179f53dc2c80'; Size = 32799144; Name = 'ManageEngine installer kit 25405092496.zip (WhatsApp VBS campaign, Triage)' }
+  @{ Sha = 'b57b23342e6d7dbaf4cebd3e3664bb2697eca3e8593aee6a81757cd30dbf6e92'; Size = 1670; Name = 'Attacker DCAgentServerInfo.json (WhatsApp VBS campaign)' }
 )
 # Signed, legitimate files that this malware abuses. Bad only outside their vendor folder.
 $AbusedLegit = @(
@@ -88,8 +105,9 @@ $ExclProcRegex = '(?i)^(QtsUpdater|svchost|rundll32|powershell|cmd|wscript|cscri
 $C2Ips = @('134.122.155.135', '14.128.53.155', '45.202.1.249', '108.187.37.85', '108.187.42.63', '207.56.138.28', '45.118.133.203', '154.82.81.205', '154.82.81.192', '108.187.41.221',
             '103.20.195.147', '45.207.231.94', '45.207.231.107', '160.124.9.103', '109.176.30.141',
             '202.61.160.208', '202.61.160.202', '202.61.160.201', '202.61.160.160', '202.61.160.137', '38.55.151.63', '61.18.208.27',
+            '202.61.160.203', '202.61.160.145', '137.220.205.167', '137.220.205.162', '137.220.224.63', '103.140.154.117', '206.238.68.33', '43.224.224.151',
             '165.154.254.44', '23.227.203.148', '77.111.101.169', '23.227.203.179', '140.99.164.81', '92.246.130.15')  # SORVEPOTEL (Trend Micro)  # last four: CloudSEK, Dec 2025
-$C2Domains = '(?i)(^|\.)(fetish-friends\.com|3mkorealtd\.com|sudsmama\.com|woopami\.com|ilptour\.com|petitechanson\.com|doublemobile\.com|mcagov\.cc|roldco\.com|kcii2\.com|haijing88\.com|ggwk\.cc|yuxuanow\.top|itdd\.club|xzghjec\.com|gov-a\.(work|fit|club)|gvo-b\.club|gov-c\.club|govk\.club|swjc2025bjkb\.cn|2025swmm\.cn|zapgrande\.com|sorvetenopo(a)?te\.com|sorvetenoopote\.com|sorvetenopotel\.com|etenopote\.com|expa(h)?nsiveuser\.com|expansivebot\.com|imobiliariaricardoparanhos\.com|casadecampoamazonas\.com|bravexolutions\.com|adoblesecuryt\.com|saogeraldoshoping\.com|baskwms\.top|msopsa\.top|shoppes\.help|shaaslong\.one|baoxis\.cc|neescil\.top|velthora\.top|sinjiabo-1398259625\.cos\.ap-singapore\.myqcloud\.com|(bafauac|9ding)\.s3\.ap-southeast-1\.amazonaws\.com|(baolongwes|sdcwww)\.oss-ap-southeast-1\.aliyuncs\.com|(baoyuw2s|hksha3|sjdkjj23|xijkwm2|yifubafu)\.s3\.ap-southeast-1\.amazonaws\.com|(caiwuascw|facaia)\.s3\.us-east-005\.backblazeb2\.com)$'
+$C2Domains = '(?i)(^|\.)(fetish-friends\.com|3mkorealtd\.com|sudsmama\.com|woopami\.com|ilptour\.com|petitechanson\.com|doublemobile\.com|mcagov\.cc|roldco\.com|kcii2\.com|haijing88\.com|ggwk\.cc|yuxuanow\.top|itdd\.club|xzghjec\.com|gov-a\.(work|fit|club)|gvo-b\.club|gov-c\.club|govk\.club|swjc2025bjkb\.cn|2025swmm\.cn|zapgrande\.com|sorvetenopo(a)?te\.com|sorvetenoopote\.com|sorvetenopotel\.com|etenopote\.com|expa(h)?nsiveuser\.com|expansivebot\.com|imobiliariaricardoparanhos\.com|casadecampoamazonas\.com|bravexolutions\.com|adoblesecuryt\.com|saogeraldoshoping\.com|baskwms\.top|msopsa\.top|shoppes\.help|shaaslong\.one|baoxis\.cc|kammwv\.cc|azuheq\.s3\.ap-southeast-1\.amazonaws\.com|d156sk07toobyl\.cloudfront\.net|neescil\.top|velthora\.top|sinjiabo-1398259625\.cos\.ap-singapore\.myqcloud\.com|(bafauac|9ding)\.s3\.ap-southeast-1\.amazonaws\.com|(baolongwes|sdcwww)\.oss-ap-southeast-1\.aliyuncs\.com|(baoyuw2s|hksha3|sjdkjj23|xijkwm2|yifubafu)\.s3\.ap-southeast-1\.amazonaws\.com|(caiwuascw|facaia)\.s3\.us-east-005\.backblazeb2\.com)$'
 # Silver Fox fake-document programs (Kaspersky, Apr 2026: Statement of Account / GST / tax lures).
 $ExeLureRegex = '(?i)^(Statement|Tax-\d{8,}|Review the file|BillReceipt|statement verify ?|Click File|GST ?Suvidha|Related material|MCA-Ministry|RemoteInstaller_[\d_]+_\w+)\.exe$'
 if ($env:WAZIP_TEST_C2) { $C2Ips += $env:WAZIP_TEST_C2 }
