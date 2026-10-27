@@ -42,6 +42,20 @@ $KnownBad = @(
   @{ Sha = '12b9470634bb7f76419c70ee9a510147cd6bcfce920f2abee5afdd13901b383d'; Size = 6076;     Name = 'Encrypted payload (.dat)' }
   @{ Sha = '46883bc25c77678f60c1b836f4c438d87158c9af6b229f533522f635a0d5276e'; Size = 93664;    Name = 'AV-killer driver ZyArk.sys (Baidu BdArKit, abused)' }
   @{ Sha = 'c1e184615241fe69db3bf4093a22c7c0bf5d6072d2f51e558142b844e871084f'; Size = 5242880;  Name = 'SilverFox loader active_desktop_render_x64.dll (Pelagos, KuGou variant)' }
+  @{ Sha = '38e37bdef23d31ca49c2b72effd4d46ab617b86a5227343a3e407cfb7af92971'; Size = 6787333; Name = 'Lure ZIP 20260921125639-A901C2F58FFEBD.zip (Triage, Sep 2026)' }
+  @{ Sha = '9524d7051fde6bfcfb8a90c305994e66df20686bd06cdfa9173149db9eb05467'; Size = 6966908; Name = 'Lure ZIP 20260928011445-82407B6DADBFA0.zip (Triage, Sep 2026)' }
+  @{ Sha = '88e32dfea6c94b16a89e9c3b66a01f5bc1c99b4abddb48060cbe5c06b77907d3'; Size = 2619192; Name = 'ValleyRAT dropper L3914012809.exe (Triage, Sep 2026)' }
+  @{ Sha = 'ff5c63c88e165d842ca962c442dc6199e56f544b00d24c0580783771814f456e'; Size = 8263680; Name = 'ValleyRAT loader pdfcorE8.dll (Triage, Sep 2026)' }
+  @{ Sha = '4dfce433a8cea1829fc8fc9d7284cb5fdb332695413923a7fa1b702fd637bcb3'; Size = 12928233; Name = 'Lure ZIP PDF_<Japanese name>.ZIP (Triage, Sep 2026)' }
+  @{ Sha = '7aad062881f577d7bb560bb7288800a29e041b11b3aef3c0103d08659e894c5e'; Size = 3950592; Name = 'Lure disk image DX03_702A.img (Triage, Oct 2026)' }
+  @{ Sha = '743cc997baf10e3a072cd5dc6d724b1127b59c4d201524eaab3df0ccde6cbd35'; Size = 1610752; Name = 'ValleyRAT loader desk_compositor_x64.dll (Triage, Oct 2026)' }
+  @{ Sha = '7eca6ff78c9a067293de9ac651b8f1292acc5f098e8e97dcafa1bdef9b8a61c2'; Size = 108928; Name = 'ValleyRAT launcher, Chinese HR-notice name (Triage, Oct 2026)' }
+  @{ Sha = '633700324ad7abdf0fcaee0498e4d3bef9093c51ee4d611e02303e0f8f1a58e2'; Size = 1559216; Name = 'ValleyRAT stage 2 exe (Triage, Oct 2026)' }
+  @{ Sha = '25a87693ff2e67858bb5379f7f30092b1eba127307b0bcf24029d04911b6ebbe'; Size = 4444160; Name = 'Lure disk image, Japanese tax-report name (Triage, Sep 2026)' }
+  @{ Sha = 'c09d9caef509f0f6001f1d3e3bb7f71d57aa77b7bfa751e198fe12c317cb77f2'; Size = 450192; Name = 'ValleyRAT launcher, Japanese tax-report name (Triage, Sep 2026)' }
+  @{ Sha = '42f21f4389db441c9b57b765320ba628673bd9856002bb20f0359bfd783d48a9'; Size = 463904; Name = 'Encrypted payload _Top.dat (Triage, Sep 2026)' }
+  @{ Sha = 'c5d9b6e889ac776410b9e70930bc12afa202843d8ec2aa971204c416a3251c76'; Size = 35896; Name = 'Encrypted payload _Bottom.dat (Triage, Sep 2026)' }
+  @{ Sha = '29f67c17b528a877949878a3d0453a34c6f5eee7d872edd33c0996b057b56258'; Size = 726016; Name = 'Encrypted payload _Driver.cnf (Triage, Sep 2026)' }
 )
 # Signed, legitimate files that this malware abuses. Bad only outside their vendor folder.
 $AbusedLegit = @(
@@ -58,12 +72,12 @@ if ($env:WAZIP_TEST_IOCS -and (Test-Path -LiteralPath $env:WAZIP_TEST_IOCS)) {
   }
 }
 $PersistRegex ='rime\.dll|_vmclientcore@16|KafanInput|vcRuntimeMinimum_x86\.exe|\\H\d{8,}\.exe|ZyArk|\\ardrv\.sys|\\AppData\\Roaming\\Microsoft\\Update\\[^\\]+\.exe|active_desktop_(launcher|render)|Add-MpPreference|eneio64\.dat|plcc3a\.dat|-m\s+appclient|\\appclient\\python\\|HealthApp-[0-9a-f]{6}\.bat'
-$LureRegex    = '^(Click here to view.*\.(zip|vhd|vhdx)|Notice.*\.vhdx?|(PDF|DOC)_[A-Z0-9]{3,8}_20\d{12}\.(zip|img|iso|exe|vhd|vhdx)|20\d{6}[.-]MYS20\d{2}Y\d{4}[A-Z0-9]{4,6}\.(zip|img|iso|vhd|vhdx)|(RES-20\d{6}_\d{6}|ORCAMENTO_\d{6}|COMPROVANTE_20\d{6}_\d{6}|ComprovanteSantander-[\d.]+|NEW-20\d{6}_\d{6}-PED_[0-9A-F]+|DOC-\d{8}_[0-9A-F]{8})\.(zip|lnk))$'
+$LureRegex    = '^(Click here to view.*\.(zip|vhd|vhdx)|Notice.*\.vhdx?|(PDF|DOC)_[A-Z0-9]{3,8}_20\d{12}\.(zip|img|iso|exe|vhd|vhdx)|20\d{6}[.-]MYS20\d{2}Y\d{4}[A-Z0-9]{4,6}\.(zip|img|iso|vhd|vhdx)|(RES-20\d{6}_\d{6}|ORCAMENTO_\d{6}|COMPROVANTE_20\d{6}_\d{6}|ComprovanteSantander-[\d.]+|NEW-20\d{6}_\d{6}-PED_[0-9A-F]+|DOC-\d{8}_[0-9A-F]{8})\.(zip|lnk)|20\d{12}-[0-9A-F]{14}\.zip)$'
 # Programs the October 2026 wave tells Windows Defender to skip. No real program needs these excluded.
 $ExclProcRegex = '(?i)^(QtsUpdater|svchost|rundll32|powershell|cmd|wscript|cscript|mshta|regsvr32|explorer)\.exe$'
 # Known attacker servers (C2). A process talking to one of these is the malware.
 # Kaspersky (Apr 2026): ValleyRAT and ABCDoor servers from the Silver Fox tax campaign.
-$C2Ips = @('134.122.155.135', '108.187.37.85', '108.187.42.63', '207.56.138.28', '45.118.133.203', '154.82.81.205', '154.82.81.192', '108.187.41.221',
+$C2Ips = @('134.122.155.135', '14.128.53.155', '45.202.1.249', '108.187.37.85', '108.187.42.63', '207.56.138.28', '45.118.133.203', '154.82.81.205', '154.82.81.192', '108.187.41.221',
             '103.20.195.147', '45.207.231.94', '45.207.231.107', '160.124.9.103', '109.176.30.141',
             '165.154.254.44', '23.227.203.148', '77.111.101.169', '23.227.203.179', '140.99.164.81', '92.246.130.15')  # SORVEPOTEL (Trend Micro)  # last four: CloudSEK, Dec 2025
 $C2Domains = '(?i)(^|\.)(fetish-friends\.com|3mkorealtd\.com|sudsmama\.com|woopami\.com|ilptour\.com|petitechanson\.com|doublemobile\.com|mcagov\.cc|roldco\.com|kcii2\.com|haijing88\.com|ggwk\.cc|yuxuanow\.top|itdd\.club|xzghjec\.com|gov-a\.(work|fit|club)|gvo-b\.club|gov-c\.club|govk\.club|swjc2025bjkb\.cn|2025swmm\.cn|zapgrande\.com|sorvetenopo(a)?te\.com|sorvetenoopote\.com|sorvetenopotel\.com|etenopote\.com|expa(h)?nsiveuser\.com|expansivebot\.com|imobiliariaricardoparanhos\.com|casadecampoamazonas\.com|bravexolutions\.com|adoblesecuryt\.com|saogeraldoshoping\.com)$'
@@ -354,7 +368,7 @@ function Scan-Files {
     $roots += 'Downloads', 'Desktop', 'Documents', 'AppData\Roaming', 'AppData\Local\Temp', 'AppData\Local\Packages' |
       ForEach-Object { Join-Path $u.FullName $_ }
   }
-  $exts = '\.(zip|vhd|vhdx|img|iso|dll|exe|dat|sys|tar|vbs|vbe|js|wsf|lnk)$'
+  $exts = '\.(zip|vhd|vhdx|img|iso|dll|exe|dat|cnf|sys|tar|vbs|vbe|js|wsf|lnk)$'
   $wsh = New-Object -ComObject WScript.Shell
   foreach ($r in $roots | Where-Object { Test-Path -LiteralPath $_ }) {
     Get-ChildItem -LiteralPath $r -Recurse -File -Force -ErrorAction SilentlyContinue |
@@ -375,8 +389,8 @@ function Scan-Files {
           return
         }
         if ($f.Name -match $LureRegex) { Add-Finding 'File' 'HIGH' $f.FullName 'WhatsApp lure file name.'; return }
-        if ($f.FullName -match $StageRegex -or $f.Name -ieq 'active_desktop_render_x64.dll') {
-          Add-Finding 'File' 'HIGH' $f.FullName 'SilverFox loader staged in a fake Microsoft\Update folder (KuGou variant).'; return }
+        if ($f.FullName -match $StageRegex -or $f.Name -ieq 'active_desktop_render_x64.dll' -or $f.Name -ieq 'desk_compositor_x64.dll') {
+          Add-Finding 'File' 'HIGH' $f.FullName 'SilverFox loader DLL (fake Microsoft\Update folder or KuGou/desk_compositor variant).'; return }
         if ($f.Name -match '(?i)\.vhdx?$' -and $f.Name -ine 'ext4.vhdx' -and
             $f.FullName -match '(?i)^[a-z]:\\Users\\' -and
             $f.FullName -notmatch '(?i)\\AppData\\Local\\(Docker\\|Packages\\(?!5319275A\.WhatsAppDesktop))') {

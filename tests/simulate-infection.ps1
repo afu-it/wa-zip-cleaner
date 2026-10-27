@@ -124,6 +124,8 @@ New-Item -ItemType Directory -Force -Path $selTmp | Out-Null
 Set-Content -Path "$selTmp\chromedriver.exe" -Value 'dummy'
 Set-Content -Path "$selTmp\WebDriver.dll" -Value 'dummy'
 Set-Content -Path "$dl\ORCAMENTO_114418.zip" -Value 'dummy'
+Set-Content -Path "$dl\20260921125639-A901C2F58FFEBD.zip" -Value 'dummy'
+Set-Content -Path "$dl\desk_compositor_x64.dll" -Value 'dummy'
 
 # Mounted lure VHD
 $vhd = "$dl\Click here to view10.6.vhd"

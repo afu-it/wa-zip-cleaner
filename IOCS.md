@@ -72,6 +72,29 @@ SORVEPOTEL stage 2 (code shared on X, Portuguese comments): PowerShell copies `C
 
 Trend Micro (3 Oct 2025, Water Saci / SORVEPOTEL, Brazil): lure names `RES-20250930_112057.zip`, `ORCAMENTO_114418.zip`, `COMPROVANTE_20251001_094031.zip`, `ComprovanteSantander-*.zip`, `NEW-20251001_133944-PED_1273E322.zip`, `DOC-98083986_4B17B4B2.lnk`; persistence `HealthApp-<6 hex>.bat` in the user Startup folder; payload injected into `powershell_ise.exe`; Selenium + chromedriver dropped in `%TEMP%`; Maverick banking trojan only runs on Brazilian-locale PCs, the WhatsApp spreader also accepts en-GB/UK. C2: zapgrande.com, sorvetenopote.com (and typos), expansiveuser.com, expansivebot.com, imobiliariaricardoparanhos.com, casadecampoamazonas.com, bravexolutions.com (23.227.203.179), adoblesecuryt.com (140.99.164.81), saogeraldoshoping.com (92.246.130.15); IPs 109.176.30.141, 165.154.254.44, 23.227.203.148, 77.111.101.169. LNK SHA-256: 2150f38c436eabebd3a93b3ace1064315153c882ce763991b6d0fb798766e0db, bd62148637152396b757c8b106d5a62982bce9df12f0a6030dda9138e44e7328, 441a2ad553d166df3cd0ea02482f4b8370e8f9618753e1937a251a6318cb8eba; BAT: c50b6ff360e5614d91f80a5e2d616a9d0d1a9984751bf251f065426a63dac0b5. Full list: https://www.trendmicro.com/en_gb/research/25/j/self-propagating-malware-spreads-via-whatsapp.html Figures in the TrendAI copy add: the startup check looks for any Startup `.bat` containing `for %%` and ` in (` before writing `HealthApp-<6 hex>.bat`, whose content pulls `<C2>/api/itbi/startup/<GUID>`; the WhatsApp module checks Chromium profiles for WhatsApp data (`CheckChromiumWhatsAppData`) and carries an embedded `wppconnect-wa.js` and Selenium manager; the decoded lure text says "Viewing allowed only on computers. If you use Chrome, you may be asked to 'Keep' the file because it is zipped".
 
+## Recent ValleyRAT samples (Recorded Future Triage, Sep-Oct 2026)
+
+Pulled with a Triage researcher account (`family:valleyrat`, then pivot on C2 IP). These are other countries' lures from the same toolset; the hashes and C2s carry over.
+
+| SHA-256 | Size | What |
+|---|---|---|
+| `38e37bdef23d31ca49c2b72effd4d46ab617b86a5227343a3e407cfb7af92971` | 6787333 | `20260921125639-A901C2F58FFEBD.zip` |
+| `9524d7051fde6bfcfb8a90c305994e66df20686bd06cdfa9173149db9eb05467` | 6966908 | `20260928011445-82407B6DADBFA0.zip` |
+| `88e32dfea6c94b16a89e9c3b66a01f5bc1c99b4abddb48060cbe5c06b77907d3` | 2619192 | `L3914012809.exe` |
+| `ff5c63c88e165d842ca962c442dc6199e56f544b00d24c0580783771814f456e` | 8263680 | `pdfcorE8.dll` |
+| `4dfce433a8cea1829fc8fc9d7284cb5fdb332695413923a7fa1b702fd637bcb3` | 12928233 | `PDF_資金移動完了証明書.ZIP` (Japanese) |
+| `7aad062881f577d7bb560bb7288800a29e041b11b3aef3c0103d08659e894c5e` | 3950592 | `DX03_702A.img` |
+| `743cc997baf10e3a072cd5dc6d724b1127b59c4d201524eaab3df0ccde6cbd35` | 1610752 | `desk_compositor_x64.dll` |
+| `7eca6ff78c9a067293de9ac651b8f1292acc5f098e8e97dcafa1bdef9b8a61c2` | 108928 | `人事變動與薪資調整.exe` |
+| `633700324ad7abdf0fcaee0498e4d3bef9093c51ee4d611e02303e0f8f1a58e2` | 1559216 | `2920AF89E37017CC869EA4F83FEE12EC.exe` |
+| `25a87693ff2e67858bb5379f7f30092b1eba127307b0bcf24029d04911b6ebbe` | 4444160 | `税務報告書.img` |
+| `c09d9caef509f0f6001f1d3e3bb7f71d57aa77b7bfa751e198fe12c317cb77f2` | 450192 | `税務報告書.exe` |
+| `42f21f4389db441c9b57b765320ba628673bd9856002bb20f0359bfd783d48a9` | 463904 | `_Top.dat` |
+| `c5d9b6e889ac776410b9e70930bc12afa202843d8ec2aa971204c416a3251c76` | 35896 | `_Bottom.dat` |
+| `29f67c17b528a877949878a3d0453a34c6f5eee7d872edd33c0996b057b56258` | 726016 | `_Driver.cnf` |
+
+C2: `14.128.53.155` (ports 21131, 21132, 443, 449; extracted ValleyRAT config), `45.202.1.249` (contacted by both timestamp ZIPs and `L3914012809.exe`). The October Malaysian `Click here to view*.zip` (`550d08c8…`) is also in Triage as `sample-malware.zip`, same hash already listed above.
+
 ## References
 
 - CloudSEK, Silver Fox targeting India using tax-themed phishing lures (2025-12-24): https://www.cloudsek.com/blog/silver-fox-targeting-india-using-tax-themed-phishing-lures
