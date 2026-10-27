@@ -91,6 +91,22 @@ Lepas tu, untuk PC:
 
 Kalau anda tak pernah buka fail tu kat PC, dan tool ni keluar **BERSIH**, tak payah buat semua ni.
 
+## Dah bersihkan PC (atau install semula Windows), tapi WhatsApp masih hantar fail sendiri?
+
+Ni bukan sebab PC masih kena. Masa malware tu dalam PC, hacker dah curi "kunci login" (session) WhatsApp Web, Gmail dan akaun lain dari browser. Kunci tu sekarang ada kat tangan hacker, bukan kat PC anda. Sebab tu format PC, install semula Windows, atau delete cookies kat PC sendiri tak menolong. Hacker masih boleh guna kunci yang dia dah salin. Kena tutup dari pihak akaun tu sendiri.
+
+Buat ikut turutan ni, guna **phone**:
+
+1. **Log out semua Linked devices.** WhatsApp > titik tiga (Android) atau Settings (iPhone) > **Linked devices**. Tekan setiap satu device > **Log out**. Buat untuk semua, termasuk yang anda kenal.
+2. **On Two-step verification.** WhatsApp > Settings > Account > **Two-step verification** > Turn on. Set PIN 6 digit yang hacker tak boleh teka. Ni halang hacker daftar nombor anda kat phone dia.
+3. **Tutup Gmail dari pihak Google.** Kalau password disimpan dalam Google (Google Password Manager), hacker mungkin dah dapat semua sekali. Buka [myaccount.google.com](https://myaccount.google.com) > **Security** > **Your devices** > log out semua device yang anda tak guna. Lepas tu tukar password Google, dan on **2-Step Verification**.
+4. **Tukar password yang disimpan dalam Google atau Chrome**, mula dengan bank dan email. Dalam setiap akaun, cari pilihan **Log out all sessions** atau **Sign out everywhere**.
+5. **Jangan link WhatsApp Web balik** kat mana-mana PC sebelum PC tu keluar **BERSIH** dengan tool ni.
+
+Kalau satu nombor WhatsApp dipakai kat banyak PC (biasa kat kedai atau office), setiap PC tu kena scan juga. Satu PC yang kena dah cukup untuk hacker curi session.
+
+**Kalau dah buat semua ni tapi WhatsApp masih hantar fail jahat:** cara terakhir ialah delete akaun WhatsApp dan daftar balik guna nombor yang sama. Semua session lama akan hilang terus. Kosnya, chat, group dan setting anda hilang, jadi backup dulu chat dan contact yang penting, dan bagitau customer atau kawan yang anda daftar semula. Caranya: WhatsApp > Settings > Account > **Delete account**, lepas tu install semula WhatsApp dan daftar dengan nombor yang sama.
+
 ---
 
 Bawah ni info tambahan. Klik tajuk untuk buka.
@@ -250,7 +266,7 @@ The October 2026 wave tells Windows Defender to ignore `svchost.exe` and `QtsUpd
 
 Or download the repo, extract it, and double-click `MULA-SINI.bat`.
 
-If anything is found: from your phone, log out of WhatsApp Linked devices, change every password saved in or typed into Chrome/Edge on that PC, sign out other sessions and turn on 2FA. If the tool warns about ManageEngine or an antivirus-killing driver, back up your documents and reinstall Windows. Another victim of this campaign found a data stealer (`888.exe`) that this tool does not detect yet. Full analysis: [docs/REPORT.md](docs/REPORT.md).
+If anything is found: from your phone, log out of WhatsApp Linked devices, change every password saved in or typed into Chrome/Edge on that PC, sign out other sessions and turn on 2FA. If the tool warns about ManageEngine or an antivirus-killing driver, back up your documents and reinstall Windows. If WhatsApp keeps sending the lure after the PC is clean or reinstalled, the attacker is reusing stolen sessions, not the PC: log out every Linked device, turn on WhatsApp Two-step verification, sign out of other Google sessions and change passwords; as a last resort delete the WhatsApp account and register the same number again. Another victim of this campaign found a data stealer (`888.exe`) that this tool does not detect yet. Full analysis: [docs/REPORT.md](docs/REPORT.md).
 
 </details>
 
