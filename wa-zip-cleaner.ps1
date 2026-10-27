@@ -314,7 +314,7 @@ function Scan-Persistence {
       if ($_.Extension -match '\.(bat|cmd|vbs|js|ps1|lnk)$') { $body = [IO.File]::ReadAllText($_.FullName) -replace "`0", '' }
       if ("$($_.Name) $body" -match $PersistRegex) { Add-Finding 'File' 'HIGH' $_.FullName 'Startup folder entry pointing at malware.' }
       # SORVEPOTEL's startup .bat builds a hidden PowerShell command out of for-loops plus base64.
-      elseif ($body -match '(?i)for\s+%\w+\s+in' -and $body -match '[A-Za-z0-9+/]{40,}') { Add-Finding 'File' 'HIGH' $_.FullName 'Startup script that hides a PowerShell command (SORVEPOTEL WhatsApp worm).' }
+      elseif ($body -match '(?i)for\s+%{1,2}\w+\s+in' -and $body -match '[A-Za-z0-9+/]{40,}') { Add-Finding 'File' 'HIGH' $_.FullName 'Startup script that hides a PowerShell command (SORVEPOTEL WhatsApp worm).' }
     }
   }
 }
@@ -369,7 +369,7 @@ function Scan-Files {
         if ($f.Extension -ieq '.lnk') {
           $l = try { $wsh.CreateShortcut($f.FullName) } catch { $null }
           if ($l -and $l.TargetPath -match '(?i)\\(cmd|powershell|pwsh|mshta|wscript|cscript)\.exe$' -and
-              $l.Arguments -match '(?i)(-e(nc|ncodedcommand)?\s+[A-Za-z0-9+/=]{20,}|for\s+%\w+\s+in|DownloadString|\bIEX\b|https?://)') {
+              $l.Arguments -match '(?i)(-e(nc|ncodedcommand)?\s+[A-Za-z0-9+/=]{20,}|for\s+%{1,2}\w+\s+in|DownloadString|\bIEX\b|https?://)') {
             Add-Finding 'File' 'HIGH' $f.FullName "Shortcut disguised as a document runs hidden commands (SORVEPOTEL WhatsApp worm): $(Split-Path $l.TargetPath -Leaf) $($l.Arguments.Substring(0, [Math]::Min(80, $l.Arguments.Length)))"
           } elseif ($f.Name -match $LureRegex) { Add-Finding 'File' 'HIGH' $f.FullName 'WhatsApp lure file name.' }
           return
