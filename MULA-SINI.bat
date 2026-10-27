@@ -26,6 +26,16 @@ if "%SCANRESULT%"=="0" (
   exit /b
 )
 
+if "%SCANRESULT%"=="3" (
+  echo ============================================================
+  echo   Cuma ada AMARAN di atas. Tiada apa yang perlu dibuang automatik.
+  echo   Baca amaran tu dan ikut nasihat dia.
+  echo ============================================================
+  echo.
+  pause
+  exit /b
+)
+
 echo ============================================================
 echo   BAHAYA DIJUMPAI di atas.
 echo ============================================================

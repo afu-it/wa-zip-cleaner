@@ -9,10 +9,11 @@ $env:WAZIP_NO_PROMPT = '1'
 function Check($ok, $msg) {
   if ($ok) { Write-Host "PASS $msg" -ForegroundColor Green } else { Write-Host "FAIL $msg" -ForegroundColor Red; $script:fail++ }
 }
-function Scan($report, [switch]$Fix, [switch]$RemoveME) {
+function Scan($report, [switch]$Fix, [switch]$RemoveME, [string]$Owner) {
   $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $tool, '-QuarantineRoot', $q, '-ReportPath', $report)
   if ($Fix) { $a += '-Fix' }
   if ($RemoveME) { $a += '-RemoveManageEngine' }
+  if ($Owner) { $a += '-Owner', $Owner }
   & powershell @a | Out-Host
   $code = $LASTEXITCODE
   $items = @()
@@ -155,7 +156,12 @@ New-Item -Path $meUn -Force | Out-Null
 New-ItemProperty -Path $meUn -Name DisplayName -Value 'ManageEngine UEMS - Agent' -Force | Out-Null
 $r = Scan "$env:TEMP\x4.json" -Fix
 Check (Test-Path $meDir) 'ManageEngine kept when the user did not confirm'
-$r = Scan "$env:TEMP\x5.json" -RemoveME
+$r = Scan "$env:TEMP\x4b.json" -Fix -Owner Office
+Check (Test-Path $meDir) 'ManageEngine kept on an office PC'
+Check (Has $r 'Info' 'WARN' 'ManageEngine' 'IT') 'office PC gets the ask-your-IT warning'
+Check ($r.Code -eq 3) "warnings-only scan exits 3 (got $($r.Code))"
+$r = Scan "$env:TEMP\x5.json" -Fix -Owner Personal
+Check (Has $r 'Info' 'HIGH' 'ManageEngine') 'ManageEngine is HIGH on a personal PC'
 Check (-not (Test-Path $meDir)) 'ManageEngine folder quarantined'
 & sc.exe query MEUemsAgentTest | Out-Null; Check ($LASTEXITCODE -ne 0) 'ManageEngine service deleted'
 Check (-not (Get-ScheduledTask -TaskName 'ManageEngine UEMS Test' -ErrorAction SilentlyContinue)) 'ManageEngine task removed'

@@ -5,6 +5,7 @@ $root = Split-Path -Parent $PSScriptRoot
 $tool = Join-Path $root 'wa-zip-cleaner.ps1'
 $q = 'C:\WAZipQuarantineTest'
 $fail = 0
+$env:WAZIP_NO_PROMPT = '1'
 function Check($ok, $msg) {
   if ($ok) { Write-Host "PASS $msg" -ForegroundColor Green } else { Write-Host "FAIL $msg" -ForegroundColor Red; $script:fail++ }
 }

@@ -8,6 +8,7 @@
   Default mode only SCANS and changes nothing.
   -Fix      : quarantine what was found (files moved, registry exported first).
   -Restore  : undo a previous -Fix using its manifest.
+  -Owner    : Office or Personal. Asked at the start when not given; decides what to do with ManageEngine.
 
   Mod asal hanya MENGIMBAS, tiada apa diubah.
   -Fix      : kuarantin apa yang dijumpai (fail dialih, registry disalin dulu).
@@ -22,6 +23,7 @@
 param(
   [switch]$Fix,
   [switch]$RemoveManageEngine,
+  [ValidateSet('Office', 'Personal')][string]$Owner = '',
   [switch]$Restore,
   [string]$Manifest,
   [string]$QuarantineRoot = "$env:SystemDrive\WAZipQuarantine",
@@ -312,8 +314,12 @@ function Scan-ManageEngine {
     if (Test-Path -LiteralPath $p) { $hits += $p }
   }
   if ($hits.Count) {
-    Add-Finding 'Info' 'WARN' 'ManageEngine UEMS Agent' ('Remote-management agent found. If your company did NOT install it, the WhatsApp VBS campaign gave attackers remote control. ' +
-      'Remove via Settings > Apps > ManageEngine and change all passwords.')
+    $d = switch ($Owner) {
+      'Office'   { 'Remote-management agent found. Company IT often installs it; ask your IT team to confirm. This tool leaves it alone on an office PC.' }
+      'Personal' { 'Remote-management agent on a personal PC: the WhatsApp VBS campaign uses it to control PCs remotely. This tool will force-remove it.' }
+      default    { 'Remote-management agent found. If your company did NOT install it, the WhatsApp VBS campaign gave attackers remote control. Its normal uninstaller asks for the attacker''s PIN.' }
+    }
+    Add-Finding 'Info' 'WARN' 'ManageEngine UEMS Agent' $d
   }
 }
 
@@ -445,9 +451,47 @@ if ($Restore) {
 
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 New-Item -ItemType Directory -Force -Path $QuarantineRoot | Out-Null
+
+# Office or personal PC decides what to do with ManageEngine. Every scan asks; a -Fix run within
+# two hours of the scan (the "type Y" step) reuses that answer instead of asking again.
+$ownerFile = Join-Path $QuarantineRoot 'owner.txt'
+if (-not $Owner -and $Fix -and (Test-Path -LiteralPath $ownerFile) -and
+    (Get-Item -LiteralPath $ownerFile).LastWriteTime -gt (Get-Date).AddHours(-2)) {
+  $saved = (Get-Content -Raw -LiteralPath $ownerFile).Trim()
+  if ($saved -in 'Office', 'Personal') { $Owner = $saved }
+}
+if (-not $Owner -and -not $env:WAZIP_NO_PROMPT) {
+  Write-Host ''
+  Say 'Soalan dulu: PC/laptop ni milik office (IT syarikat yang urus) atau milik sendiri?' 'First: is this PC/laptop managed by your office IT, or your own?' White
+  Say '  Taip 1 = office, 2 = sendiri, lepas tu Enter. Tak pasti? Tekan Enter je.' '  Type 1 = office, 2 = personal, then Enter. Not sure? Just press Enter.' White
+  $ans = [string](Read-Host)
+  $Owner = switch ($ans.Trim()) { '1' { 'Office' } '2' { 'Personal' } default { '' } }
+  if ($Owner) { Set-Content -LiteralPath $ownerFile -Value $Owner }
+}
+if ($Owner -eq 'Office')   { Say 'OK, PC office.' 'OK, office PC.' Gray }
+if ($Owner -eq 'Personal') { Say 'OK, PC sendiri.' 'OK, personal PC.' Gray }
+
 Start-Transcript -Path (Join-Path $QuarantineRoot "scan-$stamp.log") | Out-Null
 
 Scan-Processes; Scan-Vhd; Scan-Registry; Scan-Services; Scan-Persistence; Scan-Files; Scan-ManageEngine
+
+# ManageEngine: a personal PC should never have it, an office PC often does.
+$me = $Findings | Where-Object { $_.Kind -eq 'Info' -and $_.Target -match 'ManageEngine' }
+$meRemove = $false
+if ($me) {
+  $meRemove = [bool]$RemoveManageEngine -or $Owner -eq 'Personal'
+  if (-not $meRemove -and $Fix -and -not $Owner -and -not $env:WAZIP_NO_PROMPT) {
+    Write-Host ''
+    Say 'ManageEngine dijumpai. Kalau office/syarikat anda yang pasang, JANGAN buang. Kalau anda tak pernah pasang, taip BUANG dan Enter:' `
+        'ManageEngine found. If your company installed it, do NOT remove it. If you never installed it, type BUANG and press Enter:' Yellow
+    $meRemove = (Read-Host) -ceq 'BUANG'
+  }
+  if ($meRemove) {
+    $me.Severity = 'HIGH'
+    Add-ManageEngineRemoval
+    if ($RemoveManageEngine) { $Fix = $true }
+  }
+}
 
 if ($ReportPath) {
   @($Findings | Select-Object Kind, Severity, Target, Detail) | ConvertTo-Json -Depth 3 | Out-File -Encoding UTF8 $ReportPath
@@ -468,21 +512,6 @@ foreach ($f in $Findings) {
 Write-Host ''
 Say "Jumpa: $($high.Count) bahaya, $($warn.Count) amaran." "Found: $($high.Count) high, $($warn.Count) warnings." White
 
-$me = $Findings | Where-Object { $_.Kind -eq 'Info' -and $_.Target -match 'ManageEngine' }
-if ($me -and ($Fix -or $RemoveManageEngine)) {
-  $go = [bool]$RemoveManageEngine
-  if (-not $go -and -not $env:WAZIP_NO_PROMPT) {
-    Write-Host ''
-    Say 'ManageEngine dijumpai. Kalau office/syarikat anda yang pasang, JANGAN buang. Kalau anda tak pernah pasang, taip BUANG dan Enter:' `
-        'ManageEngine found. If your company installed it, do NOT remove it. If you never installed it, type BUANG and press Enter:' Yellow
-    $go = (Read-Host) -ceq 'BUANG'
-  }
-  if ($go) {
-    Add-ManageEngineRemoval
-    $high = @($Findings | Where-Object Severity -eq 'HIGH')
-    $Fix = $true
-  }
-}
 if ($Fix -and $high.Count) {
   $qdir = Join-Path $QuarantineRoot $stamp
   $mf = Invoke-Fix $qdir
@@ -490,7 +519,9 @@ if ($Fix -and $high.Count) {
   Say "Kuarantin siap. Salinan & manifest: $mf" "Quarantine done. Backups & manifest: $mf" Green
   Say 'Seterusnya: RESTART PC, kemudian imbas sekali lagi.' 'Next: RESTART the PC, then scan again.' Cyan
 } elseif ($high.Count) {
-  Say 'Untuk bersihkan, jalankan semula dengan -Fix (atau 2-CLEAN-BERSIH.bat).' 'To clean, run again with -Fix (or 2-CLEAN-BERSIH.bat).' Cyan
+  Say 'Untuk buang semua yang [HIGH] di atas, taip Y bila ditanya kat bawah (atau jalankan semula dengan -Fix / 2-CLEAN-BERSIH.bat).' 'To remove everything marked [HIGH], type Y when asked below (or run again with -Fix / 2-CLEAN-BERSIH.bat).' Cyan
+} else {
+  Say 'Cuma ada amaran, tiada apa yang tool ni akan buang. Baca amaran di atas.' 'Warnings only; nothing for this tool to remove. Read the warnings above.' Cyan
 }
 if ($high.Count) {
   Write-Host ''
@@ -505,9 +536,18 @@ if ($high.Count) {
         'An antivirus-killer driver was found. Safest option: back up data and reinstall Windows.' Yellow
   }
 }
-if ($Findings | Where-Object { $_.Kind -eq 'Info' -and $_.Target -match 'ManageEngine' }) {
-  Say 'ManageEngine dijumpai. Kalau office anda tak pasang, buang begini: (1) pasang Revo Uninstaller Free, buang ManageEngine guna Revo (uninstall biasa minta PIN hacker); (2) buka services.msc, set semua servis ManageEngine ke Disabled; (3) buka Task Scheduler, padam task ManageEngine; (4) restart dan imbas semula. Paling selamat: backup data & pasang semula Windows.' `
-      'ManageEngine found. If your company did not install it: (1) install Revo Uninstaller Free and remove ManageEngine with it (normal uninstall asks for the attacker''s PIN); (2) open services.msc and set every ManageEngine service to Disabled; (3) open Task Scheduler and delete ManageEngine tasks; (4) restart and scan again. Safest: back up data and reinstall Windows.' Yellow
+if ($me -and $meRemove -and $Fix) {
+  Say 'ManageEngine dah dibuang. Program ni bagi hacker control penuh PC ni, jadi paling selamat: backup data & pasang semula Windows, dan tukar semua password guna phone.' `
+      'ManageEngine removed. It gave the attacker full control of this PC, so the safest option is to back up data and reinstall Windows, and change every password from your phone.' Yellow
+} elseif ($me -and $meRemove) {
+  Say 'PC sendiri tak patut ada ManageEngine. Taip Y bila ditanya untuk buang dia.' 'A personal PC should not have ManageEngine. Type Y when asked to remove it.' Yellow
+} elseif ($me -and $Owner -eq 'Office') {
+  Say 'PC office: ManageEngine biasanya IT syarikat yang pasang. Tunjuk skrin ni kat IT office dan tanya betul ke dia yang pasang. Kalau IT kata bukan, jalankan tool ni semula dan jawab 2 (sendiri).' `
+      'Office PC: company IT usually installs ManageEngine. Show this screen to your IT team and ask if they installed it. If they did not, run this tool again and answer 2 (personal).' Yellow
+} elseif ($me) {
+  Say 'ManageEngine dijumpai. Kalau PC sendiri, jalankan tool ni semula dan jawab 2 (sendiri), tool akan buang dia. Atau buang sendiri: (1) pasang Revo Uninstaller Free, buang ManageEngine guna Revo (uninstall biasa minta PIN hacker); (2) buka services.msc, set semua servis ManageEngine ke Disabled; (3) buka Task Scheduler, padam task ManageEngine; (4) restart dan imbas semula. Paling selamat: backup data & pasang semula Windows.' `
+      'ManageEngine found. If this is your own PC, run this tool again and answer 2 (personal); it will remove it. Or remove it yourself: (1) install Revo Uninstaller Free and remove ManageEngine with it (normal uninstall asks for the attacker''s PIN); (2) open services.msc and set every ManageEngine service to Disabled; (3) open Task Scheduler and delete ManageEngine tasks; (4) restart and scan again. Safest: back up data and reinstall Windows.' Yellow
 }
 Stop-Transcript | Out-Null
-exit 1
+if ($high.Count) { exit 1 }
+exit 3
