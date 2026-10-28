@@ -301,6 +301,50 @@ Check (-not (Test-Path 'C:\Windows\Temp\EmbeddedDriverService.sys')) 'Temp drive
 Check (-not (Test-Path $p32)) 'Ping32 folder quarantined'
 Set-NetFirewallProfile -Profile Domain -DefaultOutboundAction $fwOld
 
+Write-Host '=== WhatsApp download tag, Defender history, ran-programs records ===' -ForegroundColor Cyan
+# Files saved from WhatsApp Web carry a Zone.Identifier tag naming web.whatsapp.com.
+$zone = "[ZoneTransfer]`r`nZoneId=3`r`nReferrerUrl=https://web.whatsapp.com/`r`nHostUrl=blob:https://web.whatsapp.com/1f2e3d4c-aaaa-bbbb-cccc-0123456789ab"
+$waImg = "$dl\Dokumen penting.img"; $waZip = "$dl\Gambar raya.zip"
+Set-Content $waImg 'dummy'; Set-Content $waZip 'dummy'
+Set-Content -LiteralPath $waImg -Stream Zone.Identifier -Value $zone
+Set-Content -LiteralPath $waZip -Stream Zone.Identifier -Value $zone
+# Windows 11's program-launch list and Prefetch, as stand-ins (Windows Server keeps neither by default).
+$pcaTest = "$env:TEMP\wazip-pca.txt"
+$now = (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd HH:mm:ss.fff')
+Set-Content $pcaTest "C:\ProgramData\MicroPoint\WinCombo.exe|$now`r`nC:\Program Files\Notepad++\notepad++.exe|$now" -Encoding Unicode
+$pfTest = "$env:TEMP\wazip-prefetch"
+New-Item -ItemType Directory -Force -Path $pfTest | Out-Null
+Set-Content "$pfTest\TAXFILING.EXE-1A2B3C4D.pf" 'x'; Set-Content "$pfTest\NOTEPAD.EXE-11223344.pf" 'x'
+$env:WAZIP_TEST_PCA = $pcaTest; $env:WAZIP_TEST_PREFETCH = $pfTest
+# A new exclusion after the last clean-up shows up in Defender's history (event 5007).
+$histStart = Get-Date
+$histOk = $false
+try { Add-MpPreference -ExclusionPath 'C:\Users\Public\WazHistTest' -ErrorAction Stop; $histOk = $true } catch { }
+Start-Sleep 3
+
+$r8 = Scan "$env:TEMP\x8.json"
+Check (Has $r8 'File' 'HIGH' 'Dokumen penting\.img$' 'WhatsApp Web') 'disk image downloaded from WhatsApp Web is HIGH'
+Check (Has $r8 'File' 'WARN' 'Gambar raya\.zip$' 'WhatsApp Web') 'zip downloaded from WhatsApp Web is WARN'
+Check (Has $r8 'Info' 'WARN' 'Malware program ran: C:\\ProgramData\\MicroPoint\\WinCombo\.exe$') 'program-launch list entry for WinCombo.exe is WARN'
+Check (-not (Has $r8 'Info' 'WARN' 'notepad')) 'ordinary programs in the launch list are ignored'
+Check (Has $r8 'Info' 'WARN' 'Malware program ran: TAXFILING\.EXE$' 'Prefetch') 'Prefetch entry for TaxFiling.exe is WARN'
+$has5007 = $histOk -and [bool](Get-WinEvent -FilterHashtable @{ LogName = 'Microsoft-Windows-Windows Defender/Operational'; Id = 5007; StartTime = $histStart } -MaxEvents 1 -ErrorAction SilentlyContinue)
+if ($has5007) { Check (Has $r8 'Info' 'WARN' 'Defender exclusion added: C:\\Users\\Public\\WazHistTest') 'exclusion added after the last clean-up is listed from Defender history' }
+else { Write-Host 'SKIP Defender history: no 5007 event on this runner' -ForegroundColor Yellow }
+$scanLog = Get-ChildItem $q -Filter 'scan-*.log' | Sort-Object LastWriteTime | Select-Object -Last 1
+Check ($scanLog -and (Select-String -LiteralPath $scanLog.FullName -SimpleMatch 'Maksud: Fail ni dimuat turun dari WhatsApp Web' -Quiet)) 'WhatsApp download warning explained in plain Malay'
+Check ($scanLog -and (Select-String -LiteralPath $scanLog.FullName -SimpleMatch 'Maksud: Rekod Windows tunjuk program malware' -Quiet)) 'ran-program warning explained in plain Malay'
+
+$r9 = Scan "$env:TEMP\x9.json" -Fix
+Check (-not (Test-Path -LiteralPath $waImg)) 'WhatsApp disk image quarantined'
+Check (Test-Path -LiteralPath $waZip) 'WhatsApp zip (WARN only) left in place'
+$r10 = Scan "$env:TEMP\x10.json"
+Check (-not (Has $r10 'Info' 'WARN' 'Malware program ran')) 'history before the last clean-up is not reported again'
+Remove-Item -LiteralPath $waZip, $pcaTest -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $pfTest -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item Env:\WAZIP_TEST_PCA, Env:\WAZIP_TEST_PREFETCH
+if ($histOk) { Remove-MpPreference -ExclusionPath 'C:\Users\Public\WazHistTest' -ErrorAction SilentlyContinue }
+
 Write-Host '=== .bat launchers ===' -ForegroundColor Cyan
 # Clear WARN-only leftovers so a clean result reads BERSIH.
 & sc.exe delete MEUemsTest | Out-Null; & sc.exe delete OpswatLegitTest | Out-Null

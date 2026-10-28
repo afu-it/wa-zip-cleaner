@@ -191,6 +191,11 @@ function Add-Finding($Kind, $Severity, $Target, $Detail, $Extra = $null) {
 # Plain-Malay meaning and next step for each warning, shown under the English detail.
 # A warning is something the tool will not remove by itself, so the user has to decide.
 $WarnHelp = @(
+  ,@('downloaded from WhatsApp Web', 'Fail ni dimuat turun dari WhatsApp Web. Malware ZIP WhatsApp sampai dengan cara ni.', 'Kalau anda tak minta fail ni atau tak kenal pengirim: padam dia. Kalau dah buka dan ada program atau VHD di dalam, jalankan tool ni dan taip Y.')
+  ,@('Malware program ran', 'Rekod Windows tunjuk program malware ni pernah jalan di PC ni. Failnya mungkin dah dipadam, tapi PC ni pernah dijangkiti.', 'Jalankan tool ni dan taip Y untuk bersihkan. Tukar kata laluan bank dan emel guna telefon. Kalau tak pasti, backup dokumen dan format PC.')
+  ,@('Defender detected', 'Windows Defender pernah jumpa virus di PC ni dalam 30 hari lepas.', 'Kalau nama virus tu ada ValleyRAT, Winos, Rozena atau Trojan: anggap PC pernah dijangkiti. Jalankan tool ni dan taip Y, kemudian tukar kata laluan guna telefon.')
+  ,@('real-time protection was turned off', 'Perlindungan antivirus pernah dimatikan. Malware buat ni sebelum pasang dirinya.', 'Pastikan dia hidup semula: Windows Security > Virus & threat protection > Manage settings > Real-time protection: On. Lepas tu buat Full scan.')
+  ,@('Defender exclusion added', 'Ada program suruh antivirus abaikan folder atau program ni. Malware buat ni supaya dia tak diperiksa.', 'Kalau bukan anda yang tambah: Windows Security > Virus & threat protection > Manage settings > Exclusions > Remove. Tool ni dah buang yang dia kenal sebagai jahat.')
   ,@('Ping32', 'Program kawalan jauh Ping32. Syarikat kadang pasang untuk pantau PC staf. Kalau PC sendiri, penggodam yang pasang (versi lain kempen VBS WhatsApp) untuk kawal PC anda.', 'Kalau bukan office yang pasang: jalankan tool sekali lagi, pilih "PC sendiri" bila ditanya, kemudian taip Y. Tool akan buang dia.')
   ,@('Firewall blocks', 'Firewall disuruh sekat semua sambungan keluar. Malware buat ni supaya antivirus tak dapat update atau hantar amaran, tapi benarkan dirinya sendiri.', 'Kalau bukan anda atau IT yang tetapkan: Windows Security > Firewall & network protection > Restore firewalls to default > Restore.')
   ,@('VulcanRAT', 'Fail driver sementara dalam folder driver Windows. VulcanRAT guna fail macam ni untuk matikan antivirus.', 'Hantar screenshot kepada orang IT. Kalau ada juga merah [HIGH], taip Y untuk bersihkan, kemudian restart.')
@@ -236,6 +241,14 @@ function Get-UserHives {
   Get-ChildItem Registry::HKEY_USERS -ErrorAction SilentlyContinue |
     Where-Object { $_.PSChildName -match '^S-1-5-21-[\d-]+$' } |
     ForEach-Object { "Registry::HKEY_USERS\$($_.PSChildName)" }
+}
+
+# Windows tags each download with the page it came from (Zone.Identifier). web.whatsapp.com there
+# ties a file to WhatsApp Web even after it was renamed or unpacked.
+function Test-WaOrigin([System.IO.FileInfo]$f) {
+  if ($f.FullName -notmatch '(?i)^[a-z]:\\Users\\[^\\]+\\(Downloads|Desktop|Documents)\\') { return $false }
+  $z = Get-Content -LiteralPath $f.FullName -Stream Zone.Identifier -ErrorAction SilentlyContinue
+  [bool]($z | Where-Object { $_ -match '(?i)^(HostUrl|ReferrerUrl)=(blob:)?https?://web\.whatsapp\.com' })
 }
 
 # Service ImagePath (\??\C:\..., \SystemRoot\..., System32\...) to a plain file path.
@@ -467,6 +480,8 @@ function Scan-Persistence {
     if (Test-Path -LiteralPath $wl) { Add-Finding 'File' 'HIGH' $wl 'Marker left while stealing WhatsApp data (Sekoia, Malaysia).' }
   }
   Scan-DefenderExclusions
+  Scan-DefenderHistory
+  Scan-RanPrograms
   $startups = @("$env:ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp")
   $startups += Get-ChildItem "$env:SystemDrive\Users" -Directory -ErrorAction SilentlyContinue |
     ForEach-Object { Join-Path $_.FullName 'AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup' }
@@ -522,6 +537,59 @@ function Scan-DefenderExclusions {
   }
 }
 
+# Defender's own log keeps what it found, when it was switched off and which exclusions were added,
+# even after the malware removed its exclusions again. Only events since the last clean-up count.
+function Scan-DefenderHistory {
+  $ev = @(try { Get-WinEvent -FilterHashtable @{ LogName = 'Microsoft-Windows-Windows Defender/Operational'; Id = 1116, 1117, 5001, 5007; StartTime = $HistorySince } -MaxEvents 500 -ErrorAction Stop } catch { })
+  $det = [ordered]@{}; $rtp = @()
+  foreach ($e in $ev) {
+    $d = @{}
+    try { foreach ($n in ([xml]$e.ToXml()).Event.EventData.Data) { $d[[string]$n.Name] = [string]$n.'#text' } } catch { continue }
+    $when = $e.TimeCreated.ToString('yyyy-MM-dd')
+    if ($e.Id -in 1116, 1117) {
+      $t = $d['Threat Name']; if (-not $t) { continue }
+      if (-not $det.Contains($t)) { $det[$t] = @{ Count = 0; Last = $when; Path = ($d['Path'] -replace '^\w+:_', '') } }
+      $det[$t].Count++
+    } elseif ($e.Id -eq 5001) { $rtp += $when }
+    elseif ($e.Id -eq 5007 -and -not $d['Old Value'] -and $d['New Value'] -match '(?i)\\Exclusions\\(Paths|Processes|Extensions)\\(.+?) = ') {
+      Add-Finding 'Info' 'WARN' "Defender exclusion added: $($Matches[2])" "Added on $when. If it is no longer in the exclusion list, it was removed since."
+    }
+  }
+  foreach ($t in $det.Keys) {
+    Add-Finding 'Info' 'WARN' "Defender detected: $t" "Windows Defender found this $($det[$t].Count) time(s), last on $($det[$t].Last): $($det[$t].Path)"
+  }
+  if ($rtp) { Add-Finding 'Info' 'WARN' 'Defender real-time protection was turned off' "Last on $($rtp[0]) ($($rtp.Count) time(s) since $($HistorySince.ToString('yyyy-MM-dd')))." }
+}
+
+# Windows remembers which programs ran (Program Compatibility Assistant list on Windows 11, and
+# Prefetch), even when the file is gone. A known malware name there means it ran on this PC.
+function Test-MalwareRun([string]$path) {
+  $leaf = Split-Path $path -Leaf
+  $path -match $PersistRegex -or $path -match $StageRegex -or $leaf -match $ExeLureRegex -or $leaf -match $LureRegex -or
+  $path -match '(?i)\\Common Files\\vulkaninfo' -or
+  $path -match '(?i)\\5319275A\.WhatsAppDesktop_[^\\]+\\LocalState\\Sessions\\[^\\]+\\Transfers\\[^\\]+\.(exe|scr)$'
+}
+function Scan-RanPrograms {
+  $pca = if ($env:WAZIP_TEST_PCA) { $env:WAZIP_TEST_PCA } else { "$env:SystemRoot\appcompat\pca\PcaAppLaunchDic.txt" }
+  foreach ($line in @(Get-Content -LiteralPath $pca -ErrorAction SilentlyContinue)) {
+    $path, $ts = ([string]$line).Trim() -split '\|', 2
+    if (-not $path -or -not (Test-MalwareRun $path)) { continue }
+    $when = [datetime]::MinValue
+    # PCA times are UTC.
+    if (-not [datetime]::TryParse([string]$ts, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AssumeUniversal, [ref]$when)) { $when = Get-Date }
+    if ($when -lt $HistorySince) { continue }
+    Add-Finding 'Info' 'WARN' "Malware program ran: $path" "Windows records show it ran on $($when.ToString('yyyy-MM-dd')) (the file may already be deleted)."
+  }
+  # Prefetch names are PROGRAM.EXE-1A2B3C4D.pf; the file's write time is the last run.
+  $pf = if ($env:WAZIP_TEST_PREFETCH) { $env:WAZIP_TEST_PREFETCH } else { "$env:SystemRoot\Prefetch" }
+  foreach ($f in Get-ChildItem -LiteralPath $pf -Filter *.pf -File -ErrorAction SilentlyContinue | Where-Object { $_.LastWriteTime -ge $HistorySince }) {
+    $exe = $f.Name -replace '-[0-9A-F]{8}\.pf$', ''
+    if ($exe -match '(?i)\.(exe|scr)$' -and (Test-MalwareRun "\$exe")) {
+      Add-Finding 'Info' 'WARN' "Malware program ran: $exe" "Windows Prefetch shows it ran, last on $($f.LastWriteTime.ToString('yyyy-MM-dd')) (the file may already be deleted)."
+    }
+  }
+}
+
 function Scan-Files {
   Say '[5/8] Imbas fail (boleh ambil 2-10 minit)...' '[5/8] Scanning files (can take 2-10 minutes)...' Cyan
   # ProgramData is walked one level down so Docker's Windows container layers (docker\windowsfilter,
@@ -532,7 +600,7 @@ function Scan-Files {
     $roots += 'Downloads', 'Desktop', 'Documents', 'AppData\Roaming', 'AppData\Local\Temp', 'AppData\Local\Packages' |
       ForEach-Object { Join-Path $u.FullName $_ }
   }
-  $exts = '\.(zip|vhd|vhdx|img|iso|dll|exe|dat|cnf|sys|tar|vbs|vbe|js|wsf|lnk|msi|mst|key)$|^DCAgentServerInfo\.json$'
+  $exts = '\.(zip|rar|7z|vhd|vhdx|img|iso|dll|exe|scr|dat|cnf|sys|tar|vbs|vbe|js|wsf|lnk|msi|mst|key)$|^DCAgentServerInfo\.json$'
   $wsh = New-Object -ComObject WScript.Shell
   # WAZIP_TIMING=1 prints how long each folder takes (used to find slow folders on CI and real PCs).
   foreach ($r in $roots | Where-Object { Test-Path -LiteralPath $_ }) {
@@ -553,6 +621,7 @@ function Scan-Files {
               $l.Arguments -match '(?i)(-e(nc|ncodedcommand)?\s+[A-Za-z0-9+/=]{20,}|for\s+%{1,2}\w+\s+in|DownloadString|\bIEX\b|https?://)') {
             Add-Finding 'File' 'HIGH' $f.FullName "Shortcut disguised as a document runs hidden commands (SORVEPOTEL WhatsApp worm): $(Split-Path $l.TargetPath -Leaf) $($l.Arguments.Substring(0, [Math]::Min(80, $l.Arguments.Length)))"
           } elseif ($f.Name -match $LureRegex) { Add-Finding 'File' 'HIGH' $f.FullName 'WhatsApp lure file name.' }
+          elseif (Test-WaOrigin $f) { Add-Finding 'File' 'HIGH' $f.FullName 'Shortcut downloaded from WhatsApp Web. Real documents are never shortcuts.' }
           return
         }
         if ($f.Name -match $LureRegex) { Add-Finding 'File' 'HIGH' $f.FullName 'WhatsApp lure file name.'; return }
@@ -561,6 +630,7 @@ function Scan-Files {
         if ($f.Name -match '(?i)\.vhdx?$' -and $f.Name -ine 'ext4.vhdx' -and
             $f.FullName -match '(?i)^[a-z]:\\Users\\' -and
             $f.FullName -notmatch '(?i)\\AppData\\Local\\(Docker\\|Packages\\(?!5319275A\.WhatsAppDesktop))') {
+          if (Test-WaOrigin $f) { Add-Finding 'File' 'HIGH' $f.FullName 'Virtual disk (VHD) downloaded from WhatsApp Web. The WhatsApp ZIP hides its payload in a VHD.'; return }
           Add-Finding 'File' 'WARN' $f.FullName 'Virtual disk (VHD) in a user folder. The WhatsApp ZIP hides its payload in a VHD; delete it unless you made it.'; return }
         # CloudSEK (Dec 2025): signed Xunlei Thunder.exe dropped next to a fake libexpat.dll.
         if ($f.Name -ieq 'libexpat.dll' -and $f.DirectoryName -notmatch '\\Program Files( \(x86\))?\\' -and
@@ -605,6 +675,10 @@ function Scan-Files {
         if ($f.Name -match '(?i)\.(exe|dll|sys)$' -and
             ($f.Attributes -band [IO.FileAttributes]::Hidden) -and ($f.Attributes -band [IO.FileAttributes]::System)) {
           Add-Finding 'File' 'WARN' $f.FullName 'Hidden+System program in a user folder (common Winos4.0 hiding trick).'; return }
+        if ($f.Extension -match '(?i)^\.(exe|scr|vbs|vbe|js|wsf|msi|img|iso)$' -and (Test-WaOrigin $f)) {
+          Add-Finding 'File' 'HIGH' $f.FullName 'Program, script or disk image downloaded from WhatsApp Web. Real documents are never programs.'; return }
+        if ($f.Extension -match '(?i)^\.(zip|rar|7z)$' -and (Test-WaOrigin $f)) {
+          Add-Finding 'File' 'WARN' $f.FullName 'Archive downloaded from WhatsApp Web. The WhatsApp malware arrives as a zip; delete it unless you expected it.' }
       }
     if ($env:WAZIP_TIMING) { Write-Host "[timing] $r : $tn files checked, $([int]$sw.Elapsed.TotalSeconds)s" }
   }
@@ -928,6 +1002,7 @@ function Invoke-Fix($qdir) {
     try { Move-Item -LiteralPath $f.Target -Destination $dest -Force -ErrorAction Stop; $log.Add(@{ Kind = 'File'; Target = $f.Target; Backup = $dest }) }
     catch { Say "  Fail driver dikunci, akan dibuang selepas restart: $($f.Target)" "  Driver file locked; restart and run -Fix again: $($f.Target)" Yellow }
   }
+  Set-Content -LiteralPath (Join-Path $QuarantineRoot 'last-fix.txt') -Value (Get-Date -Format o)
   $mf = Join-Path $qdir 'manifest.json'
   $log | ConvertTo-Json -Depth 4 | Out-File -Encoding UTF8 $mf
   $mf
@@ -969,6 +1044,13 @@ New-Item -ItemType Directory -Force -Path $QuarantineRoot | Out-Null
 
 # Office or personal PC decides what to do with ManageEngine. Every scan asks; a -Fix run within
 # two hours of the scan (the "type Y" step) reuses that answer instead of asking again.
+# Defender and ran-program history only counts from the last clean-up, at most 30 days back.
+$HistorySince = (Get-Date).AddDays(-30)
+$lastFix = Join-Path $QuarantineRoot 'last-fix.txt'
+if (Test-Path -LiteralPath $lastFix) {
+  $t = [datetime]::MinValue
+  if ([datetime]::TryParse((Get-Content -Raw -LiteralPath $lastFix).Trim(), [ref]$t) -and $t -gt $HistorySince) { $HistorySince = $t }
+}
 $ownerFile = Join-Path $QuarantineRoot 'owner.txt'
 if (-not $Owner -and $Fix -and (Test-Path -LiteralPath $ownerFile) -and
     (Get-Item -LiteralPath $ownerFile).LastWriteTime -gt (Get-Date).AddHours(-2)) {
