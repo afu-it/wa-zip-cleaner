@@ -140,6 +140,12 @@ function Say([string]$ms, [string]$en, [string]$color = 'Gray') {
 
 $Findings = New-Object System.Collections.Generic.List[object]
 $DefExclLeft = @()
+$SvcLeft = @()
+$NeedRestart = $false
+# A deleted service stays listed until the next restart, with DeleteFlag set.
+function Test-ServicePendingDelete($name) {
+  (Get-ItemProperty -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\$name" -ErrorAction SilentlyContinue).DeleteFlag -eq 1
+}
 function Add-Finding($Kind, $Severity, $Target, $Detail, $Extra = $null) {
   $key = "$Kind|$Target"
   if ($Findings | Where-Object { "$($_.Kind)|$($_.Target)" -eq $key }) { return }
@@ -493,7 +499,12 @@ function Scan-ManageEngine {
   Say '[7/8] Semak program kawalan jauh (ManageEngine, AnyDesk, dll)...' '[7/8] Checking remote-control programs (ManageEngine, AnyDesk, etc.)...' Cyan
   Scan-Rmm
   $hits = @()
-  $hits += Get-Service -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -match 'ManageEngine|UEMS' }
+  $svcs = @(Get-Service -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -match 'ManageEngine|UEMS' })
+  $pending = @($svcs | Where-Object { Test-ServicePendingDelete $_.Name })
+  $hits += $svcs | Where-Object { $pending -notcontains $_ }
+  if ($pending.Count) {
+    Say "  ManageEngine dah dibuang ($(@($pending.Name) -join ', ')). Restart PC untuk habiskan." "  ManageEngine already removed ($(@($pending.Name) -join ', ')). Restart the PC to finish." Yellow
+  }
   foreach ($p in "${env:ProgramFiles(x86)}\ManageEngine\UEMS_Agent", "$env:ProgramFiles\ManageEngine\UEMS_Agent") {
     if (Test-Path -LiteralPath $p) { $hits += $p }
   }
@@ -634,7 +645,7 @@ function Add-ManageEngineRemoval {
   }
   foreach ($svc in Get-ChildItem 'HKLM:\SYSTEM\CurrentControlSet\Services' -ErrorAction SilentlyContinue) {
     $pr = Get-ItemProperty -LiteralPath $svc.PSPath -ErrorAction SilentlyContinue
-    if ("$($svc.PSChildName) $($pr.DisplayName) $($pr.ImagePath)" -match $rx) {
+    if ("$($svc.PSChildName) $($pr.DisplayName) $($pr.ImagePath)" -match $rx -and $pr.DeleteFlag -ne 1) {
       Add-Finding 'Service' 'HIGH' $svc.PSChildName 'ManageEngine service' @{ RegPath = $svc.PSPath; Image = '' }
     }
   }
@@ -713,6 +724,12 @@ function Invoke-Fix($qdir) {
           & reg.exe export (ConvertTo-RegExePath $f.Extra.RegPath) $reg /y | Out-Null
           & sc.exe stop $f.Target | Out-Null
           & sc.exe delete $f.Target | Out-Null
+          # 1072 = already marked for deletion. Anything else: drop the registry entry so it is gone after a restart.
+          if ($LASTEXITCODE -and $LASTEXITCODE -ne 1072) {
+            try { Remove-Item -LiteralPath $f.Extra.RegPath -Recurse -Force -ErrorAction Stop }
+            catch { $script:SvcLeft += $f.Target; throw }
+          }
+          $script:NeedRestart = $true
           $log.Add(@{ Kind = 'Reg'; Target = $f.Target; Backup = $reg })
           $img = Resolve-ImagePath $f.Extra.Image
           if ($img -and (Test-Path -LiteralPath $img)) { Add-Finding 'File' 'HIGH' $img 'Driver file of removed service.' }
@@ -864,7 +881,13 @@ if ($high.Count) {
     Say 'Malware ni suruh Windows Defender abaikan dia, sebab tu scan antivirus nampak bersih. Lepas bersihkan dan restart, buat Full scan Windows Defender sekali lagi.' `
         'This malware told Windows Defender to ignore it, which is why antivirus scans looked clean. After cleaning and restarting, run a Windows Defender full scan again.' Yellow
   }
-  if ($Findings | Where-Object { $_.Kind -eq 'Service' }) {
+  if ($script:SvcLeft) {
+    Say "Windows tak bagi buang servis ni: $($script:SvcLeft -join ', '). Masuk Safe Mode (Settings > System > Recovery > Advanced startup > Restart now > Troubleshoot > Advanced options > Startup Settings > Restart > tekan 4), kemudian jalankan tool ni sekali lagi." `
+        "Windows would not let the tool remove these services: $($script:SvcLeft -join ', '). Start in Safe Mode (Settings > System > Recovery > Advanced startup > Restart now > Troubleshoot > Advanced options > Startup Settings > Restart > press 4), then run this tool again." Red
+  } elseif ($script:NeedRestart) {
+    Say 'Servis jahat dah dibuang, tapi masih nampak sampai PC di-restart. RESTART dulu sebelum imbas semula.' 'Bad services are removed but stay listed until the PC restarts. RESTART before scanning again.' Yellow
+  }
+  if ($Findings | Where-Object { $_.Kind -eq 'Service' -and $_.Detail -ne 'ManageEngine service' }) {
     Say 'Driver pembunuh antivirus dijumpai. Paling selamat: backup data & pasang semula Windows.' `
         'An antivirus-killer driver was found. Safest option: back up data and reinstall Windows.' Yellow
   }
