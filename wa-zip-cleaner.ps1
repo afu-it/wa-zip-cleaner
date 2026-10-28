@@ -140,6 +140,9 @@ function Say([string]$ms, [string]$en, [string]$color = 'Gray') {
 
 $Findings = New-Object System.Collections.Generic.List[object]
 $DefExclLeft = @()
+# ManageEngine pieces that can outlive the agent folder (user reports, Oct 2026).
+$MeSvcRegex = '(?i)^MEARW?Service$'
+$MeRegKeys = 'HKLM:\SOFTWARE\ManageEngine', 'HKLM:\SOFTWARE\WOW6432Node\ManageEngine', 'HKLM:\SOFTWARE\AdventNet', 'HKLM:\SOFTWARE\WOW6432Node\AdventNet'
 $SvcLeft = @()
 $NeedRestart = $false
 # A deleted service stays listed until the next restart, with DeleteFlag set.
@@ -508,6 +511,9 @@ function Scan-ManageEngine {
   foreach ($p in "${env:ProgramFiles(x86)}\ManageEngine\UEMS_Agent", "$env:ProgramFiles\ManageEngine\UEMS_Agent") {
     if (Test-Path -LiteralPath $p) { $hits += $p }
   }
+  # Leftovers after the folder was deleted by hand: services and settings keys still count, so -Fix clears them.
+  $hits += @(Get-ChildItem 'HKLM:\SYSTEM\CurrentControlSet\Services' -ErrorAction SilentlyContinue | Where-Object { $_.PSChildName -match $MeSvcRegex -and -not (Test-ServicePendingDelete $_.PSChildName) } | ForEach-Object { "service $($_.PSChildName)" })
+  $hits += @($MeRegKeys | Where-Object { Test-Path -LiteralPath $_ } | ForEach-Object { "registry $_" })
   # Securelist (Jun 2026): the attacker's agent ships a server-info file pointing at their own servers.
   # A match means this agent is the attacker's, so it is removed even on an office PC.
   $script:MeAttacker = $false
@@ -517,7 +523,7 @@ function Scan-ManageEngine {
     $vals += (Get-ItemProperty -LiteralPath $k -ErrorAction SilentlyContinue).PSObject.Properties.Value
     if ($vals | Where-Object { $_ -is [string] -and ($_ -match '(?i)\\Users\\Public\\Documents\\' -or $C2Ips -contains ($_ -replace ':\d+$', '')) }) { $script:MeAttacker = $true }
   }
-  foreach ($p in $hits | Where-Object { $_ -is [string] }) {
+  foreach ($p in $hits | Where-Object { $_ -is [string] -and $_ -match '^[a-z]:\\' }) {
     $cfg = Get-ChildItem -LiteralPath $p -Recurse -File -Include *.json, *.conf, *.ini, *.xml, *.txt, *.props -ErrorAction SilentlyContinue | Where-Object { $_.Length -lt 2MB }
     if ($cfg -and ($cfg | Select-String -SimpleMatch -Pattern $C2Ips -List -ErrorAction SilentlyContinue)) { $script:MeAttacker = $true }
   }
@@ -645,7 +651,7 @@ function Add-ManageEngineRemoval {
   }
   foreach ($svc in Get-ChildItem 'HKLM:\SYSTEM\CurrentControlSet\Services' -ErrorAction SilentlyContinue) {
     $pr = Get-ItemProperty -LiteralPath $svc.PSPath -ErrorAction SilentlyContinue
-    if ("$($svc.PSChildName) $($pr.DisplayName) $($pr.ImagePath)" -match $rx -and $pr.DeleteFlag -ne 1) {
+    if (("$($svc.PSChildName) $($pr.DisplayName) $($pr.ImagePath)" -match $rx -or $svc.PSChildName -match $MeSvcRegex) -and $pr.DeleteFlag -ne 1) {
       Add-Finding 'Service' 'HIGH' $svc.PSChildName 'ManageEngine service' @{ RegPath = $svc.PSPath; Image = '' }
     }
   }
@@ -664,7 +670,7 @@ function Add-ManageEngineRemoval {
     if (Test-Path -LiteralPath $d) { Add-Finding 'File' 'HIGH' $d 'ManageEngine agent folder' }
   }
   # Registry leftovers: the agent's settings (the attacker's server address), installer records and firewall openings.
-  foreach ($k in 'HKLM:\SOFTWARE\WOW6432Node\AdventNet', 'HKLM:\SOFTWARE\AdventNet') {
+  foreach ($k in $MeRegKeys) {
     if (Test-Path -LiteralPath $k) { Add-Finding 'RegKey' 'HIGH' $k 'ManageEngine settings (server address and keys)' }
   }
   foreach ($u in Get-ChildItem -LiteralPath 'HKLM:\SOFTWARE\Classes\Installer\Products' -ErrorAction SilentlyContinue) {
