@@ -163,6 +163,8 @@ Check (-not ($r.All | Where-Object { $_.Target -match 'ext4\.vhdx' })) 'WSL ext4
 Check (Has $r 'Service' 'HIGH' '^WazLolMal$' 'LOLDrivers') 'LOLDrivers malicious driver service is HIGH'
 Check (Has $r 'Service' 'WARN' '^WazLolVuln$' 'vulnerable') 'LOLDrivers vulnerable driver service is WARN'
 Check (Has $r 'Info' 'WARN' 'Remote-control program: AnyDesk') 'remote-control program (AnyDesk) is WARN'
+$scanLog = Get-ChildItem $q -Filter 'scan-*.log' | Sort-Object LastWriteTime | Select-Object -Last 1
+Check ($scanLog -and (Select-String -LiteralPath $scanLog.FullName -SimpleMatch 'Maksud: Program kawalan jauh (contoh AnyDesk' -Quiet)) 'warning explained in plain Malay'
 Check (Has $r 'Info' 'WARN' 'Blocklist is OFF') 'driver blocklist switched off is WARN'
 Check (Has $r 'Info' 'WARN' 'Windows Update is disabled') 'Windows Update switched off is WARN'
 Check (Has $r 'RegValue' 'WARN' 'ExtensionInstallForcelist\|1$') 'forced Chrome extension is WARN when owner unknown'

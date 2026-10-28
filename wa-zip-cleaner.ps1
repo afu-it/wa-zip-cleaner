@@ -155,6 +155,29 @@ function Add-Finding($Kind, $Severity, $Target, $Detail, $Extra = $null) {
   $Findings.Add([pscustomobject]@{ Kind = $Kind; Severity = $Severity; Target = $Target; Detail = $Detail; Extra = $Extra })
 }
 
+# Plain-Malay meaning and next step for each warning, shown under the English detail.
+# A warning is something the tool will not remove by itself, so the user has to decide.
+$WarnHelp = @(
+  ,@('ManageEngine UEMS', 'Program kawalan jauh. Office kadang pasang untuk urus PC staf. Kalau PC sendiri, penggodam yang pasang untuk kawal PC anda.', 'Kalau bukan office yang pasang: jalankan tool sekali lagi, pilih "PC sendiri" bila ditanya, kemudian taip Y.')
+  ,@('Remote-control program', 'Program kawalan jauh (contoh AnyDesk, UltraViewer). Sesiapa yang ada akses boleh guna PC anda dari jauh.', 'Kalau anda tak pasang sendiri: Settings > Apps > cari nama program tu > Uninstall.')
+  ,@('Admin permission prompt', 'Tetingkap "Benarkan program ni buat perubahan?" dah dimatikan. Program boleh pasang diri tanpa tanya anda.', 'Taip UAC dalam carian Windows > Change User Account Control settings > naikkan slider satu tingkat > OK.')
+  ,@('Attacker server looked up', 'PC ni pernah cuba hubungi server penggodam baru-baru ini.', 'Anggap PC dijangkiti. Tukar kata laluan guna telefon. Paling selamat: backup dokumen dan format.')
+  ,@('Windows Update is disabled', 'Windows Update dimatikan. Malware buat ni supaya Windows tak dapat pembaikan keselamatan.', 'Kalau bukan anda yang matikan: taip services.msc dalam carian > Windows Update > Startup type: Manual > OK.')
+  ,@('Blocklist is OFF', 'Perlindungan Windows yang sekat driver bahaya dimatikan.', 'Windows Security > Device security > Core isolation details > hidupkan Microsoft Vulnerable Driver Blocklist > restart.')
+  ,@('DefExcl', 'Antivirus disuruh abaikan folder ni, jadi fail dalam tu tak diperiksa.', 'Kalau bukan anda yang tetapkan: Windows Security > Virus & threat protection > Manage settings > Exclusions > Remove.')
+  ,@('extension|Extension', 'Browser dipaksa pasang extension, atau extension dipasang dari folder (bukan kedai rasmi). Extension boleh baca semua laman yang anda buka.', 'Biasa di PC office. Kalau PC sendiri: buang di browser > Extensions, atau jalankan tool semula dan pilih "PC sendiri".')
+  ,@('Selenium|chromedriver', 'Alat untuk kawal Chrome secara automatik. Worm WhatsApp guna ni untuk hantar mesej kepada semua kenalan anda.', 'Kalau anda bukan programmer: padam fail atau folder tu.')
+  ,@('VHD|virtual disk', 'Fail cakera maya. Malware ZIP WhatsApp sorok dirinya dalam fail macam ni.', 'Kalau bukan anda yang buat: padam fail tu (kalau ia sedang dibuka sebagai drive, Eject dulu).')
+  ,@('driver|Driver', 'Driver lama yang ada lubang keselamatan. Penggodam guna driver macam ni untuk matikan antivirus.', 'Kalau tak kenal program yang pasang driver ni: Settings > Apps > uninstall program tu. Kalau tak pasti, hantar screenshot kepada orang IT.')
+  ,@('rime\.dll|Hidden\+System', 'Fail yang menyamar atau tersorok dalam folder anda. Cara ni biasa diguna malware Winos.', 'Kalau tak kenal fail tu: padam. Kalau tak pasti, hantar screenshot kepada orang IT.')
+  ,@('Logon script|script interpreter', 'Ada skrip yang jalan sendiri setiap kali PC hidup atau log masuk.', 'Biasa di PC office. Kalau PC sendiri dan anda tak kenal skrip tu, hantar screenshot kepada orang IT.')
+  ,@('Console', 'Ada data pelik dalam registry, di tempat yang malware Winos guna untuk simpan dirinya.', 'Hantar screenshot kepada orang IT. Kalau ada juga merah [HIGH], taip Y untuk bersihkan.')
+)
+function Get-WarnHelp($f) {
+  $txt = "$($f.Kind)|$($f.Target)|$($f.Detail)"
+  foreach ($h in $WarnHelp) { if ($txt -match $h[0]) { return $h } }
+}
+
 function Test-Admin {
   $id = [Security.Principal.WindowsIdentity]::GetCurrent()
   (New-Object Security.Principal.WindowsPrincipal $id).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -870,6 +893,10 @@ if (-not $Findings.Count) {
 foreach ($f in $Findings) {
   $c = if ($f.Severity -eq 'HIGH') { 'Red' } else { 'Yellow' }
   Write-Host ("[{0}] {1}: {2}" -f $f.Severity, $f.Kind, $f.Target) -ForegroundColor $c
+  if ($f.Severity -eq 'WARN' -and ($h = Get-WarnHelp $f)) {
+    Write-Host ("        Maksud: {0}" -f $h[1]) -ForegroundColor White
+    Write-Host ("        Buat:   {0}" -f $h[2]) -ForegroundColor Cyan
+  }
   Write-Host ("        {0}" -f $f.Detail) -ForegroundColor DarkGray
 }
 Write-Host ''
