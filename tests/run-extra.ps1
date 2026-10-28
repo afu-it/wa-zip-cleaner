@@ -100,6 +100,9 @@ $defOk = $false
 try {
   Add-MpPreference -ExclusionProcess 'QtsUpdater.exe' -ErrorAction Stop
   Add-MpPreference -ExclusionPath $stageDir -ErrorAction Stop
+  # Victim report 2026-10-28: wscript.exe excluded together with the whole user folder.
+  Add-MpPreference -ExclusionProcess 'wscript.exe' -ErrorAction Stop
+  Add-MpPreference -ExclusionPath 'C:\Users\WazExclTest' -ErrorAction Stop
   $defOk = @((Get-MpPreference).ExclusionProcess) -contains 'QtsUpdater.exe'
 } catch { Write-Host "Defender not available: $($_.Exception.Message)" }
 
@@ -141,6 +144,8 @@ $r = Scan "$env:TEMP\x1.json"
 if ($defOk) {
   Check (Has $r 'DefExcl' 'HIGH' 'QtsUpdater\.exe$') 'Defender process exclusion is HIGH'
   Check (Has $r 'DefExcl' 'HIGH' 'Microsoft\\Update$') 'Defender exclusion of fake Microsoft\Update folder is HIGH'
+  Check (Has $r 'DefExcl' 'HIGH' 'wscript\.exe$') 'Defender wscript.exe exclusion is HIGH'
+  Check (Has $r 'DefExcl' 'HIGH' 'Users\\WazExclTest$') 'user-folder exclusion next to wscript.exe is HIGH'
 } else { Write-Host 'SKIP Defender exclusion checks (Defender unavailable on this runner)' -ForegroundColor Yellow }
 Check (Has $r 'File' 'HIGH' 'HashTest\\invoice-copy\.dat$' 'TEST-BAD') 'hash match: known-bad file'
 Check (Has $r 'File' 'HIGH' 'HashTest\\helper\.exe$' 'TEST-LEGIT') 'hash match: abused legit file outside vendor folder'
@@ -184,6 +189,8 @@ if ($defOk) {
   $mp = Get-MpPreference
   Check (-not (@($mp.ExclusionProcess) -contains 'QtsUpdater.exe')) 'Defender process exclusion removed'
   Check (-not (@($mp.ExclusionPath) -contains $stageDir)) 'Defender folder exclusion removed'
+  Check (-not (@($mp.ExclusionProcess) -contains 'wscript.exe')) 'Defender wscript.exe exclusion removed'
+  Check (-not (@($mp.ExclusionPath) -contains 'C:\Users\WazExclTest')) 'user-folder exclusion removed'
 }
 Remove-Item Env:\WAZIP_TEST_C2
 

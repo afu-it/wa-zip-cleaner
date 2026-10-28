@@ -139,6 +139,7 @@ function Say([string]$ms, [string]$en, [string]$color = 'Gray') {
 }
 
 $Findings = New-Object System.Collections.Generic.List[object]
+$DefExclLeft = @()
 function Add-Finding($Kind, $Severity, $Target, $Detail, $Extra = $null) {
   $key = "$Kind|$Target"
   if ($Findings | Where-Object { "$($_.Kind)|$($_.Target)" -eq $key }) { return }
@@ -387,9 +388,13 @@ function Scan-DefenderExclusions {
       Add-Finding 'DefExcl' 'HIGH' "Process|$v" 'Windows Defender told to ignore this program (malware hiding from antivirus).' @{ Type = 'Process'; Value = $v }
     }
   }
+  # Windows' own script runners excluded too means the user-folder exclusion is the malware's, not the owner's.
+  $lolExcl = @($mp.ExclusionProcess) | Where-Object { $_ -and (Split-Path $_ -Leaf) -match '(?i)^(cmd|powershell|wscript|cscript|mshta)\.exe$' }
   foreach ($v in @($mp.ExclusionPath) | Where-Object { $_ -and -not $policy[$_] }) {
     if ($v -match '(?i)\\AppData\\Roaming\\Microsoft\\Update' -or $v -match $PersistRegex) {
       Add-Finding 'DefExcl' 'HIGH' "Path|$v" 'Windows Defender told to ignore this folder (malware hiding from antivirus).' @{ Type = 'Path'; Value = $v }
+    } elseif ($lolExcl -and $v -match '(?i)^[a-z]:\\Users\\|%(APPDATA|LOCALAPPDATA|TEMP|USERPROFILE)%') {
+      Add-Finding 'DefExcl' 'HIGH' "Path|$v" 'Windows Defender told to skip this user folder, together with cmd/powershell/wscript (malware hiding from antivirus).' @{ Type = 'Path'; Value = $v }
     } elseif ($v -match '(?i)^[a-z]:\\Users\\|%(APPDATA|LOCALAPPDATA|TEMP|USERPROFILE)%') {
       Add-Finding 'DefExcl' 'WARN' "Path|$v" 'Windows Defender skips this user folder. Remove the exclusion unless you added it yourself.' @{ Type = 'Path'; Value = $v }
     }
@@ -679,8 +684,15 @@ function Invoke-Fix($qdir) {
           $log.Add(@{ Kind = 'Task'; Target = $f.Target; Backup = $xml; Path = $f.Extra.Path; Name = $f.Extra.Name })
         }
         'DefExcl' {
-          if ($f.Extra.Type -eq 'Process') { Remove-MpPreference -ExclusionProcess $f.Extra.Value -ErrorAction Stop }
-          else { Remove-MpPreference -ExclusionPath $f.Extra.Value -ErrorAction Stop }
+          try {
+            if ($f.Extra.Type -eq 'Process') { Remove-MpPreference -ExclusionProcess $f.Extra.Value -ErrorAction Stop }
+            else { Remove-MpPreference -ExclusionPath $f.Extra.Value -ErrorAction Stop }
+          } catch {
+            # Defender sometimes refuses with "0x%1!x!"; the exclusion still lives as a plain registry value.
+            $ek = 'HKLM:\SOFTWARE\Microsoft\Windows Defender\Exclusions\' + $(if ($f.Extra.Type -eq 'Process') { 'Processes' } else { 'Paths' })
+            try { Remove-ItemProperty -LiteralPath $ek -Name $f.Extra.Value -ErrorAction Stop }
+            catch { $script:DefExclLeft += $f.Extra.Value; throw }
+          }
           $log.Add(@{ Kind = 'DefExcl'; Target = $f.Target; Type = $f.Extra.Type; Value = $f.Extra.Value })
         }
         'RegValue' {
@@ -843,6 +855,10 @@ if ($high.Count) {
     if ($Fix) { Say 'WhatsApp Web dah dilog keluar dari browser kat PC ni. Hacker masih boleh guna salinan yang dia curi sampai anda log keluar dari phone: WhatsApp > Peranti dipaut > log keluar semua.' `
                     'WhatsApp Web is logged out of the browsers on this PC. The attacker''s stolen copy works until you log out from your phone: WhatsApp > Linked devices > log out all.' Yellow }
     else { Say 'Bila taip Y, browser akan tertutup sendiri dan WhatsApp Web kat PC ni akan log keluar.' 'When you type Y, browsers close and WhatsApp Web on this PC is logged out.' Yellow }
+  }
+  if ($script:DefExclLeft) {
+    Say "Windows tak bagi tool buang pengecualian antivirus ni: $($script:DefExclLeft -join ', '). Buang sendiri: Windows Security > Virus & threat protection > Manage settings > Exclusions > Add or remove exclusions > tekan setiap satu > Remove. Lepas tu restart dan jalankan tool ni semula." `
+        "Windows would not let the tool remove these antivirus exclusions: $($script:DefExclLeft -join ', '). Remove them yourself: Windows Security > Virus & threat protection > Manage settings > Exclusions > Add or remove exclusions > click each one > Remove. Then restart and run this tool again." Red
   }
   if ($Findings | Where-Object { $_.Kind -eq 'DefExcl' -or $_.Detail -match 'Defender' }) {
     Say 'Malware ni suruh Windows Defender abaikan dia, sebab tu scan antivirus nampak bersih. Lepas bersihkan dan restart, buat Full scan Windows Defender sekali lagi.' `
