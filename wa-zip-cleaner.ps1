@@ -81,6 +81,32 @@ $KnownBad = @(
   @{ Sha = 'f0ca28df5607f66448229439e0bd2adb0a3a134952ad83bb41aa5e45cdf9eed2'; Size = 32869811; Name = 'ManageEngine installer kit unnamed (WhatsApp VBS campaign, Triage)' }
   @{ Sha = '6d68cac0477bedd3fdac978e9553dcbac1719ddb1a2e5c5deeb8179f53dc2c80'; Size = 32799144; Name = 'ManageEngine installer kit 25405092496.zip (WhatsApp VBS campaign, Triage)' }
   @{ Sha = 'b57b23342e6d7dbaf4cebd3e3664bb2697eca3e8593aee6a81757cd30dbf6e92'; Size = 1670; Name = 'Attacker DCAgentServerInfo.json (WhatsApp VBS campaign)' }
+  @{ Sha = '68eaeb29ad982b515ef13fcf731a60ec2b3c02e5be250a0099c7cff5fdc90048'; Size = 3950313; Name = 'Lure ZIP SENARAIDOKUMEN.zip (Triage, Oct 2026)' }
+  @{ Sha = '5f7446871ba78c9c19eac3b5bbb1db62a983b754100e6d5b0b502966fdfa2e74'; Size = 3972897; Name = 'Lure ZIP SENARAIDOKUMEN.zip (Triage, Oct 2026)' }
+  @{ Sha = 'a692da9f60b4eb890c8636bb57e380af7d6517835b863e66c81c3f8b00658cf1'; Size = 3868051; Name = 'Lure ZIP SENARAIDOKUMEN.zip (Triage, Oct 2026)' }
+  @{ Sha = '355ee70e091b82b987d09db3cf8ba4176da316c220a72742f74a9e604199c79b'; Size = 411648; Name = 'Lure ISO LHDNCUKAI*.iso (Triage, Oct 2026)' }
+  @{ Sha = '1b89fbcd8fdf994ca32c48889ba617919ee16443692b1cfc7a2b8f3f5518a2c9'; Size = 448512; Name = 'Lure ISO Open_to_view*.iso (Triage, Oct 2026)' }
+  @{ Sha = 'de0b9b6656c9e9fc9db4271610a09c2ae27d07c5a4757e94b2e0314a9dda6ee4'; Size = 25672; Name = 'ValleyRAT launcher Open_to_view.exe (LHDN/Open_to_view ISOs, Oct 2026)' }
+  @{ Sha = '5634caef6a5988f33d5116c74403892ddb648929983c52a6b9d7893ac5549401'; Size = 3041300; Name = 'Lure ZIP <date>-INVOIS_<n>.zip (Triage, Oct 2026)' }
+  @{ Sha = '2db09f27b7f8b17dee095f71e65910864345659a7c4fe00d0fff30f95d0a8c57'; Size = 3347821; Name = 'Lure ZIP INVOIS.vhd.zip (Triage, Oct 2026)' }
+  @{ Sha = '0569371406eeca4d84078be94c2be98916294b89a7121c1e757b687a5ccdfe30'; Size = 3170806; Name = 'Lure ZIP Memeriksa.vhd.zip (Triage, Oct 2026)' }
+  @{ Sha = 'b46788cb5d9def3e1c7136de29eb8904ac9543b5c28035fb1fa0e9006c3aeb29'; Size = 13063; Name = 'Lure email NOTIS TUNTUTAN CUKAI DAN PENALTI.eml (Triage, Oct 2026)' }
+  @{ Sha = '9eaa140159f6e91af428a5f3ae608a170346238eb4ebca27ed36cb791af8bfc4'; Size = 1766235; Name = 'Lure ZIP SSM-1.IMG.zip (Triage, Oct 2026)' }
+  @{ Sha = '3a89fee824764cd99e6e0c7c7f1655bc2fe1bd41b79ab4f2eb0074e0e866fd9b'; Size = 4525653; Name = 'Lure ZIP PDF_32JG2C_*.ZIP (Triage, Oct 2026)' }
+  @{ Sha = '23b927dd668e5707d1de867e9e3f6217ef8cfc6803d18ac9a168dcfc9416070b'; Size = 3140084; Name = 'Lure ZIP SOA.vhd.zip (Triage, Oct 2026)' }
+  @{ Sha = '971eecc4288a550ff9606dd8af9601c10714f9e41a2d5fcac325647a0cdf0cd0'; Size = 18919424; Name = 'Lure VHD 10200944247016.*.vhd (Triage, Oct 2026)' }
+  @{ Sha = '07806661d056305e832b509a1b517241420d8aa6bccadaff5e0768d5131406fd'; Size = 2009626; Name = 'Lure ZIP JK-18005144.zip (Notice from Tax Departmen.exe, Oct 2026)' }
+  @{ Sha = '426bfd72b3143c76c83bfb3246f820e3cc17902ea04293a35764b67fc635ec3d'; Size = 655359; Name = 'ValleyRAT IRBM sample ZIP (Triage, Oct 2026)' }
+  @{ Sha = 'e43c872558aeac504df57d7f292518086f61c8b5c4abf282576bcf6bd1cecbed'; Size = 1564951; Name = 'Lure ZIP TAX_*.img.zip (TaxFiling.exe, Oct 2026)' }
+  @{ Sha = '2c77d954eb79cc5b038b024d84848360d496b51c85ac8e97399d70d1bc3d0413'; Size = 1288192; Name = 'ValleyRAT dropper, becomes WinCombo.exe (MicroPoint chain, Oct 2026)' }
+  @{ Sha = '9f326ede322930a7d5e149fa8720802b0623c1972dc54e41a2a73608fb6810dd'; Size = 17224; Name = 'Unknown file dropped with ZyArk.sys (crClient chain, Oct 2026)' }
+  @{ Sha = '701d51b7be8b034c860bf97847bd59a87dca8481c4625328813746964995b626'; Size = 16603648; Name = 'TCLBANKER loader (Elastic, Oct 2026)' }
+  @{ Sha = '8a174aa70a4396547045aef6c69eb0259bae1706880f4375af71085eeb537059'; Size = 3844096; Name = 'TCLBANKER payload (Elastic, Oct 2026)' }
+  @{ Sha = '668f932433a24bbae89d60b24eee4a24808fc741f62c5a3043bb7c9152342f40'; Size = 3845120; Name = 'TCLBANKER payload (Elastic, Oct 2026)' }
+  @{ Sha = '3ba89047b9fb9ae2281e06a7f10a407698174b201f28fc1cadb930207254e485'; Size = 109848541; Name = 'Silver Fox installer (Chinese security reports, 2026)' }
+  @{ Sha = '9ace6a1e4bee5834be38b4c2fd26780d1fcc18ea9d58224e31d6382c19e53296'; Size = 291328; Name = 'Silver Fox component (Chinese security reports, 2026)' }
+  @{ Sha = 'a14b681ec50328d3ac04f76ac18ef96fb7176425ff96325e2099ea57df3a1998'; Size = 149504; Name = 'Silver Fox component (Chinese security reports, 2026)' }
+  @{ Sha = 'ad91e674edb5f376d27a3c56df45ebb967229ee9ba623ec158f8c4835d577def'; Size = 1724051; Name = 'Lure ZIP, Japanese tax-report .img.zip (Triage, Sep 2026)' }
 )
 # Signed, legitimate files that this malware abuses. Bad only outside their vendor folder.
 $AbusedLegit = @(
@@ -96,8 +122,8 @@ if ($env:WAZIP_TEST_IOCS -and (Test-Path -LiteralPath $env:WAZIP_TEST_IOCS)) {
     if ($e.Vendor) { $entry.Vendor = $e.Vendor; $AbusedLegit += $entry } else { $KnownBad += $entry }
   }
 }
-$PersistRegex ='rime\.dll|_vmclientcore@16|KafanInput|vcRuntimeMinimum_x86\.exe|\\H\d{8,}\.exe|ZyArk|\\ardrv\.sys|\\AppData\\Roaming\\Microsoft\\Update\\[^\\]+\.exe|active_desktop_(launcher|render)|Add-MpPreference|eneio64\.dat|plcc3a\.dat|-m\s+appclient|\\appclient\\python\\|HealthApp-[0-9a-f]{6}\.bat'
-$LureRegex    = '^(Click here to view.*\.(zip|vhd|vhdx)|Notice.*\.vhdx?|(PDF|DOC)_[A-Z0-9]{3,8}_20\d{12}\.(zip|img|iso|exe|vhd|vhdx)|20\d{6}[.-]MYS20\d{2}Y\d{4}[A-Z0-9]{4,6}\.(zip|img|iso|vhd|vhdx)|(RES-20\d{6}_\d{6}|ORCAMENTO_\d{6}|COMPROVANTE_20\d{6}_\d{6}|ComprovanteSantander-[\d.]+|NEW-20\d{6}_\d{6}-PED_[0-9A-F]+|DOC-\d{8}_[0-9A-F]{8})\.(zip|lnk)|20\d{12}-[0-9A-F]{14}\.zip)$'
+$PersistRegex ='rime\.dll|_vmclientcore@16|KafanInput|vcRuntimeMinimum_x86\.exe|\\H\d{8,}\.exe|ZyArk|\\ardrv\.sys|\\AppData\\Roaming\\Microsoft\\Update\\[^\\]+\.exe|active_desktop_(launcher|render)|Add-MpPreference|eneio64\.dat|plcc3a\.dat|-m\s+appclient|\\appclient\\python\\|HealthApp-[0-9a-f]{6}\.bat|\\ProgramData\\MicroPoint\\|WinCombo\.exe|CRClient\.dll|\\Toolkit\\winhttp\.dll|webview2_integration\.exe|encrashrep\.dll|\\ProgramData\\WindowsData\\|ExceptCatch\.dll|\\QNWallpaper\\|\\msvc-rt14\\|NtHandleCallback\.exe|\\(XiaoH|rwdriver|kabuto)\.sys'
+$LureRegex    = '^(Click here to view.*\.(zip|vhd|vhdx)|Notice.*\.vhdx?|(PDF|DOC)_[A-Z0-9]{3,8}_20\d{12}\.(zip|img|iso|exe|vhd|vhdx)|20\d{6}[.-]MYS20\d{2}Y\d{4}[A-Z0-9]{4,6}\.(zip|img|iso|vhd|vhdx)|(RES-20\d{6}_\d{6}|ORCAMENTO_\d{6}|COMPROVANTE_20\d{6}_\d{6}|ComprovanteSantander-[\d.]+|NEW-20\d{6}_\d{6}-PED_[0-9A-F]+|DOC-\d{8}_[0-9A-F]{8})\.(zip|lnk)|20\d{12}-[0-9A-F]{14}\.zip|SENARAI ?DOKUMEN.*\.zip|.+\.(vhdx?|img|iso)\.zip|LHDN.*\.(iso|img|vhdx?)|Open_to_view.*\.(iso|img)|TAX_[A-Za-z0-9]{6,}\.img(\.zip)?|SSM-\d+\.img(\.zip)?)$'
 # Programs the October 2026 wave tells Windows Defender to skip. No real program needs these excluded.
 $ExclProcRegex = '(?i)^(QtsUpdater|svchost|rundll32|powershell|cmd|wscript|cscript|mshta|regsvr32|explorer)\.exe$'
 # Known attacker servers (C2). A process talking to one of these is the malware.
@@ -106,10 +132,16 @@ $C2Ips = @('134.122.155.135', '14.128.53.155', '45.202.1.249', '108.187.37.85', 
             '103.20.195.147', '45.207.231.94', '45.207.231.107', '160.124.9.103', '109.176.30.141',
             '202.61.160.208', '202.61.160.202', '202.61.160.201', '202.61.160.160', '202.61.160.137', '38.55.151.63', '61.18.208.27',
             '202.61.160.203', '202.61.160.145', '137.220.205.167', '137.220.205.162', '137.220.224.63', '103.140.154.117', '206.238.68.33', '43.224.224.151',
-            '165.154.254.44', '23.227.203.148', '77.111.101.169', '23.227.203.179', '140.99.164.81', '92.246.130.15')  # SORVEPOTEL (Trend Micro)  # last four: CloudSEK, Dec 2025
-$C2Domains = '(?i)(^|\.)(fetish-friends\.com|3mkorealtd\.com|sudsmama\.com|woopami\.com|ilptour\.com|petitechanson\.com|doublemobile\.com|mcagov\.cc|roldco\.com|kcii2\.com|haijing88\.com|ggwk\.cc|yuxuanow\.top|itdd\.club|xzghjec\.com|gov-a\.(work|fit|club)|gvo-b\.club|gov-c\.club|govk\.club|swjc2025bjkb\.cn|2025swmm\.cn|zapgrande\.com|sorvetenopo(a)?te\.com|sorvetenoopote\.com|sorvetenopotel\.com|etenopote\.com|expa(h)?nsiveuser\.com|expansivebot\.com|imobiliariaricardoparanhos\.com|casadecampoamazonas\.com|bravexolutions\.com|adoblesecuryt\.com|saogeraldoshoping\.com|baskwms\.top|msopsa\.top|shoppes\.help|shaaslong\.one|baoxis\.cc|kammwv\.cc|azuheq\.s3\.ap-southeast-1\.amazonaws\.com|d156sk07toobyl\.cloudfront\.net|neescil\.top|velthora\.top|sinjiabo-1398259625\.cos\.ap-singapore\.myqcloud\.com|(bafauac|9ding)\.s3\.ap-southeast-1\.amazonaws\.com|(baolongwes|sdcwww)\.oss-ap-southeast-1\.aliyuncs\.com|(baoyuw2s|hksha3|sjdkjj23|xijkwm2|yifubafu)\.s3\.ap-southeast-1\.amazonaws\.com|(caiwuascw|facaia)\.s3\.us-east-005\.backblazeb2\.com)$'
+            '165.154.254.44', '23.227.203.148', '77.111.101.169', '23.227.203.179', '140.99.164.81', '92.246.130.15',  # SORVEPOTEL (Trend Micro); last four: CloudSEK, Dec 2025
+            '202.61.85.151', '202.61.85.179', '202.61.85.173', '202.61.85.47', '87.84.204.93', '156.251.11.79', '137.220.152.244', '154.213.180.91', '137.220.153.147',
+            '202.146.222.95', '202.61.157.33', '202.61.160.183', '101.33.117.120', '143.109.37.187', '47.243.109.132', '204.194.50.231',
+            '143.92.37.168', '103.45.66.18', '192.253.225.173', '154.201.87.124', '191.96.224.96',
+            '38.91.115.114', '8.210.25.225', '95.40.29.190', '16.163.105.153', '183.90.186.193', '52.128.226.74', '154.83.17.175', '45.204.2.166')
+# Added Oct 2026: Triage/ThreatFox ValleyRAT (Malaysian lures), Netresec Ping32 (143.92.37.168), Kaspersky QN Wallpaper,
+# Sekoia (Malaysia), Elastic TCLBANKER, and Chinese reports (ThreatBook, Huorong, QiAnXin).
+$C2Domains = '(?i)(^|\.)(fetish-friends\.com|3mkorealtd\.com|sudsmama\.com|woopami\.com|ilptour\.com|petitechanson\.com|doublemobile\.com|mcagov\.cc|roldco\.com|kcii2\.com|haijing88\.com|ggwk\.cc|yuxuanow\.top|itdd\.club|xzghjec\.com|gov-a\.(work|fit|club)|gvo-b\.club|gov-c\.club|govk\.club|swjc2025bjkb\.cn|2025swmm\.cn|zapgrande\.com|sorvetenopo(a)?te\.com|sorvetenoopote\.com|sorvetenopotel\.com|etenopote\.com|expa(h)?nsiveuser\.com|expansivebot\.com|imobiliariaricardoparanhos\.com|casadecampoamazonas\.com|bravexolutions\.com|adoblesecuryt\.com|saogeraldoshoping\.com|baskwms\.top|msopsa\.top|shoppes\.help|shaaslong\.one|baoxis\.cc|kammwv\.cc|azuheq\.s3\.ap-southeast-1\.amazonaws\.com|d156sk07toobyl\.cloudfront\.net|neescil\.top|velthora\.top|sinjiabo-1398259625\.cos\.ap-singapore\.myqcloud\.com|(bafauac|9ding)\.s3\.ap-southeast-1\.amazonaws\.com|(baolongwes|sdcwww)\.oss-ap-southeast-1\.aliyuncs\.com|(baoyuw2s|hksha3|sjdkjj23|xijkwm2|yifubafu)\.s3\.ap-southeast-1\.amazonaws\.com|(caiwuascw|facaia)\.s3\.us-east-005\.backblazeb2\.com|khltt1\.club|lsf168\.club|pxxjbh\.club|liyunee\.top|articio\.top|kyur7oz\.top|uykb10\.club|gntr30\.club|kufp16\.club|txpfproxy\.vip|jksdjkjs\.cc|shougong9\.com|thinnected\.com|tax(cerf|low|gg|zz|yy)\.top|fadaoxiao\.s3\.us-west-004\.backblazeb2\.com|xqwmwru\.top|360sdgg\.com|ef971a42\.workers\.dev|mxtestacionamentos\.com|uuuucome\.com|laosjdhd\.cn|xxxjjj250711\.com|twsww\.xin|cn-hk-oss-vip\.com)$'
 # Silver Fox fake-document programs (Kaspersky, Apr 2026: Statement of Account / GST / tax lures).
-$ExeLureRegex = '(?i)^(Statement|Tax-\d{8,}|Review the file|BillReceipt|statement verify ?|Click File|GST ?Suvidha|Related material|MCA-Ministry|RemoteInstaller_[\d_]+_\w+)\.exe$'
+$ExeLureRegex = '(?i)^(Statement|Tax-\d{8,}|Review the file|BillReceipt|statement verify ?|Click File|GST ?Suvidha|Related material|MCA-Ministry|RemoteInstaller_[\d_]+_\w+|Open_to_view|TaxFiling|Notice from Tax Depart\w*)\.exe$'
 if ($env:WAZIP_TEST_C2) { $C2Ips += $env:WAZIP_TEST_C2 }
 # SilverFox KuGou variant (Pelagos Intel, Sep 2026) stages here and runs from a Run value named MicrosoftUpdate.
 $StageRegex   = '(?i)\\AppData\\Roaming\\Microsoft\\Update\\[^\\]+\.(exe|dll)$'
@@ -122,6 +154,7 @@ $RmmTools = [ordered]@{
   'SimpleHelp' = '^(simplehelpcustomer|simpleservice)'; 'Atera' = '^ateraagent'; 'MeshCentral' = '^meshagent'
   'Tactical RMM' = '^tacticalrmm'; 'Remote Utilities' = '^rut(serv|view)'; 'Ammyy Admin' = '^ammyy'; 'AeroAdmin' = '^aeroadmin'
   'Supremo' = '^supremo'; 'Zoho Assist' = '^(zaservice|zmagent)'; 'NetSupport' = '\\netsupport\\'; 'Action1' = '\\windows\\action1\\'
+  'Ping32' = '^nsecrts'
 }
 # Browsers whose profiles we check. Chromium ones keep profiles under User Data; Opera keeps one in its own folder.
 $BrowserRoots = @(
@@ -158,12 +191,16 @@ function Add-Finding($Kind, $Severity, $Target, $Detail, $Extra = $null) {
 # Plain-Malay meaning and next step for each warning, shown under the English detail.
 # A warning is something the tool will not remove by itself, so the user has to decide.
 $WarnHelp = @(
+  ,@('Ping32', 'Program kawalan jauh Ping32. Syarikat kadang pasang untuk pantau PC staf. Kalau PC sendiri, penggodam yang pasang (versi lain kempen VBS WhatsApp) untuk kawal PC anda.', 'Kalau bukan office yang pasang: jalankan tool sekali lagi, pilih "PC sendiri" bila ditanya, kemudian taip Y. Tool akan buang dia.')
+  ,@('Firewall blocks', 'Firewall disuruh sekat semua sambungan keluar. Malware buat ni supaya antivirus tak dapat update atau hantar amaran, tapi benarkan dirinya sendiri.', 'Kalau bukan anda atau IT yang tetapkan: Windows Security > Firewall & network protection > Restore firewalls to default > Restore.')
+  ,@('VulcanRAT', 'Fail driver sementara dalam folder driver Windows. VulcanRAT guna fail macam ni untuk matikan antivirus.', 'Hantar screenshot kepada orang IT. Kalau ada juga merah [HIGH], taip Y untuk bersihkan, kemudian restart.')
   ,@('ManageEngine UEMS', 'Program kawalan jauh. Office kadang pasang untuk urus PC staf. Kalau PC sendiri, penggodam yang pasang untuk kawal PC anda.', 'Kalau bukan office yang pasang: jalankan tool sekali lagi, pilih "PC sendiri" bila ditanya, kemudian taip Y.')
   ,@('Remote-control program', 'Program kawalan jauh (contoh AnyDesk, UltraViewer). Sesiapa yang ada akses boleh guna PC anda dari jauh.', 'Kalau anda tak pasang sendiri: Settings > Apps > cari nama program tu > Uninstall.')
   ,@('Admin permission prompt', 'Tetingkap "Benarkan program ni buat perubahan?" dah dimatikan. Program boleh pasang diri tanpa tanya anda.', 'Taip UAC dalam carian Windows > Change User Account Control settings > naikkan slider satu tingkat > OK.')
   ,@('Attacker server looked up', 'PC ni pernah cuba hubungi server penggodam baru-baru ini.', 'Anggap PC dijangkiti. Tukar kata laluan guna telefon. Paling selamat: backup dokumen dan format.')
   ,@('Windows Update is disabled', 'Windows Update dimatikan. Malware buat ni supaya Windows tak dapat pembaikan keselamatan.', 'Kalau bukan anda yang matikan: taip services.msc dalam carian > Windows Update > Startup type: Manual > OK.')
   ,@('Blocklist is OFF', 'Perlindungan Windows yang sekat driver bahaya dimatikan.', 'Windows Security > Device security > Core isolation details > hidupkan Microsoft Vulnerable Driver Blocklist > restart.')
+  ,@('whole .* drive', 'Antivirus disuruh abaikan satu drive penuh, jadi semua fail dalam drive tu tak diperiksa.', 'Kalau bukan anda yang tetapkan: Windows Security > Virus & threat protection > Manage settings > Exclusions > Remove.')
   ,@('DefExcl', 'Antivirus disuruh abaikan folder ni, jadi fail dalam tu tak diperiksa.', 'Kalau bukan anda yang tetapkan: Windows Security > Virus & threat protection > Manage settings > Exclusions > Remove.')
   ,@('extension|Extension', 'Browser dipaksa pasang extension, atau extension dipasang dari folder (bukan kedai rasmi). Extension boleh baca semua laman yang anda buka.', 'Biasa di PC office. Kalau PC sendiri: buang di browser > Extensions, atau jalankan tool semula dan pilih "PC sendiri".')
   ,@('Selenium|chromedriver', 'Alat untuk kawal Chrome secara automatik. Worm WhatsApp guna ni untuk hantar mesej kepada semua kenalan anda.', 'Kalau anda bukan programmer: padam fail atau folder tu.')
@@ -267,6 +304,10 @@ function Scan-Registry {
   foreach ($k in 'HKLM:\SOFTWARE\IpDates_info', 'HKLM:\SOFTWARE\WOW6432Node\IpDates_info') {
     if (Test-Path -LiteralPath $k) { Add-Finding 'RegKey' 'HIGH' $k 'Winos4.0 final-stage config (IpDates_info).' }
   }
+  # ThreatBook / Huorong (2026): Silver Fox keeps its settings in these keys.
+  foreach ($k in 'HKLM:\SOFTWARE\JDBCC', 'HKLM:\SOFTWARE\WOW6432Node\JDBCC', 'HKLM:\SOFTWARE\SysConfigDate', 'HKLM:\SOFTWARE\WOW6432Node\SysConfigDate') {
+    if (Test-Path -LiteralPath $k) { Add-Finding 'RegKey' 'HIGH' $k 'Silver Fox settings key (Chinese security reports, 2026).' }
+  }
 }
 
 function Scan-Services {
@@ -280,6 +321,9 @@ function Scan-Services {
     if ($name -match '^(ZyArk|ZyArkFilter)$' -or $img -match 'zyark') { $hit = 'ZyArk driver (abused Baidu anti-rootkit, kills antivirus).' }
     elseif (($name -eq 'ardrv' -or $img -match '\\ardrv\.sys') -and $img -notmatch 'OPSWAT') { $hit = 'ardrv.sys outside OPSWAT folder (abused to kill antivirus).' }
     elseif ($img -match $PersistRegex -and $img -notmatch 'OPSWAT') { $hit = "Service points at malware path: $img" }
+    # Triage (Oct 2026, SSM/SOA lures): a driver loaded straight out of a Temp folder is the antivirus killer.
+    elseif ($name -eq 'EmbeddedDriverService' -or $img -match '(?i)\\Temp\\[^\\]+\.sys"?$') { $hit = "Driver loaded from a Temp folder (antivirus killer): $img" }
+    elseif ($name -match '^(TCLService|Cndom6)$' -and $img -notmatch '(?i)\\Program Files') { $hit = "Silver Fox service (Chinese security reports): $img" }
     if ($hit) { Add-Finding 'Service' 'HIGH' $name $hit @{ RegPath = $svc.PSPath; Image = $img } }
     # A service that launches a script interpreter from a user-writable folder is a common persistence trick.
     elseif ($img -match '(?i)\b(cmd|powershell|pwsh|wscript|cscript|mshta|rundll32)\b' -and
@@ -301,6 +345,14 @@ function Scan-Services {
   }
   $drv = Join-Path $env:SystemRoot 'System32\drivers\ZyArk.dat'
   if (Test-Path -LiteralPath $drv) { Add-Finding 'File' 'HIGH' $drv 'ZyArk driver data file.' }
+  # VulcanRAT (Morphisec, Oct 2026) drops its driver as drivers\tp_<tick>.tmp.
+  foreach ($t in Get-ChildItem -LiteralPath "$env:SystemRoot\System32\drivers" -Filter 'tp_*.tmp' -File -Force -ErrorAction SilentlyContinue) {
+    Add-Finding 'File' 'WARN' $t.FullName 'Temporary driver file in the Windows drivers folder (VulcanRAT uses this name).'
+  }
+  # Huorong (2026): the AV killer sets the firewall to block everything going out, then allows itself.
+  foreach ($fp in Get-NetFirewallProfile -ErrorAction SilentlyContinue | Where-Object { [string]$_.DefaultOutboundAction -eq 'Block' }) {
+    Add-Finding 'Info' 'WARN' "Firewall blocks all outgoing connections ($($fp.Name))" 'Silver Fox does this so antivirus cannot update. Unless you or your IT set it, restore the firewall defaults: Windows Security > Firewall & network protection > Restore firewalls to default.'
+  }
 }
 
 function Scan-Processes {
@@ -357,6 +409,9 @@ function Scan-Persistence {
     $txt = ($t.Actions | ForEach-Object { "$($_.Execute) $($_.Arguments)" }) -join ' ; '
     if ($txt -match $PersistRegex) { Add-Finding 'Task' 'HIGH' "$($t.TaskPath)$($t.TaskName)" "Scheduled task: $txt" @{ Path = $t.TaskPath; Name = $t.TaskName } }
     # VulcanRAT (Morphisec via 2-Spyware, Oct 2026) hides as a fake Windows update task that runs vulkaninfo.
+    # Chinese reports (2026) and Elastic TCLBANKER: task names that copy Edge, WMI or runtime updaters.
+    if ($txt -notmatch $PersistRegex -and (($t.TaskPath -match '(?i)\\Microsoft\\Windows\\AppID\\$' -and $t.TaskName -match '^MicrosoftEdgeUpdateTaskUA') -or $t.TaskName -match '^(WindowsPowerShell\.WbemScripting\.WindowsData|RuntimeOptimizeService)$')) {
+      Add-Finding 'Task' 'HIGH' "$($t.TaskPath)$($t.TaskName)" "Fake system task (Silver Fox): $txt" @{ Path = $t.TaskPath; Name = $t.TaskName } }
     if ($txt -notmatch $PersistRegex -and ($t.TaskName -match '^USOPrivate( Kit)?$' -or $txt -match '(?i)\\Common Files\\vulkaninfo')) { Add-Finding 'Task' 'HIGH' "$($t.TaskPath)$($t.TaskName)" "Fake Windows update task (VulcanRAT): $txt" @{ Path = $t.TaskPath; Name = $t.TaskName } }
   }
   # Microsoft (Mar 2026): the WhatsApp VBS dropper's reg add leaves a junk key that Windows never creates.
@@ -377,7 +432,29 @@ function Scan-Persistence {
       Add-Finding 'RegValue' $sev "$hive\Environment|UserInitMprLogonScript" "Logon script runs at every sign-in: $logon"
     }
     if (Test-Path -LiteralPath "$hive\Software\CarEmu") { Add-Finding 'RegKey' 'HIGH' "$hive\Software\CarEmu" 'ABCDoor backdoor settings (Silver Fox).' }
+    # Triage (Oct 2026, MicroPoint chain): a per-user CLSID with Shell\Manage\command runs the malware elevated
+    # through explorer.exe shell:::{GUID}, skipping the admin prompt.
+    foreach ($c in Get-ChildItem -LiteralPath "$hive\Software\Classes\CLSID" -ErrorAction SilentlyContinue) {
+      $cmd = Get-Item -LiteralPath "$($c.PSPath)\Shell\Manage\command" -ErrorAction SilentlyContinue
+      if (-not $cmd) { continue }
+      $v = [string]$cmd.GetValue('')
+      if ($v -match $PersistRegex -or $v -match '(?i)\\(ProgramData|Users|AppData|Temp)\\') {
+        Add-Finding 'RegKey' 'HIGH' ($c.PSPath -replace '^Microsoft\.PowerShell\.Core\\Registry::', 'Registry::') "Hidden admin-prompt bypass runs: $v"
+      }
+    }
   }
+  # Fixed paths from Triage, Kaspersky, Sekoia and Chinese reports (Oct 2026).
+  $fixed = [ordered]@{
+    "$env:ProgramData\MicroPoint" = 'ValleyRAT install folder (LHDN/tax lures, Oct 2026).'
+    "$env:ProgramData\WindowsData" = 'Silver Fox work folder (ThreatBook / QiAnXin reports).'
+    "$env:ProgramFiles\QNWallpaper" = 'Fake wallpaper program that carries ValleyRAT (Kaspersky, Aug 2026).'
+    "$env:SystemRoot\System32\CRClient.dll" = 'Fake CRClient.dll in System32 (ValleyRAT, SENARAIDOKUMEN lure).'
+    "$env:SystemDrive\XiaoH.sys" = 'Silver Fox antivirus-killer driver.'
+    "$env:SystemRoot\Temp\ranchserv.jpg" = 'Silver Fox payload disguised as a picture.'
+    "$env:SystemDrive\Users\Public\Download\bb.jpg" = 'ValleyRAT payload disguised as a picture (Sekoia, Malaysia).'
+    "$env:SystemDrive\WhatsAppBackup\WhatsAppData.zip" = 'Stolen WhatsApp data packed for upload (Sekoia, Malaysia).'
+  }
+  foreach ($p in $fixed.Keys) { if (Test-Path -LiteralPath $p) { Add-Finding 'File' 'HIGH' $p $fixed[$p] } }
   foreach ($u in Get-ChildItem "$env:SystemDrive\Users" -Directory -ErrorAction SilentlyContinue) {
     $ac = Join-Path $u.FullName 'AppData\Local\appclient'
     if ((Test-Path -LiteralPath "$ac\python\pythonw.exe") -or (Test-Path -LiteralPath "$ac\update.bat")) {
@@ -385,6 +462,10 @@ function Scan-Persistence {
     }
     $el = Join-Path $u.FullName 'AppData\Local\applogs\exception_logs.zip'
     if (Test-Path -LiteralPath $el) { Add-Finding 'File' 'HIGH' $el 'ABCDoor error log.' }
+    $wh = Join-Path $u.FullName 'AppData\Local\Toolkit\winhttp.dll'
+    if (Test-Path -LiteralPath $wh) { Add-Finding 'File' 'HIGH' $wh 'Fake winhttp.dll (ValleyRAT, LHDN/Open_to_view ISO lures).' }
+    $wl = Join-Path $u.FullName 'AppData\Local\Temp\whatsapp_backup.lock'
+    if (Test-Path -LiteralPath $wl) { Add-Finding 'File' 'HIGH' $wl 'Marker left while stealing WhatsApp data (Sekoia, Malaysia).' }
   }
   Scan-DefenderExclusions
   $startups = @("$env:ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp")
@@ -404,16 +485,22 @@ function Scan-Persistence {
 # The malware tells Windows Defender to ignore svchost.exe/QtsUpdater.exe, so antivirus scans come back clean.
 function Scan-DefenderExclusions {
   $policy = @{}
+  $mp = try { Get-MpPreference -ErrorAction Stop } catch { $null }
+  # Huorong (2026): the AV killer excludes every drive. C:\ is never excluded on purpose; several roots is the malware.
+  $driveRx = '^[A-Za-z]:\\?$'
+  $pk = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Exclusions\Paths'
+  $pnames = if (Test-Path -LiteralPath $pk) { @((Get-Item -LiteralPath $pk).GetValueNames()) } else { @() }
+  $roots = @(@($pnames) + @($mp.ExclusionPath) | Where-Object { $_ -match $driveRx } | ForEach-Object { $_.Substring(0, 1).ToUpper() } | Sort-Object -Unique)
+  $badRoot = { param($v) $v -match $driveRx -and ($v.Substring(0, 1) -ieq $env:SystemDrive.Substring(0, 1) -or $roots.Count -ge 3) }
   foreach ($kind in 'Processes', 'Paths') {
     $k = "HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Exclusions\$kind"
     if (-not (Test-Path -LiteralPath $k)) { continue }
     foreach ($n in (Get-Item -LiteralPath $k).GetValueNames()) {
       $policy[$n] = $true
-      $bad = if ($kind -eq 'Processes') { (Split-Path $n -Leaf) -match $ExclProcRegex -or $n -match $PersistRegex } else { $n -match '(?i)\\AppData\\Roaming\\Microsoft\\Update' -or $n -match $PersistRegex }
+      $bad = if ($kind -eq 'Processes') { (Split-Path $n -Leaf) -match $ExclProcRegex -or $n -match $PersistRegex } else { $n -match '(?i)\\AppData\\Roaming\\Microsoft\\Update' -or $n -match $PersistRegex -or (& $badRoot $n) }
       if ($bad) { Add-Finding 'RegValue' 'HIGH' "$k|$n" 'Windows Defender policy told to ignore this (malware hiding from antivirus).' }
     }
   }
-  $mp = try { Get-MpPreference -ErrorAction Stop } catch { $null }
   if (-not $mp) { return }
   foreach ($v in @($mp.ExclusionProcess) | Where-Object { $_ -and -not $policy[$_] }) {
     if ((Split-Path $v -Leaf) -match $ExclProcRegex -or $v -match $PersistRegex) {
@@ -425,6 +512,9 @@ function Scan-DefenderExclusions {
   foreach ($v in @($mp.ExclusionPath) | Where-Object { $_ -and -not $policy[$_] }) {
     if ($v -match '(?i)\\AppData\\Roaming\\Microsoft\\Update' -or $v -match $PersistRegex) {
       Add-Finding 'DefExcl' 'HIGH' "Path|$v" 'Windows Defender told to ignore this folder (malware hiding from antivirus).' @{ Type = 'Path'; Value = $v }
+    } elseif ($v -match $driveRx) {
+      $sev = if (& $badRoot $v) { 'HIGH' } else { 'WARN' }
+      Add-Finding 'DefExcl' $sev "Path|$v" "Windows Defender told to skip the whole $v drive (malware hiding from antivirus)." @{ Type = 'Path'; Value = $v }
     } elseif ($lolExcl -and $v -match '(?i)^[a-z]:\\Users\\|%(APPDATA|LOCALAPPDATA|TEMP|USERPROFILE)%') {
       Add-Finding 'DefExcl' 'HIGH' "Path|$v" 'Windows Defender told to skip this user folder, together with cmd/powershell/wscript (malware hiding from antivirus).' @{ Type = 'Path'; Value = $v }
     } elseif ($v -match '(?i)^[a-z]:\\Users\\|%(APPDATA|LOCALAPPDATA|TEMP|USERPROFILE)%') {
@@ -443,7 +533,7 @@ function Scan-Files {
     $roots += 'Downloads', 'Desktop', 'Documents', 'AppData\Roaming', 'AppData\Local\Temp', 'AppData\Local\Packages' |
       ForEach-Object { Join-Path $u.FullName $_ }
   }
-  $exts = '\.(zip|vhd|vhdx|img|iso|dll|exe|dat|cnf|sys|tar|vbs|vbe|js|wsf|lnk|msi|mst)$|^DCAgentServerInfo\.json$'
+  $exts = '\.(zip|vhd|vhdx|img|iso|dll|exe|dat|cnf|sys|tar|vbs|vbe|js|wsf|lnk|msi|mst|key)$|^DCAgentServerInfo\.json$'
   $wsh = New-Object -ComObject WScript.Shell
   # WAZIP_TIMING=1 prints how long each folder takes (used to find slow folders on CI and real PCs).
   foreach ($r in $roots | Where-Object { Test-Path -LiteralPath $_ }) {
@@ -488,6 +578,15 @@ function Scan-Files {
           Add-Finding 'File' 'HIGH' $f.FullName 'Script file received through WhatsApp. Real documents are never scripts (WhatsApp VBS campaign).'; return }
         if ($f.FullName -match '(?i)\\Users\\Public\\Documents\\[^\\]+\\' -and $f.Name -match '(?i)(\.(vbs|vbe)|^UEMSAgent\.(msi|mst)|^DCAgentServerInfo\.json)$') {
           Add-Finding 'File' 'HIGH' $f.FullName 'Hidden script or ManageEngine installer kit from the WhatsApp VBS campaign.'; return }
+        # Oct 2026 reports: Triage (encrashRep chain), C1BAS (ExceptCatch.dll), Netresec (Ping32 CoreShield.msi),
+        # Sekoia (SyncFuture <ip>ClientSetup.exe), Elastic (TCLBANKER hostfxr.exe), Chinese reports (drivers and tools).
+        if ($f.FullName -match '(?i)\\Users\\Public\\Libraries\\' -and $f.Name -match '(?i)^(webview2_integration\.exe|encrashrep\.dll)$') { Add-Finding 'File' 'HIGH' $f.FullName 'ValleyRAT loader hidden in Public\Libraries (INVOIS/Memeriksa VHD lures).'; return }
+        if ($f.Name -ieq 'ExceptCatch.dll') { Add-Finding 'File' 'HIGH' $f.FullName 'Silver Fox loader DLL (ExceptCatch.dll).'; return }
+        if ($f.Name -ieq 'CoreShield.msi' -and $f.FullName -match '(?i)^[a-z]:\\Users\\') { Add-Finding 'File' 'HIGH' $f.FullName 'Ping32 remote-control installer from the WhatsApp VBS campaign (Netresec).'; return }
+        if ($f.Name -match '^\d{1,3}(\.\d{1,3}){3}ClientSetup\.exe$') { Add-Finding 'File' 'HIGH' $f.FullName 'SyncFuture remote-control installer named after the attacker server (Sekoia).'; return }
+        if ($f.FullName -match '(?i)\\msvc-rt14\\bin\\hostfxr\.exe$') { Add-Finding 'File' 'HIGH' $f.FullName 'TCLBANKER loader (Elastic).'; return }
+        if ($f.Name -match '(?i)^(rwdriver|kabuto|XiaoH)\.sys$') { Add-Finding 'File' 'HIGH' $f.FullName 'Silver Fox antivirus-killer driver.'; return }
+        if ($f.FullName -match '(?i)\\Users\\Public\\Documents\\' -and $f.Name -match '(?i)^((funzip|men|KANG|kail|NtHandleCallback)\.exe|(edr|me)\.key)$') { Add-Finding 'File' 'HIGH' $f.FullName 'Silver Fox tool dropped in Public\Documents (Chinese security reports).'; return }
         if ($f.FullName -match '(?i)\\ProgramData\\EDS\d{4}\\') { Add-Finding 'File' 'HIGH' $f.FullName 'Hidden work folder of the WhatsApp VBS dropper (Microsoft, Mar 2026).'; return }
         # Reading version info opens the file, so only try DLLs (and sc.exe) the size of curl or bitsadmin.
         if (($f.Extension -ieq '.dll' -or $f.Name -ieq 'sc.exe') -and $f.Length -gt 150KB -and $f.Length -lt 1MB -and $f.FullName -match '(?i)\\(ProgramData|Users\\Public)\\' -and [string]$f.VersionInfo.OriginalFilename -match '(?i)^(curl|bitsadmin)\.exe') {
@@ -550,8 +649,10 @@ function Scan-ManageEngine {
     $cfg = Get-ChildItem -LiteralPath $p -Recurse -File -Include *.json, *.conf, *.ini, *.xml, *.txt, *.props -ErrorAction SilentlyContinue | Where-Object { $_.Length -lt 2MB }
     if ($cfg -and ($cfg | Select-String -SimpleMatch -Pattern $C2Ips -List -ErrorAction SilentlyContinue)) { $script:MeAttacker = $true }
   }
-  if ($hits.Count -and (Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -ErrorAction SilentlyContinue).ConsentPromptBehaviorAdmin -eq 0) {
-    Add-Finding 'Info' 'WARN' 'Admin permission prompt is switched off' 'The WhatsApp VBS campaign switches this off before installing ManageEngine. Turn it back on: search UAC > Change User Account Control settings > move the slider up one step.'
+  Scan-Ping32
+  # Both the VBS campaign and the MicroPoint ValleyRAT chain switch this off; only worth saying on an infected PC.
+  if (($hits.Count -or ($Findings | Where-Object { $_.Severity -eq 'HIGH' })) -and (Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -ErrorAction SilentlyContinue).ConsentPromptBehaviorAdmin -eq 0) {
+    Add-Finding 'Info' 'WARN' 'Admin permission prompt is switched off' 'The WhatsApp VBS campaign and ValleyRAT switch this off before installing their programs. Turn it back on: search UAC > Change User Account Control settings > move the slider up one step.'
   }
   if ($hits.Count) {
     $d = if ($script:MeAttacker) { 'Remote-management agent connected to a known attacker server (WhatsApp VBS campaign). This tool will force-remove it.' } else { switch ($Owner) {
@@ -560,6 +661,35 @@ function Scan-ManageEngine {
       default    { 'Remote-management agent found. If your company did NOT install it, the WhatsApp VBS campaign gave attackers remote control. Its normal uninstaller asks for the attacker''s PIN.' }
     } }
     Add-Finding 'Info' 'WARN' 'ManageEngine UEMS Agent' $d
+  }
+}
+
+# Netresec (Jun 2026): a WhatsApp VBS variant installs the Ping32 monitoring agent (NSecRTS.exe) instead of ManageEngine.
+# Same rule as ManageEngine: removed on a personal PC or when it talks to the attacker, left to the owner otherwise.
+function Scan-Ping32 {
+  $rx = '(?i)\\NSecRTS\.exe|\\Ping32\\'
+  $procs = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { [string]$_.ExecutablePath -match $rx })
+  $bad = [bool](Get-NetTCPConnection -RemoteAddress '143.92.37.168' -ErrorAction SilentlyContinue | Where-Object { $procs.ProcessId -contains $_.OwningProcess })
+  $sev = if ($Owner -eq 'Personal' -or $bad) { 'HIGH' } else { 'WARN' }
+  $why = switch ($Owner) {
+    'Office'   { 'Ask your IT team if they installed it.' }
+    'Personal' { 'A personal PC should not have it: the WhatsApp VBS campaign uses it to control PCs. This tool will remove it.' }
+    default    { 'Fine if your company installed it. If not, the WhatsApp VBS campaign gave attackers control of this PC.' }
+  }
+  $dirs = @()
+  foreach ($svc in Get-ChildItem 'HKLM:\SYSTEM\CurrentControlSet\Services' -ErrorAction SilentlyContinue) {
+    $pr = Get-ItemProperty -LiteralPath $svc.PSPath -ErrorAction SilentlyContinue
+    $img = [string]$pr.ImagePath
+    if ($img -notmatch $rx -or $pr.DeleteFlag -eq 1) { continue }
+    Add-Finding 'Service' $sev $svc.PSChildName "Ping32 remote-control service ($img). $why" @{ RegPath = $svc.PSPath; Image = '' }
+    $dirs += Split-Path (Resolve-ImagePath ($img -replace '^"([^"]+)".*', '$1' -replace '(?i)(\.exe)\s.*$', '$1'))
+  }
+  foreach ($p in $procs) {
+    Add-Finding 'Process' $sev "$($p.Name) (PID $($p.ProcessId))" "Ping32 remote-control program. $why" @{ Pid = $p.ProcessId; Path = $p.ExecutablePath }
+    $dirs += Split-Path $p.ExecutablePath
+  }
+  foreach ($d in $dirs | Sort-Object -Unique) {
+    if ($d -and $d -notmatch '(?i)^[a-z]:\\Windows(\\|$)' -and (Test-Path -LiteralPath $d)) { Add-Finding 'File' $sev $d "Ping32 program folder. $why" }
   }
 }
 
@@ -716,7 +846,8 @@ function Invoke-Fix($qdir) {
   $log = New-Object System.Collections.Generic.List[object]
   $i = 0
   $closed = $false
-  foreach ($f in $Findings | Sort-Object { @('Process', 'WaSession', 'Vhd', 'Task', 'DefExcl', 'RegValue', 'Service', 'RegKey', 'File').IndexOf($_.Kind) }) {
+  # Files inside a flagged folder go before the folder itself.
+  foreach ($f in $Findings | Sort-Object { @('Process', 'WaSession', 'Vhd', 'Task', 'DefExcl', 'RegValue', 'Service', 'RegKey', 'File').IndexOf($_.Kind) }, { -([string]$_.Target).Length }) {
     if ($f.Severity -ne 'HIGH' -or $f.Kind -eq 'Info') { continue }
     $i++
     try {
@@ -805,7 +936,10 @@ function Invoke-Fix($qdir) {
 
 function Invoke-Restore($mf) {
   $items = Get-Content -Raw -LiteralPath $mf | ConvertFrom-Json
-  foreach ($it in @($items)) {
+  $items = @($items | ForEach-Object { $_ })
+  # Undo in reverse, so a folder comes back before the files that were inside it.
+  [array]::Reverse($items)
+  foreach ($it in $items) {
     switch ($it.Kind) {
       'File' { Move-Item -LiteralPath $it.Backup -Destination $it.Target -Force; Say "  Dipulih: $($it.Target)" "  Restored: $($it.Target)" Green }
       'Reg'  { & reg.exe import $it.Backup | Out-Null; Say "  Registry dipulih: $($it.Target)" "  Registry restored: $($it.Target)" Green }
@@ -936,7 +1070,7 @@ if ($high.Count) {
   } elseif ($script:NeedRestart) {
     Say 'Servis jahat dah dibuang, tapi masih nampak sampai PC di-restart. RESTART dulu sebelum imbas semula.' 'Bad services are removed but stay listed until the PC restarts. RESTART before scanning again.' Yellow
   }
-  if ($Findings | Where-Object { $_.Kind -eq 'Service' -and $_.Detail -ne 'ManageEngine service' }) {
+  if ($Findings | Where-Object { $_.Kind -eq 'Service' -and $_.Detail -ne 'ManageEngine service' -and $_.Detail -notmatch '^Ping32' }) {
     Say 'Driver pembunuh antivirus dijumpai. Paling selamat: backup data & pasang semula Windows.' `
         'An antivirus-killer driver was found. Safest option: back up data and reinstall Windows.' Yellow
   }

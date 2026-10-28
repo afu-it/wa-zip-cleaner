@@ -114,6 +114,49 @@ Triage sweep of 79 runs (setup1.vbs, spsx.vbs, owpa.txt, alOffic.zip): further a
 
 WhatsApp ZIP with `Statement.exe` / `Tax-202609078869.exe`. Sideloads through `vulkaninfo-64.exe`, `vulkan-1.dll`, `vulkan-1.bin` in `C:\Program Files\Common Files`, persists as task `\Microsoft\Windows\USOPrivate` (or `USOPrivate Kit`), kills Baidu AV (`bdservicehost.exe`, `bduserhost.exe`) with `GoFly64.sys`. C2 `61.18.208.27:8888`.
 
+## October 2026 research round (Triage, Netresec, Kaspersky, Sekoia, Elastic, Chinese reports)
+
+New Triage samples with Malaysian lures, 12-28 Oct 2026 (`family:valleyrat_s2`):
+
+| SHA-256 | Size | What |
+|---|---|---|
+| `68eaeb29ad982b515ef13fcf731a60ec2b3c02e5be250a0099c7cff5fdc90048` | 3950313 | `SENARAIDOKUMEN.zip` |
+| `5f7446871ba78c9c19eac3b5bbb1db62a983b754100e6d5b0b502966fdfa2e74` | 3972897 | `SENARAIDOKUMEN.zip` |
+| `a692da9f60b4eb890c8636bb57e380af7d6517835b863e66c81c3f8b00658cf1` | 3868051 | `SENARAIDOKUMEN.zip` |
+| `355ee70e091b82b987d09db3cf8ba4176da316c220a72742f74a9e604199c79b` | 411648 | `LHDNCUKAI20261003122.iso` |
+| `1b89fbcd8fdf994ca32c48889ba617919ee16443692b1cfc7a2b8f3f5518a2c9` | 448512 | `Open_to_view_0a7a.iso` |
+| `de0b9b6656c9e9fc9db4271610a09c2ae27d07c5a4757e94b2e0314a9dda6ee4` | 25672 | `Open_to_view.exe` (inside the LHDN/Open_to_view ISOs) |
+| `5634caef6a5988f33d5116c74403892ddb648929983c52a6b9d7893ac5549401` | 3041300 | `21 Oktober 2026-INVOIS_4340.zip` |
+| `2db09f27b7f8b17dee095f71e65910864345659a7c4fe00d0fff30f95d0a8c57` | 3347821 | `INVOIS.vhd.zip` |
+| `0569371406eeca4d84078be94c2be98916294b89a7121c1e757b687a5ccdfe30` | 3170806 | `Memeriksa.vhd.zip` |
+| `b46788cb5d9def3e1c7136de29eb8904ac9543b5c28035fb1fa0e9006c3aeb29` | 13063 | `NOTIS TUNTUTAN CUKAI DAN PENALTI.eml` |
+| `9eaa140159f6e91af428a5f3ae608a170346238eb4ebca27ed36cb791af8bfc4` | 1766235 | `SSM-1.IMG.zip` |
+| `3a89fee824764cd99e6e0c7c7f1655bc2fe1bd41b79ab4f2eb0074e0e866fd9b` | 4525653 | `PDF_32JG2C_20261016154922.ZIP` |
+| `23b927dd668e5707d1de867e9e3f6217ef8cfc6803d18ac9a168dcfc9416070b` | 3140084 | `SOA.vhd.zip` (contains `Rime.DLL`) |
+| `971eecc4288a550ff9606dd8af9601c10714f9e41a2d5fcac325647a0cdf0cd0` | 18919424 | `10200944247016.67F21F26697FEF16429.vhd` |
+| `07806661d056305e832b509a1b517241420d8aa6bccadaff5e0768d5131406fd` | 2009626 | `JK-18005144.zip` (`Notice from Tax Departmen.exe`) |
+| `426bfd72b3143c76c83bfb3246f820e3cc17902ea04293a35764b67fc635ec3d` | 655359 | ValleyRAT IRBM sample ZIP |
+| `e43c872558aeac504df57d7f292518086f61c8b5c4abf282576bcf6bd1cecbed` | 1564951 | `TAX_tjA8Q7d8.img.zip` (`TaxFiling.exe`) |
+| `2c77d954eb79cc5b038b024d84848360d496b51c85ac8e97399d70d1bc3d0413` | 1288192 | dropper, becomes `WinCombo.exe` |
+| `9f326ede322930a7d5e149fa8720802b0623c1972dc54e41a2a73608fb6810dd` | 17224 | unknown file dropped with ZyArk.sys |
+| `ad91e674edb5f376d27a3c56df45ebb967229ee9ba623ec158f8c4835d577def` | 1724051 | Japanese tax-report `.img.zip` (Sep 2026) |
+
+Host indicators seen in the sandbox runs:
+- MicroPoint chain: `C:\ProgramData\MicroPoint\WinCombo.exe`, `EraseCode.dat`, `Security_Module.dat`, `magic_xe_core.dll`; HKLM Run value `ServiceController` / `iServiceController`; UAC bypass through `HKCU\Software\Classes\CLSID\{GUID}\Shell\Manage\command` then `explorer.exe shell:::{GUID}`; sets `ConsentPromptBehaviorAdmin=0`, `PromptOnSecureDesktop=0`.
+- crClient chain: `C:\Windows\System32\CRClient.dll` run with `rundll32 ...,EBWebView`; ZyArk.sys in a junk-named folder under `C:\Users\Public`.
+- encrashRep chain: `C:\Users\Public\Libraries\<junk>\webview2_integration.exe` + `encrashrep.dll`.
+- LHDN/Open_to_view ISOs: `%LOCALAPPDATA%\Toolkit\winhttp.dll`. SSM/SOA IMG: driver service `EmbeddedDriverService` from `%TEMP%\EmbeddedDriverService.sys`.
+- C2: `khltt1.club`, `lsf168.club`, `pxxjbh.club`, `liyunee.top`, `articio.top`, `kyur7oz.top`, `uykb10.club`, `gntr30.club`, `kufp16.club`, `txpfproxy.vip`, `jksdjkjs.cc`, `shougong9.com`, `thinnected.com`, `tax{cerf,low,gg,zz,yy}.top` (ThreatFox); IPs `202.61.85.151`, `202.61.85.179`, `202.61.85.173`, `202.61.85.47`, `87.84.204.93`, `156.251.11.79`, `137.220.152.244`, `154.213.180.91`, `137.220.153.147`, `202.146.222.95`, `202.61.157.33`, `202.61.160.183`, `101.33.117.120`, `143.109.37.187`, `47.243.109.132`, `204.194.50.231`.
+
+Other reports:
+- Netresec (25 Jun 2026), Ping32 variant of the WhatsApp VBS campaign: `NSecRTS.exe`, `ManagementTool.exe`, `CoreShield.msi`, C2 `143.92.37.168`, payload host `fadaoxiao.s3.us-west-004.backblazeb2.com`. Treated like ManageEngine: removed on a personal PC.
+- Kaspersky (31 Aug 2026), QN Wallpaper ValleyRAT: `C:\Program Files\QNWallpaper\`, C2 `103.45.66.18`, `192.253.225.173`.
+- Sekoia (24 Mar 2026, Malaysia): `C:\WhatsAppBackup\WhatsAppData.zip`, `%TEMP%\whatsapp_backup.lock`, `C:\Users\Public\Download\bb.jpg`, `xqwmwru.top` / `154.201.87.124`, `9010.360sdgg.com`, SyncFuture RMM `<ipv4>ClientSetup.exe`.
+- C1BAS: `ExceptCatch.dll`, `C:\ProgramData\TailScale\`.
+- Elastic TCLBANKER: task `RuntimeOptimizeService`, `%TEMP%\msvc-rt14\bin\hostfxr.exe`, C2 `*.ef971a42.workers.dev`, `mxtestacionamentos.com`, `191.96.224.96`; SHA-256 `701d51b7be8b034c860bf97847bd59a87dca8481c4625328813746964995b626`, `8a174aa70a4396547045aef6c69eb0259bae1706880f4375af71085eeb537059`, `668f932433a24bbae89d60b24eee4a24808fc741f62c5a3043bb7c9152342f40`, `63beb7372098c03baab77e0dfc8e5dca5e0a7420f382708a4df79bed2d900394` (last one: size unknown, not matched).
+- Chinese reports (ThreatBook, Huorong, QiAnXin, 2026): `C:\ProgramData\WindowsData\`, `funzip.exe`, `men.exe`, `KANG.exe`, `kail.exe`, `NtHandleCallback.exe`, `edr.key`, `me.key`, drivers `rwdriver.sys`, `kabuto.sys`, `C:\XiaoH.sys`, `C:\Windows\Temp\ranchserv.jpg`; registry `HKLM\SOFTWARE\JDBCC`, `HKLM\SOFTWARE\SysConfigDate`; services `TCLService`, `Cndom6`; tasks `\Microsoft\Windows\AppID\MicrosoftEdgeUpdateTaskUA Task-S-1-5-18*`, `WindowsPowerShell.WbemScripting.WindowsData`; Defender exclusion of every drive; `netsh advfirewall set allprofiles firewallpolicy blockinbound,blockoutbound`. C2 `38.91.115.114`, `8.210.25.225`, `95.40.29.190`, `16.163.105.153`, `183.90.186.193`, `52.128.226.74`, `154.83.17.175`, `45.204.2.166`, `uuuucome.com`, `laosjdhd.cn`, `xxxjjj250711.com`, `twsww.xin`, `cn-hk-oss-vip.com`. SHA-256 `3ba89047b9fb9ae2281e06a7f10a407698174b201f28fc1cadb930207254e485`, `9ace6a1e4bee5834be38b4c2fd26780d1fcc18ea9d58224e31d6382c19e53296`, `a14b681ec50328d3ac04f76ac18ef96fb7176425ff96325e2099ea57df3a1998` (matched); `305a1c784db4e88267f1d35b914b6ce4702f2b1196c1cdf14c024d63d1d4871f`, `cf111e28e40d20c9695e191c66b11882049c9559d5b4f2ed2090cf4626fdba39` (size unknown, not matched).
+- VulcanRAT (Morphisec): driver `System32\drivers\tp_<tick>.tmp` (reported as a warning); SHA-256 `0c418989bbc836208a087dee8fd64210f58909dddf736bc94769c269f65c26eb`, `be740b05caead2fa4521f42da0653a10f53029df5455ebafe4701ab3d41afdf9`, `6833b1946ac219cf6ddf6cfbde1f81352b12d9125c8735961b5256216c4fdc49`, `cbf8ffe904a030c02b9def094f609b2c05a78fa5c7745d2d371d38dd460c58be`, `facf78d474b66ed821288db41fa6ad8a7b6f30650eb12127cb3e9a3cc6146116` (not on Triage, sizes unknown, not matched by hash).
+
 ## References
 
 - CloudSEK, Silver Fox targeting India using tax-themed phishing lures (2025-12-24): https://www.cloudsek.com/blog/silver-fox-targeting-india-using-tax-themed-phishing-lures

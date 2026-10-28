@@ -247,6 +247,60 @@ $r = Scan "$env:TEMP\x5p.json" -Owner Personal
 Check (-not ($r.All | Where-Object { $_.Target -eq 'MEPendingTest' })) 'service already marked for deletion is not reported again'
 & sc.exe delete MEPendingTest | Out-Null
 
+Write-Host '=== October 2026 research additions ===' -ForegroundColor Cyan
+# MicroPoint chain (Triage): install folder, Run value and a per-user CLSID admin-prompt bypass.
+$mpDir = 'C:\ProgramData\MicroPoint'
+New-Item -ItemType Directory -Force -Path $mpDir | Out-Null
+Set-Content "$mpDir\WinCombo.exe" 'dummy'
+$runKey = 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Run'
+New-ItemProperty -Path $runKey -Name ServiceController -Value "$mpDir\WinCombo.exe" -Force | Out-Null
+$clsid = 'HKCU:\Software\Classes\CLSID\{0A7E5D1C-3B2F-4C6D-9E8F-WAZTEST00001}'
+New-Item -Path "$clsid\Shell\Manage\command" -Force | Out-Null
+Set-Item -Path "$clsid\Shell\Manage\command" -Value "$mpDir\WinCombo.exe"
+# Chinese reports: settings key, and Defender told to skip the whole system drive.
+New-Item -Path 'HKLM:\SOFTWARE\JDBCC\data' -Force | Out-Null
+$rootOk = $false
+try { Add-MpPreference -ExclusionPath 'C:\' -ErrorAction Stop; $rootOk = $true } catch { Write-Host "Defender not available: $($_.Exception.Message)" }
+# Firewall told to block everything going out. Domain profile only: the runner is not domain-joined.
+$fwOld = (Get-NetFirewallProfile -Profile Domain).DefaultOutboundAction
+Set-NetFirewallProfile -Profile Domain -DefaultOutboundAction Block
+# Double-extension lure and a driver service loaded from Temp (SSM/SOA lures).
+Set-Content "$dl\INVOIS.vhd.zip" 'dummy'
+Set-Content 'C:\Windows\Temp\EmbeddedDriverService.sys' 'dummy'
+& sc.exe create EmbeddedDriverService type= kernel start= demand binPath= 'C:\Windows\Temp\EmbeddedDriverService.sys' | Out-Null
+# Ping32 agent (Netresec): the WhatsApp VBS variant that installs it instead of ManageEngine.
+$p32 = 'C:\ProgramData\Ping32'
+New-Item -ItemType Directory -Force -Path $p32 | Out-Null
+Set-Content "$p32\NSecRTS.exe" 'dummy'
+& sc.exe create WazPing32Test start= demand binPath= "`"$p32\NSecRTS.exe`"" | Out-Null
+
+$r6 = Scan "$env:TEMP\x6.json"
+Check (Has $r6 'File' 'HIGH' 'ProgramData\\MicroPoint$') 'MicroPoint folder is HIGH'
+Check (Has $r6 'RegValue' 'HIGH' 'Run\|ServiceController$') 'MicroPoint Run value is HIGH'
+Check (Has $r6 'RegKey' 'HIGH' 'WAZTEST00001\}$' 'admin-prompt bypass') 'CLSID Shell\Manage bypass is HIGH'
+Check (Has $r6 'RegKey' 'HIGH' 'SOFTWARE\\JDBCC$') 'JDBCC settings key is HIGH'
+if ($rootOk) { Check (Has $r6 'DefExcl' 'HIGH' '^Path\|C:\\$' 'whole') 'Defender exclusion of drive C: is HIGH' }
+Check (Has $r6 'Info' 'WARN' 'Firewall blocks all outgoing connections \(Domain\)') 'firewall blocking all outgoing is WARN'
+Check (Has $r6 'File' 'HIGH' 'Downloads\\INVOIS\.vhd\.zip$') 'double-extension lure INVOIS.vhd.zip is HIGH'
+Check (Has $r6 'Service' 'HIGH' '^EmbeddedDriverService$') 'driver service loaded from Temp is HIGH'
+Check (Has $r6 'Service' 'WARN' '^WazPing32Test$' 'Ping32') 'Ping32 service is WARN when owner unknown'
+$scanLog = Get-ChildItem $q -Filter 'scan-*.log' | Sort-Object LastWriteTime | Select-Object -Last 1
+Check ($scanLog -and (Select-String -LiteralPath $scanLog.FullName -SimpleMatch 'Maksud: Program kawalan jauh Ping32' -Quiet)) 'Ping32 warning explained in plain Malay'
+
+$r7 = Scan "$env:TEMP\x7.json" -Fix -Owner Personal
+Check (Has $r7 'Service' 'HIGH' '^WazPing32Test$' 'Ping32') 'Ping32 service is HIGH on a personal PC'
+Check (-not (Test-Path $mpDir)) 'MicroPoint folder quarantined'
+Check (-not ((Get-Item $runKey).GetValueNames() -contains 'ServiceController')) 'MicroPoint Run value removed'
+Check (-not (Test-Path $clsid)) 'CLSID bypass key removed'
+Check (-not (Test-Path 'HKLM:\SOFTWARE\JDBCC')) 'JDBCC key removed'
+if ($rootOk) { Check (-not (@((Get-MpPreference).ExclusionPath) -contains 'C:\')) 'drive C: exclusion removed' }
+Check (-not (Test-Path "$dl\INVOIS.vhd.zip")) 'INVOIS.vhd.zip quarantined'
+& sc.exe query EmbeddedDriverService | Out-Null; Check ($LASTEXITCODE -ne 0) 'Temp driver service deleted'
+Check (-not (Test-Path 'C:\Windows\Temp\EmbeddedDriverService.sys')) 'Temp driver file quarantined'
+& sc.exe query WazPing32Test | Out-Null; Check ($LASTEXITCODE -ne 0) 'Ping32 service deleted'
+Check (-not (Test-Path $p32)) 'Ping32 folder quarantined'
+Set-NetFirewallProfile -Profile Domain -DefaultOutboundAction $fwOld
+
 Write-Host '=== .bat launchers ===' -ForegroundColor Cyan
 # Clear WARN-only leftovers so a clean result reads BERSIH.
 & sc.exe delete MEUemsTest | Out-Null; & sc.exe delete OpswatLegitTest | Out-Null
