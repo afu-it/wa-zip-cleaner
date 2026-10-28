@@ -209,6 +209,13 @@ Register-ScheduledTask -TaskName 'ManageEngine UEMS Test' -Action (New-Scheduled
 $meUn = 'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\{WAZIP-ME-TEST}'
 New-Item -Path $meUn -Force | Out-Null
 New-ItemProperty -Path $meUn -Name DisplayName -Value 'ManageEngine UEMS - Agent' -Force | Out-Null
+$meCfg = 'HKLM:\SOFTWARE\WOW6432Node\AdventNet\DesktopCentral\DCAgent'
+New-Item -Path $meCfg -Force | Out-Null
+$meMsi = 'HKLM:\SOFTWARE\Classes\Installer\Products\WAZIPMETEST0000000000000000000000'
+New-Item -Path $meMsi -Force | Out-Null
+New-ItemProperty -Path $meMsi -Name ProductName -Value 'ManageEngine UEMS - Agent' -Force | Out-Null
+New-NetFirewallRule -Name WazMeFwTest -DisplayName 'WazMeFwTest' -Program "$meDir\bin\dcagentservice.exe" -Direction Inbound -Action Allow | Out-Null
+$fwKey = 'HKLM:\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\FirewallRules'
 $r = Scan "$env:TEMP\x4.json" -Fix
 Check (Test-Path $meDir) 'ManageEngine kept when the user did not confirm'
 $r = Scan "$env:TEMP\x4b.json" -Fix -Owner Office
@@ -221,6 +228,9 @@ Check (-not (Test-Path $meDir)) 'ManageEngine folder quarantined'
 & sc.exe query MEUemsAgentTest | Out-Null; Check ($LASTEXITCODE -ne 0) 'ManageEngine service deleted'
 Check (-not (Get-ScheduledTask -TaskName 'ManageEngine UEMS Test' -ErrorAction SilentlyContinue)) 'ManageEngine task removed'
 Check (-not (Test-Path $meUn)) 'ManageEngine Apps entry removed'
+Check (-not (Test-Path $meCfg)) 'ManageEngine settings key removed'
+Check (-not (Test-Path $meMsi)) 'ManageEngine installer record removed'
+Check (-not ((Get-Item $fwKey).GetValueNames() -contains 'WazMeFwTest')) 'ManageEngine firewall opening removed'
 # Victim report 2026-10-28: a removed service stays listed until restart and kept the scan red.
 & sc.exe create MEPendingTest start= demand DisplayName= "ManageEngine Pending Test" binPath= "$env:SystemRoot\System32\svchost.exe" | Out-Null
 Set-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Services\MEPendingTest' -Name DeleteFlag -Value 1 -Type DWord

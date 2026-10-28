@@ -663,6 +663,22 @@ function Add-ManageEngineRemoval {
   foreach ($d in "${env:ProgramFiles(x86)}\ManageEngine\UEMS_Agent", "$env:ProgramFiles\ManageEngine\UEMS_Agent") {
     if (Test-Path -LiteralPath $d) { Add-Finding 'File' 'HIGH' $d 'ManageEngine agent folder' }
   }
+  # Registry leftovers: the agent's settings (the attacker's server address), installer records and firewall openings.
+  foreach ($k in 'HKLM:\SOFTWARE\WOW6432Node\AdventNet', 'HKLM:\SOFTWARE\AdventNet') {
+    if (Test-Path -LiteralPath $k) { Add-Finding 'RegKey' 'HIGH' $k 'ManageEngine settings (server address and keys)' }
+  }
+  foreach ($u in Get-ChildItem -LiteralPath 'HKLM:\SOFTWARE\Classes\Installer\Products' -ErrorAction SilentlyContinue) {
+    if ((Get-ItemProperty -LiteralPath $u.PSPath -ErrorAction SilentlyContinue).ProductName -match $rx) {
+      Add-Finding 'RegKey' 'HIGH' ($u.PSPath -replace '^Microsoft\.PowerShell\.Core\\Registry::', 'Registry::') 'ManageEngine installer record'
+    }
+  }
+  $fw = 'HKLM:\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\FirewallRules'
+  $fwp = Get-ItemProperty -LiteralPath $fw -ErrorAction SilentlyContinue
+  if ($fwp) {
+    foreach ($pp in $fwp.PSObject.Properties | Where-Object { $_.Name -notmatch '^PS(Path|ParentPath|ChildName|Drive|Provider)$' -and [string]$_.Value -match $rx }) {
+      Add-Finding 'RegValue' 'HIGH' "$fw|$($pp.Name)" 'ManageEngine firewall opening'
+    }
+  }
 }
 
 # --------------------------------------------------------------- fixes ---
