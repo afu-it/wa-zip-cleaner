@@ -235,14 +235,15 @@ Check (-not (Test-Path 'HKLM:\SOFTWARE\ManageEngine')) 'SOFTWARE\ManageEngine ke
 & sc.exe query MEARService | Out-Null; Check ($LASTEXITCODE -ne 0) 'MEARService (no ManageEngine name) deleted'
 Check (-not (Test-Path $meMsi)) 'ManageEngine installer record removed'
 Check (-not ((Get-Item $fwKey).GetValueNames() -contains 'WazMeFwTest')) 'ManageEngine firewall opening removed'
+Check (Has $r 'RegValue' 'HIGH' 'ExtensionInstallForcelist\|1$') 'forced Chrome extension is HIGH on a personal PC'
+Check (-not ((Get-Item $polKey -ErrorAction SilentlyContinue).GetValueNames() -contains '1')) 'forced extension policy removed on a personal PC'
+
 # Victim report 2026-10-28: a removed service stays listed until restart and kept the scan red.
 & sc.exe create MEPendingTest start= demand DisplayName= "ManageEngine Pending Test" binPath= "$env:SystemRoot\System32\svchost.exe" | Out-Null
 Set-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Services\MEPendingTest' -Name DeleteFlag -Value 1 -Type DWord
 $r = Scan "$env:TEMP\x5p.json" -Owner Personal
 Check (-not ($r.All | Where-Object { $_.Target -eq 'MEPendingTest' })) 'service already marked for deletion is not reported again'
 & sc.exe delete MEPendingTest | Out-Null
-Check (Has $r 'RegValue' 'HIGH' 'ExtensionInstallForcelist\|1$') 'forced Chrome extension is HIGH on a personal PC'
-Check (-not ((Get-Item $polKey -ErrorAction SilentlyContinue).GetValueNames() -contains '1')) 'forced extension policy removed on a personal PC'
 
 Write-Host '=== .bat launchers ===' -ForegroundColor Cyan
 # Clear WARN-only leftovers so a clean result reads BERSIH.
