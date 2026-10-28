@@ -257,10 +257,10 @@ New-ItemProperty -Path $runKey -Name ServiceController -Value "$mpDir\WinCombo.e
 $clsid = 'HKCU:\Software\Classes\CLSID\{0A7E5D1C-3B2F-4C6D-9E8F-WAZTEST00001}'
 New-Item -Path "$clsid\Shell\Manage\command" -Force | Out-Null
 Set-Item -Path "$clsid\Shell\Manage\command" -Value "$mpDir\WinCombo.exe"
-# Chinese reports: settings key, and Defender told to skip the whole system drive.
+# Chinese reports: settings key, and Defender told to skip every drive (the runner image already skips C: and D:).
 New-Item -Path 'HKLM:\SOFTWARE\JDBCC\data' -Force | Out-Null
 $rootOk = $false
-try { Add-MpPreference -ExclusionPath 'C:\' -ErrorAction Stop; $rootOk = $true } catch { Write-Host "Defender not available: $($_.Exception.Message)" }
+try { Add-MpPreference -ExclusionPath 'C:\', 'E:\', 'F:\' -ErrorAction Stop; $rootOk = $true } catch { Write-Host "Defender not available: $($_.Exception.Message)" }
 # Firewall told to block everything going out. Domain profile only: the runner is not domain-joined.
 $fwOld = (Get-NetFirewallProfile -Profile Domain).DefaultOutboundAction
 Set-NetFirewallProfile -Profile Domain -DefaultOutboundAction Block
@@ -279,7 +279,7 @@ Check (Has $r6 'File' 'HIGH' 'ProgramData\\MicroPoint$') 'MicroPoint folder is H
 Check (Has $r6 'RegValue' 'HIGH' 'Run\|ServiceController$') 'MicroPoint Run value is HIGH'
 Check (Has $r6 'RegKey' 'HIGH' 'WAZTEST00001\}$' 'admin-prompt bypass') 'CLSID Shell\Manage bypass is HIGH'
 Check (Has $r6 'RegKey' 'HIGH' 'SOFTWARE\\JDBCC$') 'JDBCC settings key is HIGH'
-if ($rootOk) { Check (Has $r6 'DefExcl' 'HIGH' '^Path\|C:\\$' 'whole') 'Defender exclusion of drive C: is HIGH' }
+if ($rootOk) { Check (Has $r6 'DefExcl' 'HIGH' '^Path\|F:\\$' 'whole') 'Defender exclusion of every drive is HIGH' }
 Check (Has $r6 'Info' 'WARN' 'Firewall blocks all outgoing connections \(Domain\)') 'firewall blocking all outgoing is WARN'
 Check (Has $r6 'File' 'HIGH' 'Downloads\\INVOIS\.vhd\.zip$') 'double-extension lure INVOIS.vhd.zip is HIGH'
 Check (Has $r6 'Service' 'HIGH' '^EmbeddedDriverService$') 'driver service loaded from Temp is HIGH'
@@ -293,7 +293,7 @@ Check (-not (Test-Path $mpDir)) 'MicroPoint folder quarantined'
 Check (-not ((Get-Item $runKey).GetValueNames() -contains 'ServiceController')) 'MicroPoint Run value removed'
 Check (-not (Test-Path $clsid)) 'CLSID bypass key removed'
 Check (-not (Test-Path 'HKLM:\SOFTWARE\JDBCC')) 'JDBCC key removed'
-if ($rootOk) { Check (-not (@((Get-MpPreference).ExclusionPath) -contains 'C:\')) 'drive C: exclusion removed' }
+if ($rootOk) { Check (-not (@((Get-MpPreference).ExclusionPath) -contains 'F:\')) 'whole-drive exclusion removed' }
 Check (-not (Test-Path "$dl\INVOIS.vhd.zip")) 'INVOIS.vhd.zip quarantined'
 & sc.exe query EmbeddedDriverService | Out-Null; Check ($LASTEXITCODE -ne 0) 'Temp driver service deleted'
 Check (-not (Test-Path 'C:\Windows\Temp\EmbeddedDriverService.sys')) 'Temp driver file quarantined'

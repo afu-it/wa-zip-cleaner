@@ -200,7 +200,6 @@ $WarnHelp = @(
   ,@('Attacker server looked up', 'PC ni pernah cuba hubungi server penggodam baru-baru ini.', 'Anggap PC dijangkiti. Tukar kata laluan guna telefon. Paling selamat: backup dokumen dan format.')
   ,@('Windows Update is disabled', 'Windows Update dimatikan. Malware buat ni supaya Windows tak dapat pembaikan keselamatan.', 'Kalau bukan anda yang matikan: taip services.msc dalam carian > Windows Update > Startup type: Manual > OK.')
   ,@('Blocklist is OFF', 'Perlindungan Windows yang sekat driver bahaya dimatikan.', 'Windows Security > Device security > Core isolation details > hidupkan Microsoft Vulnerable Driver Blocklist > restart.')
-  ,@('whole .* drive', 'Antivirus disuruh abaikan satu drive penuh, jadi semua fail dalam drive tu tak diperiksa.', 'Kalau bukan anda yang tetapkan: Windows Security > Virus & threat protection > Manage settings > Exclusions > Remove.')
   ,@('DefExcl', 'Antivirus disuruh abaikan folder ni, jadi fail dalam tu tak diperiksa.', 'Kalau bukan anda yang tetapkan: Windows Security > Virus & threat protection > Manage settings > Exclusions > Remove.')
   ,@('extension|Extension', 'Browser dipaksa pasang extension, atau extension dipasang dari folder (bukan kedai rasmi). Extension boleh baca semua laman yang anda buka.', 'Biasa di PC office. Kalau PC sendiri: buang di browser > Extensions, atau jalankan tool semula dan pilih "PC sendiri".')
   ,@('Selenium|chromedriver', 'Alat untuk kawal Chrome secara automatik. Worm WhatsApp guna ni untuk hantar mesej kepada semua kenalan anda.', 'Kalau anda bukan programmer: padam fail atau folder tu.')
@@ -486,12 +485,14 @@ function Scan-Persistence {
 function Scan-DefenderExclusions {
   $policy = @{}
   $mp = try { Get-MpPreference -ErrorAction Stop } catch { $null }
-  # Huorong (2026): the AV killer excludes every drive. C:\ is never excluded on purpose; several roots is the malware.
+  # Huorong (2026): the AV killer excludes every drive. Build machines often skip C:\ and D:\, so it takes three
+  # drives, or the system drive together with cmd/powershell/wscript, before it counts.
   $driveRx = '^[A-Za-z]:\\?$'
   $pk = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Exclusions\Paths'
   $pnames = if (Test-Path -LiteralPath $pk) { @((Get-Item -LiteralPath $pk).GetValueNames()) } else { @() }
   $roots = @(@($pnames) + @($mp.ExclusionPath) | Where-Object { $_ -match $driveRx } | ForEach-Object { $_.Substring(0, 1).ToUpper() } | Sort-Object -Unique)
-  $badRoot = { param($v) $v -match $driveRx -and ($v.Substring(0, 1) -ieq $env:SystemDrive.Substring(0, 1) -or $roots.Count -ge 3) }
+  $lolExcl = @($mp.ExclusionProcess) | Where-Object { $_ -and (Split-Path $_ -Leaf) -match '(?i)^(cmd|powershell|wscript|cscript|mshta)\.exe$' }
+  $badRoot = { param($v) $v -match $driveRx -and ($roots.Count -ge 3 -or ($lolExcl -and $v.Substring(0, 1) -ieq $env:SystemDrive.Substring(0, 1))) }
   foreach ($kind in 'Processes', 'Paths') {
     $k = "HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Exclusions\$kind"
     if (-not (Test-Path -LiteralPath $k)) { continue }
@@ -507,14 +508,12 @@ function Scan-DefenderExclusions {
       Add-Finding 'DefExcl' 'HIGH' "Process|$v" 'Windows Defender told to ignore this program (malware hiding from antivirus).' @{ Type = 'Process'; Value = $v }
     }
   }
-  # Windows' own script runners excluded too means the user-folder exclusion is the malware's, not the owner's.
-  $lolExcl = @($mp.ExclusionProcess) | Where-Object { $_ -and (Split-Path $_ -Leaf) -match '(?i)^(cmd|powershell|wscript|cscript|mshta)\.exe$' }
+  # Windows' own script runners excluded too ($lolExcl) means the user-folder exclusion is the malware's, not the owner's.
   foreach ($v in @($mp.ExclusionPath) | Where-Object { $_ -and -not $policy[$_] }) {
     if ($v -match '(?i)\\AppData\\Roaming\\Microsoft\\Update' -or $v -match $PersistRegex) {
       Add-Finding 'DefExcl' 'HIGH' "Path|$v" 'Windows Defender told to ignore this folder (malware hiding from antivirus).' @{ Type = 'Path'; Value = $v }
-    } elseif ($v -match $driveRx) {
-      $sev = if (& $badRoot $v) { 'HIGH' } else { 'WARN' }
-      Add-Finding 'DefExcl' $sev "Path|$v" "Windows Defender told to skip the whole $v drive (malware hiding from antivirus)." @{ Type = 'Path'; Value = $v }
+    } elseif (& $badRoot $v) {
+      Add-Finding 'DefExcl' 'HIGH' "Path|$v" "Windows Defender told to skip the whole $v drive (malware hiding from antivirus)." @{ Type = 'Path'; Value = $v }
     } elseif ($lolExcl -and $v -match '(?i)^[a-z]:\\Users\\|%(APPDATA|LOCALAPPDATA|TEMP|USERPROFILE)%') {
       Add-Finding 'DefExcl' 'HIGH' "Path|$v" 'Windows Defender told to skip this user folder, together with cmd/powershell/wscript (malware hiding from antivirus).' @{ Type = 'Path'; Value = $v }
     } elseif ($v -match '(?i)^[a-z]:\\Users\\|%(APPDATA|LOCALAPPDATA|TEMP|USERPROFILE)%') {
