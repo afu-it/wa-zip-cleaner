@@ -345,6 +345,47 @@ Remove-Item -LiteralPath $pfTest -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item Env:\WAZIP_TEST_PCA, Env:\WAZIP_TEST_PREFETCH
 if ($histOk) { Remove-MpPreference -ExclusionPath 'C:\Users\Public\WazHistTest' -ErrorAction SilentlyContinue }
 
+Write-Host '=== Mounted .img lure (opens as a DVD drive) ===' -ForegroundColor Cyan
+# Build a tiny ISO-format image with Windows' own IMAPI2 and give it a lure name ending in .img.
+$isoSrc = "$env:TEMP\wazip-isosrc"; New-Item -ItemType Directory -Force -Path $isoSrc | Out-Null
+Set-Content "$isoSrc\readme.txt" 'dummy'
+$lureImg = "$dl\LHDNCUKAI20261029.img"
+$imgOk = $false
+try {
+  Add-Type -TypeDefinition @'
+public static class WazIso {
+  public static void Save(object stream, string path) {
+    var s = (System.Runtime.InteropServices.ComTypes.IStream)stream;
+    var buf = new byte[65536];
+    var pcb = System.Runtime.InteropServices.Marshal.AllocHGlobal(4);
+    try {
+      using (var o = System.IO.File.Create(path)) {
+        int n;
+        do { s.Read(buf, buf.Length, pcb); n = System.Runtime.InteropServices.Marshal.ReadInt32(pcb); o.Write(buf, 0, n); } while (n > 0);
+      }
+    } finally { System.Runtime.InteropServices.Marshal.FreeHGlobal(pcb); }
+  }
+}
+'@
+  $fsi = New-Object -ComObject IMAPI2FS.MsftFileSystemImage
+  $fsi.FileSystemsToCreate = 3; $fsi.VolumeName = 'WAZTEST'
+  $fsi.Root.AddTree($isoSrc, $false)
+  [WazIso]::Save($fsi.CreateResultImage().ImageStream, $lureImg)
+  Mount-DiskImage -ImagePath $lureImg -StorageType ISO -ErrorAction Stop | Out-Null
+  Start-Sleep 3
+  $imgOk = [bool](Get-Volume | Where-Object { $_.DriveType -eq 'CD-ROM' -and $_.FileSystemLabel -eq 'WAZTEST' -and $_.DriveLetter })
+} catch { Write-Host "image setup failed: $($_.Exception.Message)" }
+if ($imgOk) {
+  $r11 = Scan "$env:TEMP\x11.json"
+  Check (Has $r11 'Vhd' 'HIGH' 'LHDNCUKAI20261029\.img$' 'DVD drive') 'mounted .img lure (DVD drive) is HIGH'
+  $r12 = Scan "$env:TEMP\x12.json" -Fix
+  Check (-not (Get-DiskImage -ImagePath $lureImg -ErrorAction SilentlyContinue | Where-Object Attached)) 'mounted .img lure ejected'
+  Check (-not (Test-Path -LiteralPath $lureImg)) 'mounted .img lure quarantined'
+} else { Write-Host 'SKIP mounted .img: could not build or mount a test image on this runner' -ForegroundColor Yellow }
+Dismount-DiskImage -ImagePath $lureImg -ErrorAction SilentlyContinue | Out-Null
+Remove-Item -LiteralPath $lureImg -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $isoSrc -Recurse -Force -ErrorAction SilentlyContinue
+
 Write-Host '=== .bat launchers ===' -ForegroundColor Cyan
 # Clear WARN-only leftovers so a clean result reads BERSIH.
 & sc.exe delete MEUemsTest | Out-Null; & sc.exe delete OpswatLegitTest | Out-Null

@@ -31,7 +31,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.10.28'
+$Version = '2026.10.29'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -128,7 +128,7 @@ $LureRegex    = '^(Click here to view.*\.(zip|vhd|vhdx)|Notice.*\.vhdx?|(PDF|DOC
 $ExclProcRegex = '(?i)^(QtsUpdater|svchost|rundll32|powershell|cmd|wscript|cscript|mshta|regsvr32|explorer)\.exe$'
 # Known attacker servers (C2). A process talking to one of these is the malware.
 # Kaspersky (Apr 2026): ValleyRAT and ABCDoor servers from the Silver Fox tax campaign.
-$C2Ips = @('134.122.155.135', '14.128.53.155', '45.202.1.249', '108.187.37.85', '108.187.42.63', '207.56.138.28', '45.118.133.203', '154.82.81.205', '154.82.81.192', '108.187.41.221',
+$C2Ips = @('134.122.155.135', '134.122.155.148', '14.128.53.155', '45.202.1.249', '108.187.37.85', '108.187.42.63', '207.56.138.28', '45.118.133.203', '154.82.81.205', '154.82.81.192', '108.187.41.221',
             '103.20.195.147', '45.207.231.94', '45.207.231.107', '160.124.9.103', '109.176.30.141',
             '202.61.160.208', '202.61.160.202', '202.61.160.201', '202.61.160.160', '202.61.160.137', '38.55.151.63', '61.18.208.27',
             '202.61.160.203', '202.61.160.145', '137.220.205.167', '137.220.205.162', '137.220.224.63', '103.140.154.117', '206.238.68.33', '43.224.224.151',
@@ -685,11 +685,19 @@ function Scan-Files {
 }
 
 function Scan-Vhd {
-  Say '[6/8] Semak cakera maya (VHD) yang sedang dibuka...' '[6/8] Checking mounted virtual disks (VHD)...' Cyan
+  Say '[6/8] Semak cakera maya (VHD, IMG, ISO) yang sedang dibuka...' '[6/8] Checking mounted virtual disks (VHD, IMG, ISO)...' Cyan
   foreach ($d in Get-Disk -ErrorAction SilentlyContinue | Where-Object { $_.BusType -eq 'File Backed Virtual' }) {
     $loc = [string]$d.Location
     $sev = if ((Split-Path $loc -Leaf) -match $LureRegex) { 'HIGH' } else { 'WARN' }
     Add-Finding 'Vhd' $sev $loc 'Mounted virtual disk. The WhatsApp ZIP opens as a VHD drive.'
+  }
+  # .img and .iso lures open as a DVD drive, which Get-Disk does not list.
+  foreach ($v in Get-Volume -ErrorAction SilentlyContinue | Where-Object { $_.DriveType -eq 'CD-ROM' -and $_.DriveLetter }) {
+    $loc = [string]($v | Get-DiskImage -ErrorAction SilentlyContinue).ImagePath
+    if (-not $loc) { continue }
+    $fi = Get-Item -LiteralPath $loc -Force -ErrorAction SilentlyContinue
+    $sev = if ((Split-Path $loc -Leaf) -match $LureRegex -or ($fi -and ((Get-Ioc $fi) -or (Test-WaOrigin $fi)))) { 'HIGH' } else { 'WARN' }
+    Add-Finding 'Vhd' $sev $loc "Mounted disk image (drive $($v.DriveLetter):). WhatsApp .img/.iso lures open as a DVD drive."
   }
 }
 
@@ -984,6 +992,8 @@ function Invoke-Fix($qdir) {
           if ($img -and (Test-Path -LiteralPath $img)) { Add-Finding 'File' 'HIGH' $img 'Driver file of removed service.' }
         }
         'File' {
+          # A disk image still open as a drive cannot be moved.
+          if ($f.Target -match '(?i)\.(img|iso|vhdx?)$') { Dismount-DiskImage -ImagePath $f.Target -ErrorAction SilentlyContinue | Out-Null }
           $dest = Join-Path $qdir ("file-$i-" + (Split-Path $f.Target -Leaf) + '.quarantine')
           Move-Item -LiteralPath $f.Target -Destination $dest -Force -ErrorAction Stop
           $log.Add(@{ Kind = 'File'; Target = $f.Target; Backup = $dest })
