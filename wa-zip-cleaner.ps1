@@ -773,7 +773,7 @@ function Scan-Files {
   $roots = @(Get-ChildItem -LiteralPath $env:ProgramData -Force -ErrorAction SilentlyContinue | Where-Object { $_.Name -ne 'docker' } | ForEach-Object { $_.FullName })
   $roots += "$env:ProgramData\docker\config", "$env:SystemDrive\Users\Public", "$env:SystemRoot\Temp", "$env:SystemRoot\Tasks"
   foreach ($u in Get-ChildItem "$env:SystemDrive\Users" -Directory -ErrorAction SilentlyContinue) {
-    $roots += 'Downloads', 'Desktop', 'Documents', 'AppData\Roaming', 'AppData\Local\Temp', 'AppData\Local\Packages' |
+    $roots += 'Downloads', 'Desktop', 'Documents', 'AppData\Roaming', 'AppData\Local\Temp', 'AppData\Local\Packages', 'AppData\Local\Toolkit' |
       ForEach-Object { Join-Path $u.FullName $_ }
   }
   $exts = '\.(zip|rar|7z|vhd|vhdx|img|iso|dll|exe|scr|dat|cnf|sys|tar|vbs|vbe|js|wsf|lnk|msi|mst|key)$|^DCAgentServerInfo\.json$'
