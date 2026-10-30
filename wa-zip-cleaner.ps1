@@ -31,7 +31,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.10.29'
+$Version = '2026.10.30'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -122,7 +122,7 @@ if ($env:WAZIP_TEST_IOCS -and (Test-Path -LiteralPath $env:WAZIP_TEST_IOCS)) {
     if ($e.Vendor) { $entry.Vendor = $e.Vendor; $AbusedLegit += $entry } else { $KnownBad += $entry }
   }
 }
-$PersistRegex ='rime\.dll|_vmclientcore@16|KafanInput|vcRuntimeMinimum_x86\.exe|\\H\d{8,}\.exe|ZyArk|\\ardrv\.sys|\\AppData\\Roaming\\Microsoft\\Update\\[^\\]+\.exe|active_desktop_(launcher|render)|Add-MpPreference|eneio64\.dat|plcc3a\.dat|-m\s+appclient|\\appclient\\python\\|HealthApp-[0-9a-f]{6}\.bat|\\ProgramData\\MicroPoint\\|WinCombo\.exe|CRClient\.dll|\\Toolkit\\winhttp\.dll|webview2_integration\.exe|encrashrep\.dll|\\ProgramData\\WindowsData\\|ExceptCatch\.dll|\\QNWallpaper\\|\\msvc-rt14\\|NtHandleCallback\.exe|\\(XiaoH|rwdriver|kabuto)\.sys'
+$PersistRegex ='\\AppData\\Roaming\\Microsoft\\Windows\\System\\[^\\]+\.exe|rime\.dll|_vmclientcore@16|KafanInput|vcRuntimeMinimum_x86\.exe|\\H\d{8,}\.exe|ZyArk|\\ardrv\.sys|\\AppData\\Roaming\\Microsoft\\Update\\[^\\]+\.exe|active_desktop_(launcher|render)|Add-MpPreference|eneio64\.dat|plcc3a\.dat|-m\s+appclient|\\appclient\\python\\|HealthApp-[0-9a-f]{6}\.bat|\\ProgramData\\MicroPoint\\|WinCombo\.exe|CRClient\.dll|\\Toolkit\\winhttp\.dll|webview2_integration\.exe|encrashrep\.dll|\\ProgramData\\WindowsData\\|ExceptCatch\.dll|\\QNWallpaper\\|\\msvc-rt14\\|NtHandleCallback\.exe|\\(XiaoH|rwdriver|kabuto)\.sys'
 $LureRegex    = '^(Click here to view.*\.(zip|vhd|vhdx)|Notice.*\.vhdx?|(PDF|DOC)_[A-Z0-9]{3,8}_20\d{12}\.(zip|img|iso|exe|vhd|vhdx)|20\d{6}[.-]MYS20\d{2}Y\d{4}[A-Z0-9]{4,6}\.(zip|img|iso|vhd|vhdx)|(RES-20\d{6}_\d{6}|ORCAMENTO_\d{6}|COMPROVANTE_20\d{6}_\d{6}|ComprovanteSantander-[\d.]+|NEW-20\d{6}_\d{6}-PED_[0-9A-F]+|DOC-\d{8}_[0-9A-F]{8})\.(zip|lnk)|20\d{12}-[0-9A-F]{14}\.zip|SENARAI ?DOKUMEN.*\.zip|.+\.(vhdx?|img|iso)\.zip|LHDN.*\.(iso|img|vhdx?)|Open_to_view.*\.(iso|img)|TAX_[A-Za-z0-9]{6,}\.img(\.zip)?|SSM-\d+\.img(\.zip)?)$'
 # Programs the October 2026 wave tells Windows Defender to skip. No real program needs these excluded.
 $ExclProcRegex = '(?i)^(QtsUpdater|svchost|rundll32|powershell|cmd|wscript|cscript|mshta|regsvr32|explorer)\.exe$'
@@ -144,7 +144,7 @@ $C2Domains = '(?i)(^|\.)(fetish-friends\.com|3mkorealtd\.com|sudsmama\.com|woopa
 $ExeLureRegex = '(?i)^(Statement|Tax-\d{8,}|Review the file|BillReceipt|statement verify ?|Click File|GST ?Suvidha|Related material|MCA-Ministry|RemoteInstaller_[\d_]+_\w+|Open_to_view|TaxFiling|Notice from Tax Depart\w*)\.exe$'
 if ($env:WAZIP_TEST_C2) { $C2Ips += $env:WAZIP_TEST_C2 }
 # SilverFox KuGou variant (Pelagos Intel, Sep 2026) stages here and runs from a Run value named MicrosoftUpdate.
-$StageRegex   = '(?i)\\AppData\\Roaming\\Microsoft\\Update\\[^\\]+\.(exe|dll)$'
+$StageRegex   = '(?i)\\AppData\\Roaming\\Microsoft\\(Update|Windows\\System)\\[^\\]+\.(exe|dll)$'
 # Remote-control programs (names from LOLRMM, lolrmm.io). Fine when you or your IT installed them;
 # scammers and RAT crews also use them to control a PC.
 $RmmTools = [ordered]@{
@@ -625,6 +625,9 @@ function Scan-Files {
           return
         }
         if ($f.Name -match $LureRegex) { Add-Finding 'File' 'HIGH' $f.FullName 'WhatsApp lure file name.'; return }
+        # Victim report (Malwarebytes, 30 Oct 2026): client.exe and keylogger.exe in this made-up folder, started by Run values named WindowsUpdate.
+        if ($f.FullName -match '(?i)\\AppData\\Roaming\\Microsoft\\Windows\\System\\[^\\]+\.(exe|dll)$') {
+          Add-Finding 'File' 'HIGH' $f.FullName 'Malware in a fake Windows\System folder under AppData (downloader / keylogger seen on a victim PC).'; return }
         if ($f.FullName -match $StageRegex -or $f.Name -ieq 'active_desktop_render_x64.dll' -or $f.Name -ieq 'desk_compositor_x64.dll') {
           Add-Finding 'File' 'HIGH' $f.FullName 'SilverFox loader DLL (fake Microsoft\Update folder or KuGou/desk_compositor variant).'; return }
         if ($f.Name -match '(?i)\.vhdx?$' -and $f.Name -ine 'ext4.vhdx' -and

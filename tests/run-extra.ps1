@@ -386,6 +386,22 @@ Dismount-DiskImage -ImagePath $lureImg -ErrorAction SilentlyContinue | Out-Null
 Remove-Item -LiteralPath $lureImg -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $isoSrc -Recurse -Force -ErrorAction SilentlyContinue
 
+Write-Host '=== Fake Windows\System folder (keylogger report) ===' -ForegroundColor Cyan
+$ksDir = Join-Path $env:APPDATA 'Microsoft\Windows\System'
+New-Item -ItemType Directory -Force -Path $ksDir | Out-Null
+Set-Content "$ksDir\client.exe" 'dummy'; Set-Content "$ksDir\keylogger.exe" 'dummy'
+$runK = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+Set-ItemProperty -Path $runK -Name WindowsUpdate -Value "`"$ksDir\client.exe`""
+$r13 = Scan "$env:TEMP\x13.json"
+Check (Has $r13 'File' 'HIGH' 'Microsoft\\Windows\\System\\client\.exe$') 'client.exe in fake Windows\System folder is HIGH'
+Check (Has $r13 'File' 'HIGH' 'Microsoft\\Windows\\System\\keylogger\.exe$') 'keylogger.exe in fake Windows\System folder is HIGH'
+Check (Has $r13 'RegValue' 'HIGH' '\|WindowsUpdate$') 'Run value WindowsUpdate pointing there is HIGH'
+$r14 = Scan "$env:TEMP\x14.json" -Fix
+Check (-not (Test-Path "$ksDir\client.exe") -and -not (Test-Path "$ksDir\keylogger.exe")) 'fake Windows\System files quarantined'
+Check ($null -eq (Get-ItemProperty -Path $runK -Name WindowsUpdate -ErrorAction SilentlyContinue)) 'Run value WindowsUpdate removed'
+Remove-ItemProperty -Path $runK -Name WindowsUpdate -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $ksDir -Recurse -Force -ErrorAction SilentlyContinue
+
 Write-Host '=== .bat launchers ===' -ForegroundColor Cyan
 # Clear WARN-only leftovers so a clean result reads BERSIH.
 & sc.exe delete MEUemsTest | Out-Null; & sc.exe delete OpswatLegitTest | Out-Null

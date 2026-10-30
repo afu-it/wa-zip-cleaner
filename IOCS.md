@@ -110,7 +110,7 @@ Sample `65662fbf…` (VirusTotal, 7107 bytes, `Statement of Debt(30K).vbs`): sta
 
 Triage sweep of 79 runs (setup1.vbs, spsx.vbs, owpa.txt, alOffic.zip): further agent C2 on port 8383 `202.61.160.203`, `202.61.160.145`, `137.220.205.167`, `137.220.205.162`, `137.220.224.63`, `103.140.154.117`, `206.238.68.33`, `43.224.224.151` (also `192.229.81.105`, `192.229.87.219`, left out as shared CDN space); downloads `https://azuheq.s3.ap-southeast-1.amazonaws.com/19881.exe`, `https://www.kammwv.cc/222/9989.exe`, `d156sk07toobyl.cloudfront.net`. 16 more installer-kit zips (all 32.8-32.9 MB, same contents) and the attacker `DCAgentServerInfo.json` (`b57b2334…`, 1670 bytes) are in `$KnownBad`.
 
-Victim report (29 Oct 2026, Malwarebytes screenshots): a ManageEngine agent in `C:\Program Files (x86)\ManageEngine\UEMS_Agent\` kept connecting to `134.122.155.148:8027` about once a minute. Next to the ValleyRAT server `134.122.155.135`.
+Victim report (29 Oct 2026, Malwarebytes screenshots): a ManageEngine agent in `C:\Program Files (x86)\ManageEngine\UEMS_Agent\` kept connecting to `134.122.155.148:8027` about once a minute. Next to the ValleyRAT server `134.122.155.135`. The same agent (`UEMS_Agent\bin\dcondemand.exe`) also used port 8383. A day later Malwarebytes on that PC quarantined `%APPDATA%\Microsoft\Windows\System\client.exe` (Trojan.Downloader) and `keylogger.exe` (Trojan.KeyLogger), started by `Run` values named `WindowsUpdate` in both HKLM and HKCU (Backdoor.IRCBot.Gen / Trojan.Agent.E.Gen).
 
 ## VulcanRAT207.A (Morphisec via 2-Spyware, Oct 2026)
 
