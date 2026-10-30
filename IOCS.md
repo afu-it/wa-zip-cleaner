@@ -159,6 +159,14 @@ Other reports:
 - Chinese reports (ThreatBook, Huorong, QiAnXin, 2026): `C:\ProgramData\WindowsData\`, `funzip.exe`, `men.exe`, `KANG.exe`, `kail.exe`, `NtHandleCallback.exe`, `edr.key`, `me.key`, drivers `rwdriver.sys`, `kabuto.sys`, `C:\XiaoH.sys`, `C:\Windows\Temp\ranchserv.jpg`; registry `HKLM\SOFTWARE\JDBCC`, `HKLM\SOFTWARE\SysConfigDate`; services `TCLService`, `Cndom6`; tasks `\Microsoft\Windows\AppID\MicrosoftEdgeUpdateTaskUA Task-S-1-5-18*`, `WindowsPowerShell.WbemScripting.WindowsData`; Defender exclusion of every drive; `netsh advfirewall set allprofiles firewallpolicy blockinbound,blockoutbound`. C2 `38.91.115.114`, `8.210.25.225`, `95.40.29.190`, `16.163.105.153`, `183.90.186.193`, `52.128.226.74`, `154.83.17.175`, `45.204.2.166`, `uuuucome.com`, `laosjdhd.cn`, `xxxjjj250711.com`, `twsww.xin`, `cn-hk-oss-vip.com`. SHA-256 `3ba89047b9fb9ae2281e06a7f10a407698174b201f28fc1cadb930207254e485`, `9ace6a1e4bee5834be38b4c2fd26780d1fcc18ea9d58224e31d6382c19e53296`, `a14b681ec50328d3ac04f76ac18ef96fb7176425ff96325e2099ea57df3a1998` (matched); `305a1c784db4e88267f1d35b914b6ce4702f2b1196c1cdf14c024d63d1d4871f`, `cf111e28e40d20c9695e191c66b11882049c9559d5b4f2ed2090cf4626fdba39` (size unknown, not matched).
 - VulcanRAT (Morphisec): driver `System32\drivers\tp_<tick>.tmp` (reported as a warning); SHA-256 `0c418989bbc836208a087dee8fd64210f58909dddf736bc94769c269f65c26eb`, `be740b05caead2fa4521f42da0653a10f53029df5455ebafe4701ab3d41afdf9`, `6833b1946ac219cf6ddf6cfbde1f81352b12d9125c8735961b5256216c4fdc49`, `cbf8ffe904a030c02b9def094f609b2c05a78fa5c7745d2d371d38dd460c58be`, `facf78d474b66ed821288db41fa6ad8a7b6f30650eb12127cb3e9a3cc6146116` (not on Triage, sizes unknown, not matched by hash).
 
+## OBS libcef.dll sideload VHDX (sample sent to us, 30 Oct 2026)
+
+- Lure `20261030C754FC89.zip` (22,776,198 bytes), SHA-256 `5f8e2cbb69fc774b1e770636729ea8ae2242b91f25a5b4818ff08965a49f0558`.
+- Inside it, `20261030C754FC89.vhdx` (104,857,600 bytes), SHA-256 `13018ec3150e92eccb0ebfe8c1e2a47152d84bf50919987c753939c9b5e0f365`.
+- The disk holds `20261030C754FC89.exe`, the real signed OBS Studio `obs-browser-page.exe` 32.2.2 (562,960 bytes, SHA-256 `3e82ef738e1b91bb99e4fb30948cbc4c2ae3b2e60e4b3f783ba6dd7da4b3ee08`, VirusTotal 0/74), and a hidden+system `libcef.dll` (47,764,992 bytes, SHA-256 `64002d80150dd9c6dc27cee586d12bc8144ba2ab11066eb67877cc10c1dddefc`). The DLL has no CEF exports and no Chromium strings, so it is not the real libcef.
+- None of the three malicious files were on VirusTotal or Triage when found.
+- Name pattern: `20YYMMDD` plus 8 hex characters.
+
 ## References
 
 - CloudSEK, Silver Fox targeting India using tax-themed phishing lures (2025-12-24): https://www.cloudsek.com/blog/silver-fox-targeting-india-using-tax-themed-phishing-lures

@@ -31,7 +31,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.10.30.1'
+$Version = '2026.10.30.2'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -107,12 +107,16 @@ $KnownBad = @(
   @{ Sha = '9ace6a1e4bee5834be38b4c2fd26780d1fcc18ea9d58224e31d6382c19e53296'; Size = 291328; Name = 'Silver Fox component (Chinese security reports, 2026)' }
   @{ Sha = 'a14b681ec50328d3ac04f76ac18ef96fb7176425ff96325e2099ea57df3a1998'; Size = 149504; Name = 'Silver Fox component (Chinese security reports, 2026)' }
   @{ Sha = 'ad91e674edb5f376d27a3c56df45ebb967229ee9ba623ec158f8c4835d577def'; Size = 1724051; Name = 'Lure ZIP, Japanese tax-report .img.zip (Triage, Sep 2026)' }
+  @{ Sha = '5f8e2cbb69fc774b1e770636729ea8ae2242b91f25a5b4818ff08965a49f0558'; Size = 22776198; Name = 'Lure ZIP 20261030C754FC89.zip (OBS libcef.dll sideload, Oct 2026)' }
+  @{ Sha = '13018ec3150e92eccb0ebfe8c1e2a47152d84bf50919987c753939c9b5e0f365'; Size = 104857600; Name = 'Lure VHDX 20261030C754FC89.vhdx (OBS libcef.dll sideload, Oct 2026)' }
+  @{ Sha = '64002d80150dd9c6dc27cee586d12bc8144ba2ab11066eb67877cc10c1dddefc'; Size = 47764992; Name = 'Fake libcef.dll loaded by a renamed OBS program (Oct 2026)' }
 )
 # Signed, legitimate files that this malware abuses. Bad only outside their vendor folder.
 $AbusedLegit = @(
   @{ Sha = '1c5129b4d63f2d5252b5b02a0a7d655dac3b6eac23dd4ed92b4dd55f243387ff'; Size = 18248;   Name = 'ardrv.sys (OPSWAT, abused as AV killer)'; Vendor = 'OPSWAT' }
   @{ Sha = 'c74f55247aa2c72001024bd977c869cb5adce6f8604a4d32329f015b73ae2a49'; Size = 1994600; Name = 'KafanInputService.exe (sideload host)';      Vendor = 'Kafan' }
   @{ Sha = 'f712c2a8b4abf2e299a2b480020333deb0f43364e9686cda78b1243c62e4830d'; Size = 102536;  Name = 'KuGou active_desktop_launcher.exe (sideload host)'; Vendor = 'KuGou' }
+  @{ Sha = '3e82ef738e1b91bb99e4fb30948cbc4c2ae3b2e60e4b3f783ba6dd7da4b3ee08'; Size = 562960;  Name = 'OBS obs-browser-page.exe (libcef.dll sideload host)'; Vendor = 'obs-studio' }
 )
 # Test hook: extra IOCs from a JSON file, so CI can exercise hash matching without real malware.
 if ($env:WAZIP_TEST_IOCS -and (Test-Path -LiteralPath $env:WAZIP_TEST_IOCS)) {
@@ -123,7 +127,7 @@ if ($env:WAZIP_TEST_IOCS -and (Test-Path -LiteralPath $env:WAZIP_TEST_IOCS)) {
   }
 }
 $PersistRegex ='\\AppData\\Roaming\\Microsoft\\Windows\\System\\[^\\]+\.exe|rime\.dll|_vmclientcore@16|KafanInput|vcRuntimeMinimum_x86\.exe|\\H\d{8,}\.exe|ZyArk|\\ardrv\.sys|\\AppData\\Roaming\\Microsoft\\Update\\[^\\]+\.exe|active_desktop_(launcher|render)|Add-MpPreference|eneio64\.dat|plcc3a\.dat|-m\s+appclient|\\appclient\\python\\|HealthApp-[0-9a-f]{6}\.bat|\\ProgramData\\MicroPoint\\|WinCombo\.exe|CRClient\.dll|\\Toolkit\\winhttp\.dll|webview2_integration\.exe|encrashrep\.dll|\\ProgramData\\WindowsData\\|ExceptCatch\.dll|\\QNWallpaper\\|\\msvc-rt14\\|NtHandleCallback\.exe|\\(XiaoH|rwdriver|kabuto)\.sys'
-$LureRegex    = '^(Click here to view.*\.(zip|vhd|vhdx)|Notice.*\.vhdx?|(PDF|DOC)_[A-Z0-9]{3,8}_20\d{12}\.(zip|img|iso|exe|vhd|vhdx)|20\d{6}[.-]MYS20\d{2}Y\d{4}[A-Z0-9]{4,6}\.(zip|img|iso|vhd|vhdx)|(RES-20\d{6}_\d{6}|ORCAMENTO_\d{6}|COMPROVANTE_20\d{6}_\d{6}|ComprovanteSantander-[\d.]+|NEW-20\d{6}_\d{6}-PED_[0-9A-F]+|DOC-\d{8}_[0-9A-F]{8})\.(zip|lnk)|20\d{12}-[0-9A-F]{14}\.zip|SENARAI ?DOKUMEN.*\.zip|.+\.(vhdx?|img|iso)\.zip|LHDN.*\.(iso|img|vhdx?)|Open_to_view.*\.(iso|img)|TAX_[A-Za-z0-9]{6,}\.img(\.zip)?|SSM-\d+\.img(\.zip)?)$'
+$LureRegex    = '^(Click here to view.*\.(zip|vhd|vhdx)|Notice.*\.vhdx?|(PDF|DOC)_[A-Z0-9]{3,8}_20\d{12}\.(zip|img|iso|exe|vhd|vhdx)|20\d{6}[.-]MYS20\d{2}Y\d{4}[A-Z0-9]{4,6}\.(zip|img|iso|vhd|vhdx)|(RES-20\d{6}_\d{6}|ORCAMENTO_\d{6}|COMPROVANTE_20\d{6}_\d{6}|ComprovanteSantander-[\d.]+|NEW-20\d{6}_\d{6}-PED_[0-9A-F]+|DOC-\d{8}_[0-9A-F]{8})\.(zip|lnk)|20\d{12}-[0-9A-F]{14}\.zip|SENARAI ?DOKUMEN.*\.zip|.+\.(vhdx?|img|iso)\.zip|LHDN.*\.(iso|img|vhdx?)|Open_to_view.*\.(iso|img)|TAX_[A-Za-z0-9]{6,}\.img(\.zip)?|SSM-\d+\.img(\.zip)?|20\d{6}[0-9A-F]{8}\.(zip|exe|img|iso|vhd|vhdx))$'
 # Programs the October 2026 wave tells Windows Defender to skip. No real program needs these excluded.
 $ExclProcRegex = '(?i)^(QtsUpdater|svchost|rundll32|powershell|cmd|wscript|cscript|mshta|regsvr32|explorer)\.exe$'
 # Known attacker servers (C2). A process talking to one of these is the malware.
@@ -673,6 +677,8 @@ function Scan-Files {
           $sev = if (Get-ChildItem -LiteralPath $f.DirectoryName -Filter *.exe -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^(KafanInputService|H\d{8,})\.exe$' }) { 'HIGH' } else { 'WARN' }
           Add-Finding 'File' $sev $f.FullName 'rime.dll outside Program Files (DLL sideloading).'
         }
+        if ($f.Name -ieq 'libcef.dll' -and ($f.Attributes -band [IO.FileAttributes]::Hidden)) {
+          Add-Finding 'File' 'HIGH' $f.FullName 'Hidden libcef.dll: a renamed signed program next to it loads this malware (Oct 2026 VHDX lure).'; return }
         if ($f.Name -ieq 'hidserv.dll' -and $f.DirectoryName -notmatch '(?i)\\Windows\\(System32|SysWOW64|WinSxS)(\\|$)') {
           Add-Finding 'File' 'HIGH' $f.FullName 'hidserv.dll outside System32 (fake HID service for persistence).'; return }
         if ($f.Name -match '(?i)\.(exe|dll|sys)$' -and
@@ -687,20 +693,41 @@ function Scan-Files {
   }
 }
 
+# What a mounted disk image holds: a known bad file, a lure name, or a hidden DLL beside a program (DLL sideloading).
+function Get-ImageThreat([string[]]$Letters) {
+  foreach ($l in $Letters) {
+    $files = @(Get-ChildItem -LiteralPath "$($l):\" -Recurse -File -Force -ErrorAction SilentlyContinue |
+      Where-Object { $_.Name -match '(?i)\.(exe|dll|scr|lnk|vbs|vbe|js|wsf|msi)$' } | Select-Object -First 500)
+    foreach ($f in $files) {
+      if ($ioc = Get-Ioc $f) { return "$($f.Name): $($ioc.Name)" }
+      if ($f.Name -match $LureRegex -or $f.Name -match $ExeLureRegex -or $f.Name -match $VbsLureRegex) { return "$($f.Name): lure name" }
+    }
+    $hidDll = $files | Where-Object { $_.Extension -ieq '.dll' -and ($_.Attributes -band [IO.FileAttributes]::Hidden) } | Select-Object -First 1
+    if ($hidDll -and ($files | Where-Object { $_.Extension -ieq '.exe' -and $_.DirectoryName -eq $hidDll.DirectoryName })) {
+      return "$($hidDll.Name): hidden DLL next to a program (DLL sideloading)" }
+  }
+}
+
 function Scan-Vhd {
   Say '[6/8] Semak cakera maya (VHD, IMG, ISO) yang sedang dibuka...' '[6/8] Checking mounted virtual disks (VHD, IMG, ISO)...' Cyan
   foreach ($d in Get-Disk -ErrorAction SilentlyContinue | Where-Object { $_.BusType -eq 'File Backed Virtual' }) {
     $loc = [string]$d.Location
-    $sev = if ((Split-Path $loc -Leaf) -match $LureRegex) { 'HIGH' } else { 'WARN' }
-    Add-Finding 'Vhd' $sev $loc 'Mounted virtual disk. The WhatsApp ZIP opens as a VHD drive.'
+    $bad = Get-ImageThreat @($d | Get-Partition -ErrorAction SilentlyContinue | Where-Object DriveLetter | ForEach-Object { [string]$_.DriveLetter })
+    $sev = if ((Split-Path $loc -Leaf) -match $LureRegex -or $bad) { 'HIGH' } else { 'WARN' }
+    $det = 'Mounted virtual disk. The WhatsApp ZIP opens as a VHD drive.'
+    if ($bad) { $det += " Malware inside: $bad"; Add-Finding 'File' 'HIGH' $loc "Virtual disk with malware inside ($bad)." }
+    Add-Finding 'Vhd' $sev $loc $det
   }
   # .img and .iso lures open as a DVD drive, which Get-Disk does not list.
   foreach ($v in Get-Volume -ErrorAction SilentlyContinue | Where-Object { $_.DriveType -eq 'CD-ROM' -and $_.DriveLetter }) {
     $loc = [string]($v | Get-DiskImage -ErrorAction SilentlyContinue).ImagePath
     if (-not $loc) { continue }
     $fi = Get-Item -LiteralPath $loc -Force -ErrorAction SilentlyContinue
-    $sev = if ((Split-Path $loc -Leaf) -match $LureRegex -or ($fi -and ((Get-Ioc $fi) -or (Test-WaOrigin $fi)))) { 'HIGH' } else { 'WARN' }
-    Add-Finding 'Vhd' $sev $loc "Mounted disk image (drive $($v.DriveLetter):). WhatsApp .img/.iso lures open as a DVD drive."
+    $bad = Get-ImageThreat @([string]$v.DriveLetter)
+    $sev = if ((Split-Path $loc -Leaf) -match $LureRegex -or $bad -or ($fi -and ((Get-Ioc $fi) -or (Test-WaOrigin $fi)))) { 'HIGH' } else { 'WARN' }
+    $det = "Mounted disk image (drive $($v.DriveLetter):). WhatsApp .img/.iso lures open as a DVD drive."
+    if ($bad) { $det += " Malware inside: $bad"; Add-Finding 'File' 'HIGH' $loc "Disk image with malware inside ($bad)." }
+    Add-Finding 'Vhd' $sev $loc $det
   }
 }
 

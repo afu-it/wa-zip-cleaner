@@ -386,6 +386,30 @@ Dismount-DiskImage -ImagePath $lureImg -ErrorAction SilentlyContinue | Out-Null
 Remove-Item -LiteralPath $lureImg -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $isoSrc -Recurse -Force -ErrorAction SilentlyContinue
 
+Write-Host '=== Mounted VHDX with a hidden DLL beside a program (OBS libcef.dll lure) ===' -ForegroundColor Cyan
+# Neutral file name, so only what is inside the disk can make it HIGH.
+$sideVhd = "$dl\mydisk.vhdx"
+"create vdisk file=`"$sideVhd`" maximum=16 type=expandable`nattach vdisk`ncreate partition primary`nformat fs=ntfs quick label=WAZSIDE`nassign" | Out-File -Encoding ASCII "$env:TEMP\dp-side.txt"
+& diskpart.exe /s "$env:TEMP\dp-side.txt" | Out-Null
+Start-Sleep 3
+$sideVol = Get-Volume | Where-Object { $_.FileSystemLabel -eq 'WAZSIDE' -and $_.DriveLetter } | Select-Object -First 1
+if ($sideVol) {
+  $sd = "$($sideVol.DriveLetter):\"
+  Set-Content "$sd\20261030ABCDEF12.exe" 'dummy'; Set-Content "$sd\libcef.dll" 'dummy'
+  (Get-Item -LiteralPath "$sd\libcef.dll" -Force).Attributes = 'Hidden, System'
+  Set-Content "$dl\20261030C754FC89.zip" 'dummy'
+  $r15 = Scan "$env:TEMP\x15.json"
+  Check (Has $r15 'Vhd' 'HIGH' 'mydisk\.vhdx$' 'libcef\.dll') 'mounted VHDX with hidden DLL beside a program is HIGH'
+  Check (Has $r15 'File' 'HIGH' 'mydisk\.vhdx$') 'that VHDX file is HIGH'
+  Check (Has $r15 'File' 'HIGH' '20261030C754FC89\.zip$') 'date+hex lure zip name is HIGH'
+  $r16 = Scan "$env:TEMP\x16.json" -Fix
+  Check (-not (Get-DiskImage -ImagePath $sideVhd -ErrorAction SilentlyContinue | Where-Object Attached)) 'sideload VHDX ejected'
+  Check (-not (Test-Path -LiteralPath $sideVhd)) 'sideload VHDX quarantined'
+  Check (-not (Test-Path -LiteralPath "$dl\20261030C754FC89.zip")) 'date+hex lure zip quarantined'
+} else { Write-Host 'SKIP sideload VHDX: could not create a formatted VHDX on this runner' -ForegroundColor Yellow }
+Dismount-DiskImage -ImagePath $sideVhd -ErrorAction SilentlyContinue | Out-Null
+Remove-Item -LiteralPath $sideVhd, "$dl\20261030C754FC89.zip" -Force -ErrorAction SilentlyContinue
+
 Write-Host '=== Fake Windows\System folder (keylogger report) ===' -ForegroundColor Cyan
 $ksDir = Join-Path $env:APPDATA 'Microsoft\Windows\System'
 New-Item -ItemType Directory -Force -Path $ksDir | Out-Null
