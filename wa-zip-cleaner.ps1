@@ -31,7 +31,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.10.30'
+$Version = '2026.10.30.1'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -1075,8 +1075,9 @@ if (-not $Owner -and -not $env:WAZIP_NO_PROMPT) {
   Say 'Soalan dulu: PC/laptop ni milik office (IT syarikat yang urus) atau milik sendiri?' 'First: is this PC/laptop managed by your office IT, or your own?' White
   Say '  Taip 1 = office, 2 = sendiri, lepas tu Enter. Tak pasti? Tekan Enter je.' '  Type 1 = office, 2 = personal, then Enter. Not sure? Just press Enter.' White
   $ans = [string](Read-Host)
-  $Owner = switch ($ans.Trim()) { '1' { 'Office' } '2' { 'Personal' } default { '' } }
-  if ($Owner) { Set-Content -LiteralPath $ownerFile -Value $Owner }
+  # $Owner keeps its ValidateSet, so an empty answer cannot be assigned to it.
+  $o = switch ($ans.Trim()) { '1' { 'Office' } '2' { 'Personal' } }
+  if ($o) { $Owner = $o; Set-Content -LiteralPath $ownerFile -Value $Owner }
 }
 if ($Owner -eq 'Office')   { Say 'OK, PC office.' 'OK, office PC.' Gray }
 if ($Owner -eq 'Personal') { Say 'OK, PC sendiri.' 'OK, personal PC.' Gray }
