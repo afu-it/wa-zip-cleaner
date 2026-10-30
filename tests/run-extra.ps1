@@ -395,11 +395,11 @@ Start-Sleep 3
 $sideVol = Get-Volume | Where-Object { $_.FileSystemLabel -eq 'WAZSIDE' -and $_.DriveLetter } | Select-Object -First 1
 if ($sideVol) {
   $sd = "$($sideVol.DriveLetter):\"
-  Set-Content "$sd\20261030ABCDEF12.exe" 'dummy'; Set-Content "$sd\libcef.dll" 'dummy'
+  Set-Content "$sd\Setup.exe" 'dummy'; Set-Content "$sd\libcef.dll" 'dummy'
   (Get-Item -LiteralPath "$sd\libcef.dll" -Force).Attributes = 'Hidden, System'
   Set-Content "$dl\20261030C754FC89.zip" 'dummy'
   $r15 = Scan "$env:TEMP\x15.json"
-  Check (Has $r15 'Vhd' 'HIGH' 'mydisk\.vhdx$' 'libcef\.dll') 'mounted VHDX with hidden DLL beside a program is HIGH'
+  Check (Has $r15 'Vhd' 'HIGH' 'mydisk\.vhdx$' 'libcef\.dll.*sideloading') 'mounted VHDX with hidden DLL beside a program is HIGH'
   Check (Has $r15 'File' 'HIGH' 'mydisk\.vhdx$') 'that VHDX file is HIGH'
   Check (Has $r15 'File' 'HIGH' '20261030C754FC89\.zip$') 'date+hex lure zip name is HIGH'
   $r16 = Scan "$env:TEMP\x16.json" -Fix
