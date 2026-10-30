@@ -166,6 +166,8 @@ Other reports:
 - The disk holds `20261030C754FC89.exe`, the real signed OBS Studio `obs-browser-page.exe` 32.2.2 (562,960 bytes, SHA-256 `3e82ef738e1b91bb99e4fb30948cbc4c2ae3b2e60e4b3f783ba6dd7da4b3ee08`, VirusTotal 0/74), and a hidden+system `libcef.dll` (47,764,992 bytes, SHA-256 `64002d80150dd9c6dc27cee586d12bc8144ba2ab11066eb67877cc10c1dddefc`). The DLL has no CEF exports and no Chromium strings, so it is not the real libcef.
 - None of the three malicious files were on VirusTotal or Triage when found.
 - Name pattern: `20YYMMDD` plus 8 hex characters.
+- Triage run 261030-mn9zaayt7q (score 7): the program copies itself and the DLL to `C:\ProgramData\GYCAsi\`, writes `install.vbs`, `UEMSAgent.msi`, `UEMSAgent.mst`, `DCAgentServerInfo.json` and two root certificates to `C:\Windows\Tasks\`, then installs a ManageEngine agent that reports to `45.64.52.252:8383` (branch name "India"). The backdoor itself connects to `45.207.219.46:1011`.
+- `install.vbs` SHA-256 `9bb1fc7af052fa22759101ec10e01c2e35ae7a83e30c7836cb7aa041df6dcaf4` (402 bytes), `UEMSAgent.mst` SHA-256 `180195558475b32abedb88b3103c06ee464148809986b78de32d8fdba897c516` (20,480 bytes).
 
 ## References
 

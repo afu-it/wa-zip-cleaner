@@ -410,6 +410,19 @@ if ($sideVol) {
 Dismount-DiskImage -ImagePath $sideVhd -ErrorAction SilentlyContinue | Out-Null
 Remove-Item -LiteralPath $sideVhd, "$dl\20261030C754FC89.zip" -Force -ErrorAction SilentlyContinue
 
+Write-Host '=== OBS lure drop sites (ProgramData copy, Windows\Tasks kit) ===' -ForegroundColor Cyan
+$gyc = "$env:ProgramData\WazGYC"; New-Item -ItemType Directory -Force -Path $gyc | Out-Null
+Set-Content "$gyc\libcef.dll" 'dummy'
+Set-Content "$env:SystemRoot\Tasks\install.vbs" 'dummy'; Set-Content "$env:SystemRoot\Tasks\UEMSAgent.mst" 'dummy'
+$r17 = Scan "$env:TEMP\x17.json"
+Check (Has $r17 'File' 'HIGH' 'ProgramData\\WazGYC\\libcef\.dll$') 'libcef.dll in a ProgramData folder is HIGH'
+Check (Has $r17 'File' 'HIGH' 'Windows\\Tasks\\install\.vbs$') 'install.vbs in Windows\Tasks is HIGH'
+Check (Has $r17 'File' 'HIGH' 'Windows\\Tasks\\UEMSAgent\.mst$') 'UEMSAgent.mst in Windows\Tasks is HIGH'
+$r18 = Scan "$env:TEMP\x18.json" -Fix
+Check (-not (Test-Path "$gyc\libcef.dll") -and -not (Test-Path "$env:SystemRoot\Tasks\install.vbs") -and -not (Test-Path "$env:SystemRoot\Tasks\UEMSAgent.mst")) 'OBS lure drop files quarantined'
+Remove-Item -LiteralPath $gyc -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath "$env:SystemRoot\Tasks\install.vbs", "$env:SystemRoot\Tasks\UEMSAgent.mst" -Force -ErrorAction SilentlyContinue
+
 Write-Host '=== Fake Windows\System folder (keylogger report) ===' -ForegroundColor Cyan
 $ksDir = Join-Path $env:APPDATA 'Microsoft\Windows\System'
 New-Item -ItemType Directory -Force -Path $ksDir | Out-Null

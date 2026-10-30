@@ -110,6 +110,8 @@ $KnownBad = @(
   @{ Sha = '5f8e2cbb69fc774b1e770636729ea8ae2242b91f25a5b4818ff08965a49f0558'; Size = 22776198; Name = 'Lure ZIP 20261030C754FC89.zip (OBS libcef.dll sideload, Oct 2026)' }
   @{ Sha = '13018ec3150e92eccb0ebfe8c1e2a47152d84bf50919987c753939c9b5e0f365'; Size = 104857600; Name = 'Lure VHDX 20261030C754FC89.vhdx (OBS libcef.dll sideload, Oct 2026)' }
   @{ Sha = '64002d80150dd9c6dc27cee586d12bc8144ba2ab11066eb67877cc10c1dddefc'; Size = 47764992; Name = 'Fake libcef.dll loaded by a renamed OBS program (Oct 2026)' }
+  @{ Sha = '9bb1fc7af052fa22759101ec10e01c2e35ae7a83e30c7836cb7aa041df6dcaf4'; Size = 402; Name = 'install.vbs that installs the attacker ManageEngine agent (OBS VHDX lure, Oct 2026)' }
+  @{ Sha = '180195558475b32abedb88b3103c06ee464148809986b78de32d8fdba897c516'; Size = 20480; Name = 'UEMSAgent.mst pointing ManageEngine at the attacker (OBS VHDX lure, Oct 2026)' }
 )
 # Signed, legitimate files that this malware abuses. Bad only outside their vendor folder.
 $AbusedLegit = @(
@@ -132,7 +134,7 @@ $LureRegex    = '^(Click here to view.*\.(zip|vhd|vhdx)|Notice.*\.vhdx?|(PDF|DOC
 $ExclProcRegex = '(?i)^(QtsUpdater|svchost|rundll32|powershell|cmd|wscript|cscript|mshta|regsvr32|explorer)\.exe$'
 # Known attacker servers (C2). A process talking to one of these is the malware.
 # Kaspersky (Apr 2026): ValleyRAT and ABCDoor servers from the Silver Fox tax campaign.
-$C2Ips = @('134.122.155.135', '134.122.155.148', '14.128.53.155', '45.202.1.249', '108.187.37.85', '108.187.42.63', '207.56.138.28', '45.118.133.203', '154.82.81.205', '154.82.81.192', '108.187.41.221',
+$C2Ips = @('45.64.52.252', '45.207.219.46', '134.122.155.135', '134.122.155.148', '14.128.53.155', '45.202.1.249', '108.187.37.85', '108.187.42.63', '207.56.138.28', '45.118.133.203', '154.82.81.205', '154.82.81.192', '108.187.41.221',
             '103.20.195.147', '45.207.231.94', '45.207.231.107', '160.124.9.103', '109.176.30.141',
             '202.61.160.208', '202.61.160.202', '202.61.160.201', '202.61.160.160', '202.61.160.137', '38.55.151.63', '61.18.208.27',
             '202.61.160.203', '202.61.160.145', '137.220.205.167', '137.220.205.162', '137.220.224.63', '103.140.154.117', '206.238.68.33', '43.224.224.151',
@@ -393,6 +395,9 @@ function Scan-Processes {
       if ($m.ModuleName -ieq 'rime.dll' -and $m.FileName -notmatch '\\Program Files( \(x86\))?\\') {
         Add-Finding 'Process' 'HIGH' "$($proc.ProcessName) (PID $($proc.Id))" "Loaded fake rime.dll from $($m.FileName)" @{ Pid = $proc.Id; Path = $m.FileName }
       }
+      if ($m.ModuleName -ieq 'libcef.dll' -and $m.FileName -match '(?i)^[a-z]:\\ProgramData\\[^\\]+\\libcef\.dll$') {
+        Add-Finding 'Process' 'HIGH' "$($proc.ProcessName) (PID $($proc.Id))" "Renamed program running fake libcef.dll from $($m.FileName) (Oct 2026 VHDX lure)" @{ Pid = $proc.Id; Path = $proc.Path }
+      }
     }
   }
 }
@@ -599,7 +604,7 @@ function Scan-Files {
   # ProgramData is walked one level down so Docker's Windows container layers (docker\windowsfilter,
   # tens of thousands of copied Windows files) are skipped. Top-level files are still checked.
   $roots = @(Get-ChildItem -LiteralPath $env:ProgramData -Force -ErrorAction SilentlyContinue | Where-Object { $_.Name -ne 'docker' } | ForEach-Object { $_.FullName })
-  $roots += "$env:ProgramData\docker\config", "$env:SystemDrive\Users\Public", "$env:SystemRoot\Temp"
+  $roots += "$env:ProgramData\docker\config", "$env:SystemDrive\Users\Public", "$env:SystemRoot\Temp", "$env:SystemRoot\Tasks"
   foreach ($u in Get-ChildItem "$env:SystemDrive\Users" -Directory -ErrorAction SilentlyContinue) {
     $roots += 'Downloads', 'Desktop', 'Documents', 'AppData\Roaming', 'AppData\Local\Temp', 'AppData\Local\Packages' |
       ForEach-Object { Join-Path $u.FullName $_ }
@@ -652,7 +657,7 @@ function Scan-Files {
         # Securelist (Jun 2026, 80% of victims in Malaysia): scripts sent over WhatsApp install a ManageEngine agent.
         if ($f.Extension -match '(?i)^\.(vbs|vbe|wsf)$' -and $f.FullName -match '(?i)\\5319275A\.WhatsAppDesktop_[^\\]+\\LocalState\\Sessions\\[^\\]+\\Transfers\\') {
           Add-Finding 'File' 'HIGH' $f.FullName 'Script file received through WhatsApp. Real documents are never scripts (WhatsApp VBS campaign).'; return }
-        if ($f.FullName -match '(?i)\\Users\\Public\\Documents\\[^\\]+\\' -and $f.Name -match '(?i)(\.(vbs|vbe)|^UEMSAgent\.(msi|mst)|^DCAgentServerInfo\.json)$') {
+        if ($f.FullName -match '(?i)(\\Users\\Public\\Documents\\[^\\]+|\\Windows\\Tasks)\\' -and $f.Name -match '(?i)(\.(vbs|vbe)|^UEMSAgent\.(msi|mst)|^DCAgentServerInfo\.json)$') {
           Add-Finding 'File' 'HIGH' $f.FullName 'Hidden script or ManageEngine installer kit from the WhatsApp VBS campaign.'; return }
         # Oct 2026 reports: Triage (encrashRep chain), C1BAS (ExceptCatch.dll), Netresec (Ping32 CoreShield.msi),
         # Sekoia (SyncFuture <ip>ClientSetup.exe), Elastic (TCLBANKER hostfxr.exe), Chinese reports (drivers and tools).
@@ -677,7 +682,7 @@ function Scan-Files {
           $sev = if (Get-ChildItem -LiteralPath $f.DirectoryName -Filter *.exe -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^(KafanInputService|H\d{8,})\.exe$' }) { 'HIGH' } else { 'WARN' }
           Add-Finding 'File' $sev $f.FullName 'rime.dll outside Program Files (DLL sideloading).'
         }
-        if ($f.Name -ieq 'libcef.dll' -and ($f.Attributes -band [IO.FileAttributes]::Hidden)) {
+        if ($f.Name -ieq 'libcef.dll' -and (($f.Attributes -band [IO.FileAttributes]::Hidden) -or $f.FullName -match '(?i)^[a-z]:\\ProgramData\\[^\\]+\\libcef\.dll$')) {
           Add-Finding 'File' 'HIGH' $f.FullName 'Hidden libcef.dll: a renamed signed program next to it loads this malware (Oct 2026 VHDX lure).'; return }
         if ($f.Name -ieq 'hidserv.dll' -and $f.DirectoryName -notmatch '(?i)\\Windows\\(System32|SysWOW64|WinSxS)(\\|$)') {
           Add-Finding 'File' 'HIGH' $f.FullName 'hidserv.dll outside System32 (fake HID service for persistence).'; return }
