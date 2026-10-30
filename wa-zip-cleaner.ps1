@@ -31,7 +31,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.10.30.2'
+$Version = '2026.10.31'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -110,6 +110,15 @@ $KnownBad = @(
   @{ Sha = '5f8e2cbb69fc774b1e770636729ea8ae2242b91f25a5b4818ff08965a49f0558'; Size = 22776198; Name = 'Lure ZIP 20261030C754FC89.zip (OBS libcef.dll sideload, Oct 2026)' }
   @{ Sha = '13018ec3150e92eccb0ebfe8c1e2a47152d84bf50919987c753939c9b5e0f365'; Size = 104857600; Name = 'Lure VHDX 20261030C754FC89.vhdx (OBS libcef.dll sideload, Oct 2026)' }
   @{ Sha = '64002d80150dd9c6dc27cee586d12bc8144ba2ab11066eb67877cc10c1dddefc'; Size = 47764992; Name = 'Fake libcef.dll loaded by a renamed OBS program (Oct 2026)' }
+  # MyCERT MA-1493.102026 (29 Oct 2026), sizes from VirusTotal.
+  @{ Sha = '9a6b0c60745faa0944c8f47d365f17f8ae19ae044be87251e17c49efb5a57f59'; Size = 2077267; Name = 'Lure ZIP PDF_R6LWXF_20261009152217.zip (VLC libvlc.dll sideload, MyCERT MA-1493)' }
+  @{ Sha = '67b6f787371c1ff435cab4370ef4c158b90b10bd6226821380dbfa8cb310154b'; Size = 125952; Name = 'Fake libvlc.dll that installs the attacker ManageEngine agent (MyCERT MA-1493)' }
+  @{ Sha = '398e35fefb034bc4b4b25b4ba1ec4a7ff9fde5ad557ca141cb43e7536bae0f53'; Size = 4344811; Name = 'Lure ZIP 2026.10.14.zip (Adobe CRcliENT.dll sideload, MyCERT MA-1493)' }
+  @{ Sha = '9c8a508b2063719d7bc50a248c91197349cf756c9f755c6164ee73b33505dc09'; Size = 6060032; Name = 'Fake CRcliENT.dll (MyCERT MA-1493)' }
+  @{ Sha = 'f8a5e09c793aa7b56819c42ae4a45c28306c684c4e9052f49e861ce2041debe6'; Size = 15640; Name = 'Fake ARPHADUMP.DLL that installs the attacker ManageEngine agent (MyCERT MA-1493)' }
+  @{ Sha = 'd315ec62c5207f2d5b40305cf63a8df5fed05a89d37e1de01195c8cb5bbfa44a'; Size = 1740961; Name = 'Lure ZIP Financial_Report_*_PDF.*.zip (UltraViewer msvbvm60.dll sideload, MyCERT MA-1493)' }
+  @{ Sha = '508a83c08e647d2ac339729510538d54a0d6782e1b31837fe7b460cc2af7f519'; Size = 2657760; Name = 'Fake msvbvm60.dll backdoor (MyCERT MA-1493)' }
+  @{ Sha = 'e2bf8b7cd396ee950a5b6911ea098c2e49d4ed002a6c04d5d660ccd4f7d66baa'; Size = 5390336; Name = 'Disk image inside PDF_C2841_20260911100446.zip (KuGou sideload, MyCERT MA-1493)' }
   @{ Sha = '9bb1fc7af052fa22759101ec10e01c2e35ae7a83e30c7836cb7aa041df6dcaf4'; Size = 402; Name = 'install.vbs that installs the attacker ManageEngine agent (OBS VHDX lure, Oct 2026)' }
   @{ Sha = '180195558475b32abedb88b3103c06ee464148809986b78de32d8fdba897c516'; Size = 20480; Name = 'UEMSAgent.mst pointing ManageEngine at the attacker (OBS VHDX lure, Oct 2026)' }
 )
@@ -119,6 +128,10 @@ $AbusedLegit = @(
   @{ Sha = 'c74f55247aa2c72001024bd977c869cb5adce6f8604a4d32329f015b73ae2a49'; Size = 1994600; Name = 'KafanInputService.exe (sideload host)';      Vendor = 'Kafan' }
   @{ Sha = 'f712c2a8b4abf2e299a2b480020333deb0f43364e9686cda78b1243c62e4830d'; Size = 102536;  Name = 'KuGou active_desktop_launcher.exe (sideload host)'; Vendor = 'KuGou' }
   @{ Sha = '3e82ef738e1b91bb99e4fb30948cbc4c2ae3b2e60e4b3f783ba6dd7da4b3ee08'; Size = 562960;  Name = 'OBS obs-browser-page.exe (libcef.dll sideload host)'; Vendor = 'obs-studio' }
+  @{ Sha = '4cc729b554326ccc62205d46b95353dcb34cadf095b904e941814e902e0925b2'; Size = 969608;  Name = 'VLC vlc.exe 3.0.21 (libvlc.dll sideload host, MyCERT MA-1493)'; Vendor = 'VideoLAN' }
+  @{ Sha = 'b2ee510d0b5012487dee143b459e4e2fcfb758960d3fe7ec4743552bc91be9e2'; Size = 211136;  Name = 'ArphaSDK arphaCrashReport.exe (ARPHADUMP.DLL sideload host, MyCERT MA-1491/1493)'; Vendor = 'Arpha' }
+  @{ Sha = '23dfe3c02f083bae6e8a8aab0d7b96f9961c930f9208b48e6245033105b58afa'; Size = 1047520; Name = 'UltraViewer_Desktop.exe (msvbvm60.dll sideload host, MyCERT MA-1493)'; Vendor = 'UltraViewer' }
+  @{ Sha = '92f68fc7f6d0f544a750bf67b4903d1a4062d1372b7f98ab5c2f698eb61359bb'; Size = 33297920; Name = 'UEMSAgent.msi 6.0.3 dropped by the WhatsApp lures (MyCERT MA-1491)'; Vendor = 'ManageEngine' }
 )
 # Test hook: extra IOCs from a JSON file, so CI can exercise hash matching without real malware.
 if ($env:WAZIP_TEST_IOCS -and (Test-Path -LiteralPath $env:WAZIP_TEST_IOCS)) {
@@ -129,12 +142,12 @@ if ($env:WAZIP_TEST_IOCS -and (Test-Path -LiteralPath $env:WAZIP_TEST_IOCS)) {
   }
 }
 $PersistRegex ='\\AppData\\Roaming\\Microsoft\\Windows\\System\\[^\\]+\.exe|rime\.dll|_vmclientcore@16|KafanInput|vcRuntimeMinimum_x86\.exe|\\H\d{8,}\.exe|ZyArk|\\ardrv\.sys|\\AppData\\Roaming\\Microsoft\\Update\\[^\\]+\.exe|active_desktop_(launcher|render)|Add-MpPreference|eneio64\.dat|plcc3a\.dat|-m\s+appclient|\\appclient\\python\\|HealthApp-[0-9a-f]{6}\.bat|\\ProgramData\\MicroPoint\\|WinCombo\.exe|CRClient\.dll|\\Toolkit\\winhttp\.dll|webview2_integration\.exe|encrashrep\.dll|\\ProgramData\\WindowsData\\|ExceptCatch\.dll|\\QNWallpaper\\|\\msvc-rt14\\|NtHandleCallback\.exe|\\(XiaoH|rwdriver|kabuto)\.sys'
-$LureRegex    = '^(Click here to view.*\.(zip|vhd|vhdx)|Notice.*\.vhdx?|(PDF|DOC)_[A-Z0-9]{3,8}_20\d{12}\.(zip|img|iso|exe|vhd|vhdx)|20\d{6}[.-]MYS20\d{2}Y\d{4}[A-Z0-9]{4,6}\.(zip|img|iso|vhd|vhdx)|(RES-20\d{6}_\d{6}|ORCAMENTO_\d{6}|COMPROVANTE_20\d{6}_\d{6}|ComprovanteSantander-[\d.]+|NEW-20\d{6}_\d{6}-PED_[0-9A-F]+|DOC-\d{8}_[0-9A-F]{8})\.(zip|lnk)|20\d{12}-[0-9A-F]{14}\.zip|SENARAI ?DOKUMEN.*\.zip|.+\.(vhdx?|img|iso)\.zip|LHDN.*\.(iso|img|vhdx?)|Open_to_view.*\.(iso|img)|TAX_[A-Za-z0-9]{6,}\.img(\.zip)?|SSM-\d+\.img(\.zip)?|20\d{6}[0-9A-F]{8}\.(zip|exe|img|iso|vhd|vhdx))$'
+$LureRegex    = '^(Click here to view.*\.(zip|vhd|vhdx)|Notice.*\.vhdx?|(PDF|DOC)_[A-Z0-9-]{3,8}_20\d{12}\.(zip|img|iso|exe|vhd|vhdx)|20\d{6}[.-]MYS20\d{2}Y\d{4}[A-Z0-9]{4,6}\.(zip|img|iso|vhd|vhdx)|(RES-20\d{6}_\d{6}|ORCAMENTO_\d{6}|COMPROVANTE_20\d{6}_\d{6}|ComprovanteSantander-[\d.]+|NEW-20\d{6}_\d{6}-PED_[0-9A-F]+|DOC-\d{8}_[0-9A-F]{8})\.(zip|lnk)|20\d{12}-[0-9A-F]{14}\.zip|SENARAI ?DOKUMEN.*\.zip|.+\.(vhdx?|img|iso)\.zip|LHDN.*\.(iso|img|vhdx?)|Open_to_view.*\.(iso|img)|TAX_[A-Za-z0-9]{6,}\.img(\.zip)?|SSM-\d+\.img(\.zip)?|20\d{6}[0-9A-F]{8}\.(zip|exe|img|iso|vhd|vhdx)|20\d{6}_\d{6}_\d{4}\.(zip|img|iso|vhd|vhdx)|Financial_Report_20\d{6}_PDF\.\d+\.(zip|exe|img|iso|vhdx?))$'
 # Programs the October 2026 wave tells Windows Defender to skip. No real program needs these excluded.
 $ExclProcRegex = '(?i)^(QtsUpdater|svchost|rundll32|powershell|cmd|wscript|cscript|mshta|regsvr32|explorer)\.exe$'
 # Known attacker servers (C2). A process talking to one of these is the malware.
 # Kaspersky (Apr 2026): ValleyRAT and ABCDoor servers from the Silver Fox tax campaign.
-$C2Ips = @('45.64.52.252', '45.207.219.46', '134.122.155.135', '134.122.155.148', '14.128.53.155', '45.202.1.249', '108.187.37.85', '108.187.42.63', '207.56.138.28', '45.118.133.203', '154.82.81.205', '154.82.81.192', '108.187.41.221',
+$C2Ips = @('143.92.61.212', '134.122.128.120', '134.122.155.183', '38.207.172.161', '45.64.52.252', '45.207.219.46', '134.122.155.135', '134.122.155.148', '14.128.53.155', '45.202.1.249', '108.187.37.85', '108.187.42.63', '207.56.138.28', '45.118.133.203', '154.82.81.205', '154.82.81.192', '108.187.41.221',
             '103.20.195.147', '45.207.231.94', '45.207.231.107', '160.124.9.103', '109.176.30.141',
             '202.61.160.208', '202.61.160.202', '202.61.160.201', '202.61.160.160', '202.61.160.137', '38.55.151.63', '61.18.208.27',
             '202.61.160.203', '202.61.160.145', '137.220.205.167', '137.220.205.162', '137.220.224.63', '103.140.154.117', '206.238.68.33', '43.224.224.151',
@@ -145,7 +158,7 @@ $C2Ips = @('45.64.52.252', '45.207.219.46', '134.122.155.135', '134.122.155.148'
             '38.91.115.114', '8.210.25.225', '95.40.29.190', '16.163.105.153', '183.90.186.193', '52.128.226.74', '154.83.17.175', '45.204.2.166')
 # Added Oct 2026: Triage/ThreatFox ValleyRAT (Malaysian lures), Netresec Ping32 (143.92.37.168), Kaspersky QN Wallpaper,
 # Sekoia (Malaysia), Elastic TCLBANKER, and Chinese reports (ThreatBook, Huorong, QiAnXin).
-$C2Domains = '(?i)(^|\.)(fetish-friends\.com|3mkorealtd\.com|sudsmama\.com|woopami\.com|ilptour\.com|petitechanson\.com|doublemobile\.com|mcagov\.cc|roldco\.com|kcii2\.com|haijing88\.com|ggwk\.cc|yuxuanow\.top|itdd\.club|xzghjec\.com|gov-a\.(work|fit|club)|gvo-b\.club|gov-c\.club|govk\.club|swjc2025bjkb\.cn|2025swmm\.cn|zapgrande\.com|sorvetenopo(a)?te\.com|sorvetenoopote\.com|sorvetenopotel\.com|etenopote\.com|expa(h)?nsiveuser\.com|expansivebot\.com|imobiliariaricardoparanhos\.com|casadecampoamazonas\.com|bravexolutions\.com|adoblesecuryt\.com|saogeraldoshoping\.com|baskwms\.top|msopsa\.top|shoppes\.help|shaaslong\.one|baoxis\.cc|kammwv\.cc|azuheq\.s3\.ap-southeast-1\.amazonaws\.com|d156sk07toobyl\.cloudfront\.net|neescil\.top|velthora\.top|sinjiabo-1398259625\.cos\.ap-singapore\.myqcloud\.com|(bafauac|9ding)\.s3\.ap-southeast-1\.amazonaws\.com|(baolongwes|sdcwww)\.oss-ap-southeast-1\.aliyuncs\.com|(baoyuw2s|hksha3|sjdkjj23|xijkwm2|yifubafu)\.s3\.ap-southeast-1\.amazonaws\.com|(caiwuascw|facaia)\.s3\.us-east-005\.backblazeb2\.com|khltt1\.club|lsf168\.club|pxxjbh\.club|liyunee\.top|articio\.top|kyur7oz\.top|uykb10\.club|gntr30\.club|kufp16\.club|txpfproxy\.vip|jksdjkjs\.cc|shougong9\.com|thinnected\.com|tax(cerf|low|gg|zz|yy)\.top|fadaoxiao\.s3\.us-west-004\.backblazeb2\.com|xqwmwru\.top|360sdgg\.com|ef971a42\.workers\.dev|mxtestacionamentos\.com|uuuucome\.com|laosjdhd\.cn|xxxjjj250711\.com|twsww\.xin|cn-hk-oss-vip\.com)$'
+$C2Domains = '(?i)(^|\.)(fetish-friends\.com|3mkorealtd\.com|sudsmama\.com|woopami\.com|ilptour\.com|petitechanson\.com|doublemobile\.com|mcagov\.cc|roldco\.com|kcii2\.com|haijing88\.com|ggwk\.cc|yuxuanow\.top|itdd\.club|xzghjec\.com|gov-a\.(work|fit|club)|gvo-b\.club|gov-c\.club|govk\.club|swjc2025bjkb\.cn|2025swmm\.cn|zapgrande\.com|sorvetenopo(a)?te\.com|sorvetenoopote\.com|sorvetenopotel\.com|etenopote\.com|expa(h)?nsiveuser\.com|expansivebot\.com|imobiliariaricardoparanhos\.com|casadecampoamazonas\.com|bravexolutions\.com|adoblesecuryt\.com|saogeraldoshoping\.com|baskwms\.top|msopsa\.top|shoppes\.help|shaaslong\.one|baoxis\.cc|kammwv\.cc|azuheq\.s3\.ap-southeast-1\.amazonaws\.com|d156sk07toobyl\.cloudfront\.net|neescil\.top|velthora\.top|sinjiabo-1398259625\.cos\.ap-singapore\.myqcloud\.com|(bafauac|9ding)\.s3\.ap-southeast-1\.amazonaws\.com|(baolongwes|sdcwww)\.oss-ap-southeast-1\.aliyuncs\.com|(baoyuw2s|hksha3|sjdkjj23|xijkwm2|yifubafu)\.s3\.ap-southeast-1\.amazonaws\.com|(caiwuascw|facaia)\.s3\.us-east-005\.backblazeb2\.com|khltt1\.club|lsf168\.club|pxxjbh\.club|liyunee\.top|articio\.top|kyur7oz\.top|uykb10\.club|gntr30\.club|kufp16\.club|txpfproxy\.vip|jksdjkjs\.cc|shougong9\.com|thinnected\.com|tax(cerf|low|gg|zz|yy)\.top|fadaoxiao\.s3\.us-west-004\.backblazeb2\.com|xqwmwru\.top|360sdgg\.com|ef971a42\.workers\.dev|mxtestacionamentos\.com|uuuucome\.com|laosjdhd\.cn|xxxjjj250711\.com|twsww\.xin|cn-hk-oss-vip\.com|fafadownload\.com|haccrt\.top|mwkwnnn\.click|cakkaao\.com|tttkkkssww\.com)$'
 # Silver Fox fake-document programs (Kaspersky, Apr 2026: Statement of Account / GST / tax lures).
 $ExeLureRegex = '(?i)^(Statement|Tax-\d{8,}|Review the file|BillReceipt|statement verify ?|Click File|GST ?Suvidha|Related material|MCA-Ministry|RemoteInstaller_[\d_]+_\w+|Open_to_view|TaxFiling|Notice from Tax Depart\w*)\.exe$'
 if ($env:WAZIP_TEST_C2) { $C2Ips += $env:WAZIP_TEST_C2 }
@@ -394,6 +407,12 @@ function Scan-Processes {
     foreach ($m in $mods) {
       if ($m.ModuleName -ieq 'rime.dll' -and $m.FileName -notmatch '\\Program Files( \(x86\))?\\') {
         Add-Finding 'Process' 'HIGH' "$($proc.ProcessName) (PID $($proc.Id))" "Loaded fake rime.dll from $($m.FileName)" @{ Pid = $proc.Id; Path = $m.FileName }
+      }
+      if ($m.ModuleName -match '(?i)^(libvlc|arphaDump|CRClient)\.dll$' -and $m.FileName -notmatch '(?i)\\(Program Files( \(x86\))?|Windows)\\' -and $proc.ProcessName -notmatch '(?i)^vlc$') {
+        Add-Finding 'Process' 'HIGH' "$($proc.ProcessName) (PID $($proc.Id))" "Renamed program running $($m.ModuleName) from $($m.FileName) (DLL sideloading, MyCERT MA-1493)" @{ Pid = $proc.Id; Path = $proc.Path }
+      }
+      if ($m.ModuleName -ieq 'msvbvm60.dll' -and $m.FileName -match '(?i)\\(AppData|ProgramData|Users\\Public)\\') {
+        Add-Finding 'Process' 'HIGH' "$($proc.ProcessName) (PID $($proc.Id))" "Program running a fake msvbvm60.dll from $($m.FileName) (UltraViewer backdoor, MyCERT MA-1493)" @{ Pid = $proc.Id; Path = $proc.Path }
       }
       if ($m.ModuleName -ieq 'libcef.dll' -and $m.FileName -match '(?i)^[a-z]:\\ProgramData\\[^\\]+\\libcef\.dll$') {
         Add-Finding 'Process' 'HIGH' "$($proc.ProcessName) (PID $($proc.Id))" "Renamed program running fake libcef.dll from $($m.FileName) (Oct 2026 VHDX lure)" @{ Pid = $proc.Id; Path = $proc.Path }
@@ -682,6 +701,15 @@ function Scan-Files {
           $sev = if (Get-ChildItem -LiteralPath $f.DirectoryName -Filter *.exe -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^(KafanInputService|H\d{8,})\.exe$' }) { 'HIGH' } else { 'WARN' }
           Add-Finding 'File' $sev $f.FullName 'rime.dll outside Program Files (DLL sideloading).'
         }
+        # MyCERT MA-1493: signed VLC / ArphaSDK / UltraViewer programs renamed as documents load these DLLs from their own folder.
+        if ($f.Name -ieq 'libvlc.dll' -and $f.DirectoryName -notmatch '\\Program Files( \(x86\))?\\' -and
+            -not (Test-Path -LiteralPath (Join-Path $f.DirectoryName 'vlc.exe'))) {
+          Add-Finding 'File' 'HIGH' $f.FullName 'libvlc.dll next to a renamed program instead of vlc.exe (DLL sideloading, MyCERT MA-1493).'; return }
+        if ($f.Name -ieq 'arphaDump.dll' -and $f.DirectoryName -notmatch '\\Program Files( \(x86\))?\\') {
+          Add-Finding 'File' 'HIGH' $f.FullName 'ARPHADUMP.DLL outside Program Files (installs the attacker ManageEngine agent, MyCERT MA-1491/1493).'; return }
+        if ($f.Name -ieq 'msvbvm60.dll') {
+          $sev = if ($f.FullName -match '(?i)\\AppData\\Local\\Toolkit\\' -or ($f.Attributes -band [IO.FileAttributes]::Hidden)) { 'HIGH' } else { 'WARN' }
+          Add-Finding 'File' $sev $f.FullName 'msvbvm60.dll outside Windows (UltraViewer backdoor, MyCERT MA-1493). The real one lives in System32.'; return }
         if ($f.Name -ieq 'libcef.dll' -and (($f.Attributes -band [IO.FileAttributes]::Hidden) -or $f.FullName -match '(?i)^[a-z]:\\ProgramData\\[^\\]+\\libcef\.dll$')) {
           Add-Finding 'File' 'HIGH' $f.FullName 'Hidden libcef.dll: a renamed signed program next to it loads this malware (Oct 2026 VHDX lure).'; return }
         if ($f.Name -ieq 'hidserv.dll' -and $f.DirectoryName -notmatch '(?i)\\Windows\\(System32|SysWOW64|WinSxS)(\\|$)') {
@@ -766,6 +794,14 @@ function Scan-ManageEngine {
     if ($cfg -and ($cfg | Select-String -SimpleMatch -Pattern $C2Ips -List -ErrorAction SilentlyContinue)) { $script:MeAttacker = $true }
   }
   Scan-Ping32
+  # MyCERT MA-1491/1493: work folders the ManageEngine lures create.
+  $drops = @("$env:SystemDrive\kouren", "$env:SystemDrive\cool")
+  $drops += @(Get-ChildItem -LiteralPath $env:ProgramData -Directory -Force -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^Office[0-9a-f]{4,6}$' } | ForEach-Object { $_.FullName })
+  foreach ($d in $drops | Where-Object { Test-Path -LiteralPath $_ }) {
+    if (Get-ChildItem -LiteralPath $d -Recurse -File -Force -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '(?i)^(UEMSAgent\.(msi|mst)|DMRootCA(-Server)?\.crt|DCAgentServerInfo\.json|Agentinstalllog\.txt|setup1?\.(bat|vbs)|kouren\.zip)$' }) {
+      Add-Finding 'File' 'HIGH' $d 'ManageEngine install kit left by the WhatsApp disk-image lure (MyCERT MA-1491/1493).'; $script:MeAttacker = $true
+    }
+  }
   # Both the VBS campaign and the MicroPoint ValleyRAT chain switch this off; only worth saying on an infected PC.
   if (($hits.Count -or ($Findings | Where-Object { $_.Severity -eq 'HIGH' })) -and (Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -ErrorAction SilentlyContinue).ConsentPromptBehaviorAdmin -eq 0) {
     Add-Finding 'Info' 'WARN' 'Admin permission prompt is switched off' 'The WhatsApp VBS campaign and ValleyRAT switch this off before installing their programs. Turn it back on: search UAC > Change User Account Control settings > move the slider up one step.'
@@ -963,7 +999,7 @@ function Invoke-Fix($qdir) {
   $i = 0
   $closed = $false
   # Files inside a flagged folder go before the folder itself.
-  foreach ($f in $Findings | Sort-Object { @('Process', 'WaSession', 'Vhd', 'Task', 'DefExcl', 'RegValue', 'Service', 'RegKey', 'File').IndexOf($_.Kind) }, { -([string]$_.Target).Length }) {
+  foreach ($f in $Findings | Sort-Object { @('Process', 'WaSession', 'Vhd', 'Task', 'DefExcl', 'RegValue', 'Service', 'RegKey', 'Cert', 'File').IndexOf($_.Kind) }, { -([string]$_.Target).Length }) {
     if ($f.Severity -ne 'HIGH' -or $f.Kind -eq 'Info') { continue }
     $i++
     try {
@@ -978,6 +1014,12 @@ function Invoke-Fix($qdir) {
           $dest = Join-Path $qdir ("wa-$i-" + (Split-Path $f.Target -Leaf))
           Move-Item -LiteralPath $f.Target -Destination $dest -Force -ErrorAction Stop
           $log.Add(@{ Kind = 'File'; Target = $f.Target; Backup = $dest })
+        }
+        'Cert'    {
+          $cer = Join-Path $qdir "cert-$i.cer"
+          Export-Certificate -Cert (Get-Item -LiteralPath $f.Target -ErrorAction Stop) -FilePath $cer | Out-Null
+          Remove-Item -LiteralPath $f.Target -Force -ErrorAction Stop
+          $log.Add(@{ Kind = 'Cert'; Target = $f.Target; Backup = $cer })
         }
         'Vhd'     { Dismount-DiskImage -ImagePath $f.Target -ErrorAction Stop | Out-Null; $log.Add(@{ Kind = 'Vhd'; Target = $f.Target }) }
         'Task'    {
@@ -1066,6 +1108,7 @@ function Invoke-Restore($mf) {
         if ($it.Type -eq 'Process') { Add-MpPreference -ExclusionProcess $it.Value } else { Add-MpPreference -ExclusionPath $it.Value }
         Say "  Pengecualian Defender dipulih: $($it.Value)" "  Defender exclusion restored: $($it.Value)" Green
       }
+      'Cert' { Import-Certificate -FilePath $it.Backup -CertStoreLocation Cert:\LocalMachine\Root | Out-Null; Say "  Sijil dipulih: $($it.Target)" "  Certificate restored: $($it.Target)" Green }
       'Task' { Register-ScheduledTask -TaskPath $it.Path -TaskName $it.Name -Xml (Get-Content -Raw $it.Backup) | Out-Null; Say "  Task dipulih: $($it.Target)" "  Task restored: $($it.Target)" Green }
     }
   }
@@ -1135,6 +1178,13 @@ if ($me) {
     $me.Severity = 'HIGH'
     Add-ManageEngineRemoval
     if ($RemoveManageEngine) { $Fix = $true }
+  }
+}
+# MyCERT MA-1491: the lures plant a ManageEngineCA root certificate so the attacker's server looks trusted.
+# Removed with the agent, or when no agent is left to need it; kept for an office agent that stays.
+if ($meRemove -or -not $me) {
+  foreach ($c in Get-ChildItem Cert:\LocalMachine\Root -ErrorAction SilentlyContinue | Where-Object { $_.Subject -match 'CN=ManageEngineCA' }) {
+    Add-Finding 'Cert' 'HIGH' "Cert:\LocalMachine\Root\$($c.Thumbprint)" "ManageEngineCA root certificate ($($c.Subject)). The ManageEngine lure plants it so the attacker's server looks trusted." @{ Thumb = $c.Thumbprint }
   }
 }
 

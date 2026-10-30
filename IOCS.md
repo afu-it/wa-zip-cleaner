@@ -169,6 +169,15 @@ Other reports:
 - Triage run 261030-mn9zaayt7q (score 7): the program copies itself and the DLL to `C:\ProgramData\GYCAsi\`, writes `install.vbs`, `UEMSAgent.msi`, `UEMSAgent.mst`, `DCAgentServerInfo.json` and two root certificates to `C:\Windows\Tasks\`, then installs a ManageEngine agent that reports to `45.64.52.252:8383` (branch name "India"). The backdoor itself connects to `45.207.219.46:1011`.
 - `install.vbs` SHA-256 `9bb1fc7af052fa22759101ec10e01c2e35ae7a83e30c7836cb7aa041df6dcaf4` (402 bytes), `UEMSAgent.mst` SHA-256 `180195558475b32abedb88b3103c06ee464148809986b78de32d8fdba897c516` (20,480 bytes).
 
+## MyCERT MA-1491.102026 and MA-1493.102026 (Oct 2026)
+
+- Signed hosts renamed as documents, each loading a fake DLL from its own folder: VLC 3.0.21 + `libvlc.dll`, Adobe Creative Cloud + `CRcliENT.dll`, ArphaSDK `arphaCrashReport.exe` + `ARPHADUMP.DLL`, UltraViewer + `msvbvm60.dll`, Rime/XiangLingHao + `rIME.dLl`, KuGou + `active_desktop_render_x64.dll`.
+- ManageEngine builds drop a kit (`UEMSAgent.msi` 6.0.3 SHA-256 `92f68fc7f6d0f544a750bf67b4903d1a4062d1372b7f98ab5c2f698eb61359bb`, `UEMSAgent.mst`, `DMRootCA.crt`, `DMRootCA-Server.crt`, `DCAgentServerInfo.json`, `setup.bat`, `setup1.vbs`) in `C:\kouren`, `C:\cool`, `C:\ProgramData\Office05b5` or `C:\ProgramData\Office304ed3`, and plant a `CN=ManageEngineCA, O=Zoho Corporation` root certificate.
+- Servers: `134.122.128.120:8383`, `134.122.155.183:8383` (UEMS consoles), `38.207.172.161`, `143.92.61.212:8871` (UltraViewer backdoor), `134.122.155.135:443`; domains `tttkkkssww.com`, `facai.mwkwnnn.click`, `www.cakkaao.com`, `www.fafadownload.com`, `ccc.fafadownload.com`, `caiwub.haccrt.top`.
+- Lure names: `PDF_R6LWXF_20261009152217.zip`, `PDF_2MFVBJ_20260928010152.zip`, `PDF_0R-BEPZ_20260924110405.ZIP`, `20260922_145533_2153.iso`, `Financial_Report_20261008_PDF.44321142.zip`, `2026.10.06.zip`, `2026.10.14.zip`.
+- Hashes matched by the scanner (size from VirusTotal): Sample B zip `9a6b0c60…`, `libvlc.dll` `67b6f787…`, Sample C zip `398e35fe…`, `CRcliENT.dll` `9c8a508b…`, `ARPHADUMP.DLL` `f8a5e09c…`, Sample E zip `d315ec62…`, `msvbvm60.dll` `508a83c0…`, Sample F image `e2bf8b7c…`. Not on VirusTotal, so not matched by hash: Sample A zip `20872aec…` and `rIME.dLl` `eb7a5ed5…`, Sample D zip `91501e4a…`, Sample F zip `9f2caeda…`.
+- Source: https://www.mycert.org.my/portal/advisory?id=MA-1491.102026 and https://www.mycert.org.my/portal/details?menu=431fab9c-d24c-4a27-ba93-e92edafdefa5&id=437b1ce7-4a9a-4c38-a740-cb0f0a3b7945
+
 ## References
 
 - CloudSEK, Silver Fox targeting India using tax-themed phishing lures (2025-12-24): https://www.cloudsek.com/blog/silver-fox-targeting-india-using-tax-themed-phishing-lures
