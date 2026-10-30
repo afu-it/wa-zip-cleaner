@@ -176,6 +176,7 @@ Other reports:
 - Servers: `134.122.128.120:8383`, `134.122.155.183:8383` (UEMS consoles), `38.207.172.161`, `143.92.61.212:8871` (UltraViewer backdoor), `134.122.155.135:443`; domains `tttkkkssww.com`, `facai.mwkwnnn.click`, `www.cakkaao.com`, `www.fafadownload.com`, `ccc.fafadownload.com`, `caiwub.haccrt.top`.
 - Lure names: `PDF_R6LWXF_20261009152217.zip`, `PDF_2MFVBJ_20260928010152.zip`, `PDF_0R-BEPZ_20260924110405.ZIP`, `20260922_145533_2153.iso`, `Financial_Report_20261008_PDF.44321142.zip`, `2026.10.06.zip`, `2026.10.14.zip`.
 - Hashes matched by the scanner (size from VirusTotal): Sample B zip `9a6b0c60…`, `libvlc.dll` `67b6f787…`, Sample C zip `398e35fe…`, `CRcliENT.dll` `9c8a508b…`, `ARPHADUMP.DLL` `f8a5e09c…`, Sample E zip `d315ec62…`, `msvbvm60.dll` `508a83c0…`, Sample F image `e2bf8b7c…`. Not on VirusTotal, so not matched by hash: Sample A zip `20872aec…` and `rIME.dLl` `eb7a5ed5…`, Sample D zip `91501e4a…`, Sample F zip `9f2caeda…`.
+- Kaspersky register (151 lure containers, in MA-1491): 143 had a size on VirusTotal and are matched by hash; 8 were not on VirusTotal. Name patterns from the register: `13211621092027.VHDX`, `36251322092026.71A.vhdx`, `CIT.Number.<14 digits>.IMG`, `I.T.R.Number-<14 digits>.IMG`, `IMPS_2121-9-2026.img`, `UTR_422-9-2026.7CA.vhdx`, `SOA3.IMG`, `E-statement2026.vhdx`, `20260827224326.DC40CD2841F6.zip`.
 - Source: https://www.mycert.org.my/portal/advisory?id=MA-1491.102026 and https://www.mycert.org.my/portal/details?menu=431fab9c-d24c-4a27-ba93-e92edafdefa5&id=437b1ce7-4a9a-4c38-a740-cb0f0a3b7945
 
 ## References

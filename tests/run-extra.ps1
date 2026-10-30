@@ -424,7 +424,7 @@ Remove-Item -LiteralPath $gyc -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath "$env:SystemRoot\Tasks\install.vbs", "$env:SystemRoot\Tasks\UEMSAgent.mst" -Force -ErrorAction SilentlyContinue
 
 Write-Host '=== MyCERT MA-1491/1493 (lure names, sideload DLLs, drop folder, ManageEngineCA) ===' -ForegroundColor Cyan
-$myNames = 'PDF_0R-BEPZ_20260924110405.ZIP', '20260922_145533_2153.iso', 'Financial_Report_20261008_PDF.44321142.zip'
+$myNames = 'PDF_0R-BEPZ_20260924110405.ZIP', '20260922_145533_2153.iso', 'Financial_Report_20261008_PDF.44321142.zip', '13211621092027.VHDX', '36251322092026.71A.vhdx', 'CIT.Number.20260827124236.IMG', 'I.T.R.Number-20260825114045.IMG', 'IMPS_2121-9-2026.img', 'UTR_422-9-2026.7CA.vhdx', 'SOA3.IMG', 'E-statement2026.vhdx', '20260827224326.DC40CD2841F6.zip'
 foreach ($n in $myNames) { Set-Content "$dl\$n" 'dummy' }
 $vlcBad = "$dl\PDF_R6LWXF"; $vlcOk = "$dl\vlc-portable"
 New-Item -ItemType Directory -Force -Path $vlcBad, $vlcOk | Out-Null
