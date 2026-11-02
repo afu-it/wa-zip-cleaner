@@ -474,6 +474,23 @@ Check (-not (Get-ItemProperty -Path $runH -Name WazHexTest -ErrorAction Silently
 Remove-Item -LiteralPath $hexDir -Recurse -Force -ErrorAction SilentlyContinue
 Remove-ItemProperty -Path $runH -Name WazHexTest -ErrorAction SilentlyContinue
 
+Write-Host '=== Program in Public\Libraries symbol folder (SyncEngineDatabase report) ===' -ForegroundColor Cyan
+$libDir = 'C:\Users\Public\Libraries\BB&{@#{!@()[{(+)(@%]@(=,[),{}~Lr'
+New-Item -ItemType Directory -Force -Path $libDir | Out-Null
+$libExe = Join-Path $libDir 'SyncEngineDatabase.db.exe'
+[IO.File]::WriteAllText($libExe, 'dummy')
+(Get-Item -LiteralPath $libExe -Force).Attributes = 'Hidden, System'
+$symDir = Join-Path $env:APPDATA '{@#!(+)%=}'
+New-Item -ItemType Directory -Force -Path $symDir | Out-Null
+[IO.File]::WriteAllText((Join-Path $symDir 'host.exe'), 'dummy')
+$r23 = Scan "$env:TEMP\x23.json"
+Check (Has $r23 'File' 'HIGH' 'SyncEngineDatabase\.db\.exe$') 'hidden program in Public\Libraries symbol folder is HIGH'
+Check (Has $r23 'File' 'HIGH' '\{@#!\(\+\)%=\}\\host\.exe$') 'program in a folder named with symbols is HIGH'
+$r24 = Scan "$env:TEMP\x24.json" -Fix
+Check (-not (Test-Path -LiteralPath $libExe)) 'Public\Libraries program quarantined'
+Check (-not (Test-Path -LiteralPath (Join-Path $symDir 'host.exe'))) 'symbol folder program quarantined'
+Remove-Item -LiteralPath $libDir, $symDir -Recurse -Force -ErrorAction SilentlyContinue
+
 Write-Host '=== Fake Windows\System folder (keylogger report) ===' -ForegroundColor Cyan
 $ksDir = Join-Path $env:APPDATA 'Microsoft\Windows\System'
 New-Item -ItemType Directory -Force -Path $ksDir | Out-Null

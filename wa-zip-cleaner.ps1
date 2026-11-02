@@ -31,7 +31,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.02'
+$Version = '2026.11.02.1'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -289,7 +289,7 @@ if ($env:WAZIP_TEST_IOCS -and (Test-Path -LiteralPath $env:WAZIP_TEST_IOCS)) {
     if ($e.Vendor) { $entry.Vendor = $e.Vendor; $AbusedLegit += $entry } else { $KnownBad += $entry }
   }
 }
-$PersistRegex ='\\AppData\\Local\\[0-9A-F]{16}\\|\\AppData\\Roaming\\Microsoft\\Windows\\System\\[^\\]+\.exe|rime\.dll|_vmclientcore@16|KafanInput|vcRuntimeMinimum_x86\.exe|\\H\d{8,}\.exe|ZyArk|\\ardrv\.sys|\\AppData\\Roaming\\Microsoft\\Update\\[^\\]+\.exe|active_desktop_(launcher|render)|Add-MpPreference|eneio64\.dat|plcc3a\.dat|-m\s+appclient|\\appclient\\python\\|HealthApp-[0-9a-f]{6}\.bat|\\ProgramData\\MicroPoint\\|WinCombo\.exe|CRClient\.dll|\\Toolkit\\winhttp\.dll|webview2_integration\.exe|encrashrep\.dll|\\ProgramData\\WindowsData\\|ExceptCatch\.dll|\\QNWallpaper\\|\\msvc-rt14\\|NtHandleCallback\.exe|\\(XiaoH|rwdriver|kabuto)\.sys'
+$PersistRegex ='\\Users\\Public\\Libraries\\.+\.(exe|dll)|\\AppData\\Local\\[0-9A-F]{16}\\|\\AppData\\Roaming\\Microsoft\\Windows\\System\\[^\\]+\.exe|rime\.dll|_vmclientcore@16|KafanInput|vcRuntimeMinimum_x86\.exe|\\H\d{8,}\.exe|ZyArk|\\ardrv\.sys|\\AppData\\Roaming\\Microsoft\\Update\\[^\\]+\.exe|active_desktop_(launcher|render)|Add-MpPreference|eneio64\.dat|plcc3a\.dat|-m\s+appclient|\\appclient\\python\\|HealthApp-[0-9a-f]{6}\.bat|\\ProgramData\\MicroPoint\\|WinCombo\.exe|CRClient\.dll|\\Toolkit\\winhttp\.dll|webview2_integration\.exe|encrashrep\.dll|\\ProgramData\\WindowsData\\|ExceptCatch\.dll|\\QNWallpaper\\|\\msvc-rt14\\|NtHandleCallback\.exe|\\(XiaoH|rwdriver|kabuto)\.sys'
 $LureRegex    = '^(Click here to view.*\.(zip|vhd|vhdx)|Notice.*\.vhdx?|(PDF|DOC)_[A-Z0-9-]{3,8}_20\d{12}\.(zip|img|iso|exe|vhd|vhdx)|20\d{6}[.-]MYS20\d{2}Y\d{4}[A-Z0-9]{4,6}\.(zip|img|iso|vhd|vhdx)|(RES-20\d{6}_\d{6}|ORCAMENTO_\d{6}|COMPROVANTE_20\d{6}_\d{6}|ComprovanteSantander-[\d.]+|NEW-20\d{6}_\d{6}-PED_[0-9A-F]+|DOC-\d{8}_[0-9A-F]{8})\.(zip|lnk)|20\d{12}-[0-9A-F]{14}\.zip|SENARAI ?DOKUMEN.*\.zip|.+\.(vhdx?|img|iso)\.zip|LHDN.*\.(iso|img|vhdx?)|Open_to_view.*\.(iso|img)|TAX_[A-Za-z0-9]{6,}\.img(\.zip)?|SSM-\d+\.img(\.zip)?|20\d{6}[0-9A-F]{8}\.(zip|exe|img|iso|vhd|vhdx)|20\d{6}_\d{6}_\d{4}\.(zip|img|iso|vhd|vhdx)|Financial_Report_20\d{6}_PDF\.\d+\.(zip|exe|img|iso|vhdx?)|\d{14}(\.[0-9A-F]{3})?\.(img|iso|vhdx?)|[A-Z.]{3,9}[.-]Number[.-]20\d{10,12}\.(img\d?|iso|vhdx?)|(IMPS|UTR|TWV)_\d{3,4}-\d{1,2}-20\d{2}\d*(\.[0-9A-F]{3})?\.(img|iso|vhdx?)|20\d{12}\.[0-9A-F]{12}\.zip|SOA\d*\.(img|iso|vhdx?)|E-statement\d*\.(img|iso|vhdx?)|RT\d{10}\.\d{3}\.img)$'
 # Programs the October 2026 wave tells Windows Defender to skip. No real program needs these excluded.
 $ExclProcRegex = '(?i)^(QtsUpdater|svchost|rundll32|powershell|cmd|wscript|cscript|mshta|regsvr32|explorer)\.exe$'
@@ -834,6 +834,10 @@ function Scan-Files {
         # Oct 2026 reports: Triage (encrashRep chain), C1BAS (ExceptCatch.dll), Netresec (Ping32 CoreShield.msi),
         # Sekoia (SyncFuture <ip>ClientSetup.exe), Elastic (TCLBANKER hostfxr.exe), Chinese reports (drivers and tools).
         if ($f.FullName -match '(?i)\\Users\\Public\\Libraries\\' -and $f.Name -match '(?i)^(webview2_integration\.exe|encrashrep\.dll)$') { Add-Finding 'File' 'HIGH' $f.FullName 'ValleyRAT loader hidden in Public\Libraries (INVOIS/Memeriksa VHD lures).'; return }
+        # Victim report (2 Nov 2026): hidden SyncEngineDatabase.db.exe in Public\Libraries\<folder named with symbols>.
+        # Public\Libraries normally holds only library shortcuts, never programs.
+        if ($f.Extension -match '(?i)^\.(exe|dll|scr)$' -and ($f.FullName -match '(?i)\\Users\\Public\\Libraries\\' -or $f.Directory.Name -match '[{}()\[\]@#!%&+=~,][^\\]*[{}()\[\]@#!%&+=~,][^\\]*[{}()\[\]@#!%&+=~,][^\\]*[{}()\[\]@#!%&+=~,]')) {
+          Add-Finding 'File' 'HIGH' $f.FullName 'Program hidden in Public\Libraries or in a folder named with symbols (Winos/ValleyRAT hiding place).'; return }
         if ($f.Name -ieq 'ExceptCatch.dll') { Add-Finding 'File' 'HIGH' $f.FullName 'Silver Fox loader DLL (ExceptCatch.dll).'; return }
         if ($f.Name -ieq 'CoreShield.msi' -and $f.FullName -match '(?i)^[a-z]:\\Users\\') { Add-Finding 'File' 'HIGH' $f.FullName 'Ping32 remote-control installer from the WhatsApp VBS campaign (Netresec).'; return }
         if ($f.Name -match '^\d{1,3}(\.\d{1,3}){3}ClientSetup\.exe$') { Add-Finding 'File' 'HIGH' $f.FullName 'SyncFuture remote-control installer named after the attacker server (Sekoia).'; return }
