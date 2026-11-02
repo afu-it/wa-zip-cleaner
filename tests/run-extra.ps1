@@ -458,6 +458,22 @@ Remove-Item -LiteralPath "$dl\arphaDump.dll", "$env:TEMP\meca.cer" -Force -Error
 foreach ($n in $myNames) { Remove-Item -LiteralPath "$dl\$n" -Force -ErrorAction SilentlyContinue }
 if ($meCa) { Remove-Item -LiteralPath "Cert:\LocalMachine\Root\$meCa" -ErrorAction SilentlyContinue }
 
+Write-Host '=== Random hex folder in AppData\Local (CrashHunter_PC3.dll report) ===' -ForegroundColor Cyan
+$hexDir = Join-Path $env:LOCALAPPDATA '0115DF0258E52000'
+New-Item -ItemType Directory -Force -Path $hexDir | Out-Null
+Set-Content "$hexDir\CrashHunter_PC3.dll" 'dummy'; Set-Content "$hexDir\Launcher.exe" 'dummy'
+$runH = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+Set-ItemProperty -Path $runH -Name WazHexTest -Value "`"$hexDir\Launcher.exe`""
+$r21 = Scan "$env:TEMP\x21.json"
+Check (Has $r21 'File' 'HIGH' '0115DF0258E52000\\CrashHunter_PC3\.dll$') 'DLL in random hex AppData\Local folder is HIGH'
+Check (Has $r21 'File' 'HIGH' '0115DF0258E52000\\Launcher\.exe$') 'program in random hex AppData\Local folder is HIGH'
+Check (Has $r21 'RegValue' 'HIGH' '\|WazHexTest$') 'Run value pointing at the hex folder is HIGH'
+$r22 = Scan "$env:TEMP\x22.json" -Fix
+Check (-not (Test-Path "$hexDir\CrashHunter_PC3.dll") -and -not (Test-Path "$hexDir\Launcher.exe")) 'hex folder files quarantined'
+Check (-not (Get-ItemProperty -Path $runH -Name WazHexTest -ErrorAction SilentlyContinue)) 'hex folder Run value removed'
+Remove-Item -LiteralPath $hexDir -Recurse -Force -ErrorAction SilentlyContinue
+Remove-ItemProperty -Path $runH -Name WazHexTest -ErrorAction SilentlyContinue
+
 Write-Host '=== Fake Windows\System folder (keylogger report) ===' -ForegroundColor Cyan
 $ksDir = Join-Path $env:APPDATA 'Microsoft\Windows\System'
 New-Item -ItemType Directory -Force -Path $ksDir | Out-Null

@@ -31,7 +31,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.10.31.1'
+$Version = '2026.11.02'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -289,7 +289,7 @@ if ($env:WAZIP_TEST_IOCS -and (Test-Path -LiteralPath $env:WAZIP_TEST_IOCS)) {
     if ($e.Vendor) { $entry.Vendor = $e.Vendor; $AbusedLegit += $entry } else { $KnownBad += $entry }
   }
 }
-$PersistRegex ='\\AppData\\Roaming\\Microsoft\\Windows\\System\\[^\\]+\.exe|rime\.dll|_vmclientcore@16|KafanInput|vcRuntimeMinimum_x86\.exe|\\H\d{8,}\.exe|ZyArk|\\ardrv\.sys|\\AppData\\Roaming\\Microsoft\\Update\\[^\\]+\.exe|active_desktop_(launcher|render)|Add-MpPreference|eneio64\.dat|plcc3a\.dat|-m\s+appclient|\\appclient\\python\\|HealthApp-[0-9a-f]{6}\.bat|\\ProgramData\\MicroPoint\\|WinCombo\.exe|CRClient\.dll|\\Toolkit\\winhttp\.dll|webview2_integration\.exe|encrashrep\.dll|\\ProgramData\\WindowsData\\|ExceptCatch\.dll|\\QNWallpaper\\|\\msvc-rt14\\|NtHandleCallback\.exe|\\(XiaoH|rwdriver|kabuto)\.sys'
+$PersistRegex ='\\AppData\\Local\\[0-9A-F]{16}\\|\\AppData\\Roaming\\Microsoft\\Windows\\System\\[^\\]+\.exe|rime\.dll|_vmclientcore@16|KafanInput|vcRuntimeMinimum_x86\.exe|\\H\d{8,}\.exe|ZyArk|\\ardrv\.sys|\\AppData\\Roaming\\Microsoft\\Update\\[^\\]+\.exe|active_desktop_(launcher|render)|Add-MpPreference|eneio64\.dat|plcc3a\.dat|-m\s+appclient|\\appclient\\python\\|HealthApp-[0-9a-f]{6}\.bat|\\ProgramData\\MicroPoint\\|WinCombo\.exe|CRClient\.dll|\\Toolkit\\winhttp\.dll|webview2_integration\.exe|encrashrep\.dll|\\ProgramData\\WindowsData\\|ExceptCatch\.dll|\\QNWallpaper\\|\\msvc-rt14\\|NtHandleCallback\.exe|\\(XiaoH|rwdriver|kabuto)\.sys'
 $LureRegex    = '^(Click here to view.*\.(zip|vhd|vhdx)|Notice.*\.vhdx?|(PDF|DOC)_[A-Z0-9-]{3,8}_20\d{12}\.(zip|img|iso|exe|vhd|vhdx)|20\d{6}[.-]MYS20\d{2}Y\d{4}[A-Z0-9]{4,6}\.(zip|img|iso|vhd|vhdx)|(RES-20\d{6}_\d{6}|ORCAMENTO_\d{6}|COMPROVANTE_20\d{6}_\d{6}|ComprovanteSantander-[\d.]+|NEW-20\d{6}_\d{6}-PED_[0-9A-F]+|DOC-\d{8}_[0-9A-F]{8})\.(zip|lnk)|20\d{12}-[0-9A-F]{14}\.zip|SENARAI ?DOKUMEN.*\.zip|.+\.(vhdx?|img|iso)\.zip|LHDN.*\.(iso|img|vhdx?)|Open_to_view.*\.(iso|img)|TAX_[A-Za-z0-9]{6,}\.img(\.zip)?|SSM-\d+\.img(\.zip)?|20\d{6}[0-9A-F]{8}\.(zip|exe|img|iso|vhd|vhdx)|20\d{6}_\d{6}_\d{4}\.(zip|img|iso|vhd|vhdx)|Financial_Report_20\d{6}_PDF\.\d+\.(zip|exe|img|iso|vhdx?)|\d{14}(\.[0-9A-F]{3})?\.(img|iso|vhdx?)|[A-Z.]{3,9}[.-]Number[.-]20\d{10,12}\.(img\d?|iso|vhdx?)|(IMPS|UTR|TWV)_\d{3,4}-\d{1,2}-20\d{2}\d*(\.[0-9A-F]{3})?\.(img|iso|vhdx?)|20\d{12}\.[0-9A-F]{12}\.zip|SOA\d*\.(img|iso|vhdx?)|E-statement\d*\.(img|iso|vhdx?)|RT\d{10}\.\d{3}\.img)$'
 # Programs the October 2026 wave tells Windows Defender to skip. No real program needs these excluded.
 $ExclProcRegex = '(?i)^(QtsUpdater|svchost|rundll32|powershell|cmd|wscript|cscript|mshta|regsvr32|explorer)\.exe$'
@@ -775,6 +775,9 @@ function Scan-Files {
   foreach ($u in Get-ChildItem "$env:SystemDrive\Users" -Directory -ErrorAction SilentlyContinue) {
     $roots += 'Downloads', 'Desktop', 'Documents', 'AppData\Roaming', 'AppData\Local\Temp', 'AppData\Local\Packages', 'AppData\Local\Toolkit' |
       ForEach-Object { Join-Path $u.FullName $_ }
+    # Victim report (2 Nov 2026): a sideload pair hidden in AppData\Local\<16 random hex characters>.
+    $roots += @(Get-ChildItem -LiteralPath (Join-Path $u.FullName 'AppData\Local') -Directory -Force -ErrorAction SilentlyContinue |
+      Where-Object { $_.Name -cmatch '^[0-9A-F]{16}$' } | ForEach-Object { $_.FullName })
   }
   $exts = '\.(zip|rar|7z|vhd|vhdx|img|iso|dll|exe|scr|dat|cnf|sys|tar|vbs|vbe|js|wsf|lnk|msi|mst|key)$|^DCAgentServerInfo\.json$'
   $wsh = New-Object -ComObject WScript.Shell
@@ -801,6 +804,8 @@ function Scan-Files {
           return
         }
         if ($f.Name -match $LureRegex) { Add-Finding 'File' 'HIGH' $f.FullName 'WhatsApp lure file name.'; return }
+        if ($f.Extension -match '(?i)^\.(exe|dll)$' -and $f.Directory.Name -cmatch '^[0-9A-F]{16}$' -and $f.Directory.Parent.FullName -match '(?i)\\AppData\\Local$') {
+          Add-Finding 'File' 'HIGH' $f.FullName 'Program in a random-named AppData\Local folder (sideload pair; Defender found CrashHunter_PC3.dll like this, Nov 2026).'; return }
         # Victim report (Malwarebytes, 30 Oct 2026): client.exe and keylogger.exe in this made-up folder, started by Run values named WindowsUpdate.
         if ($f.FullName -match '(?i)\\AppData\\Roaming\\Microsoft\\Windows\\System\\[^\\]+\.(exe|dll)$') {
           Add-Finding 'File' 'HIGH' $f.FullName 'Malware in a fake Windows\System folder under AppData (downloader / keylogger seen on a victim PC).'; return }
@@ -1371,6 +1376,12 @@ if ($Fix -and $high.Count) {
   Say 'Untuk buang semua yang [HIGH] di atas, taip Y bila ditanya kat bawah (atau jalankan semula dengan -Fix / 2-CLEAN-BERSIH.bat).' 'To remove everything marked [HIGH], type Y when asked below (or run again with -Fix / 2-CLEAN-BERSIH.bat).' Cyan
 } else {
   Say 'Cuma ada amaran, tiada apa yang tool ni akan buang. Baca amaran di atas.' 'Warnings only; nothing for this tool to remove. Read the warnings above.' Cyan
+}
+# Defender removing a trojan does not mean the PC is clean: the program that loaded it may still be there.
+if (-not $high.Count -and ($Findings | Where-Object { $_.Kind -eq 'Info' -and $_.Target -match '^Defender detected: (Trojan|Backdoor|Behavior|Exploit|HackTool|Ransom)' })) {
+  Write-Host ''
+  Say 'AWAS: Windows Defender jumpa trojan di PC ni (lihat "Defender detected" di atas). Defender cuma buang fail tu; program yang muatkan dia mungkin masih ada. Tukar kata laluan bank & emel guna telefon, log keluar WhatsApp Web (Peranti dipaut > Log keluar semua), dan hantar screenshot folder dalam amaran tu kepada orang yang bantu anda. Paling selamat: backup data dan format PC.' `
+      'WARNING: Windows Defender found a trojan on this PC (see "Defender detected" above). Defender only removed that file; the program that loaded it may still be there. Change bank and email passwords from your phone, log out WhatsApp Web (Linked devices > Log out all), and send a screenshot of the folder in that warning to whoever is helping you. Safest: back up data and reinstall Windows.' Red
 }
 if ($high.Count) {
   Write-Host ''
