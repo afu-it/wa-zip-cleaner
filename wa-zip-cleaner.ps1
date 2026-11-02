@@ -31,7 +31,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.02.1'
+$Version = '2026.11.02.2'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -877,7 +877,7 @@ function Scan-Files {
         if ($f.Extension -match '(?i)^\.(exe|scr|vbs|vbe|js|wsf|msi|img|iso)$' -and (Test-WaOrigin $f)) {
           Add-Finding 'File' 'HIGH' $f.FullName 'Program, script or disk image downloaded from WhatsApp Web. Real documents are never programs.'; return }
         if ($f.Extension -match '(?i)^\.(zip|rar|7z)$' -and (Test-WaOrigin $f)) {
-          Add-Finding 'File' 'WARN' $f.FullName 'Archive downloaded from WhatsApp Web. The WhatsApp malware arrives as a zip; delete it unless you expected it.' }
+          Add-Finding 'File' 'HIGH' $f.FullName 'Archive downloaded from WhatsApp Web. The WhatsApp malware arrives as a zip, so it is moved to quarantine (it can be restored).' @{ Tidy = $true } }
       }
     if ($env:WAZIP_TIMING) { Write-Host "[timing] $r : $tn files checked, $([int]$sw.Elapsed.TotalSeconds)s" }
   }
@@ -960,7 +960,7 @@ function Scan-ManageEngine {
     }
   }
   # Both the VBS campaign and the MicroPoint ValleyRAT chain switch this off; only worth saying on an infected PC.
-  if (($hits.Count -or ($Findings | Where-Object { $_.Severity -eq 'HIGH' })) -and (Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -ErrorAction SilentlyContinue).ConsentPromptBehaviorAdmin -eq 0) {
+  if (($hits.Count -or ($Findings | Where-Object { $_.Severity -eq 'HIGH' -and -not $_.Extra.Tidy })) -and (Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -ErrorAction SilentlyContinue).ConsentPromptBehaviorAdmin -eq 0) {
     Add-Finding 'Info' 'WARN' 'Admin permission prompt is switched off' 'The WhatsApp VBS campaign and ValleyRAT switch this off before installing their programs. Turn it back on: search UAC > Change User Account Control settings > move the slider up one step.'
   }
   if ($hits.Count) {
@@ -1345,7 +1345,8 @@ if ($meRemove -or -not $me) {
   }
 }
 
-if ($Findings | Where-Object { $_.Severity -eq 'HIGH' }) { Add-WhatsAppWebSessions }
+# A WhatsApp Web zip alone is tidied away, but it is not a sign of infection.
+if ($Findings | Where-Object { $_.Severity -eq 'HIGH' -and -not $_.Extra.Tidy }) { Add-WhatsAppWebSessions }
 
 if ($ReportPath) {
   @($Findings | Select-Object Kind, Severity, Target, Detail) | ConvertTo-Json -Depth 3 | Out-File -Encoding UTF8 $ReportPath
@@ -1353,6 +1354,7 @@ if ($ReportPath) {
 
 Write-Host ''
 $high = @($Findings | Where-Object Severity -eq 'HIGH')
+$infected = @($high | Where-Object { -not $_.Extra.Tidy })
 $warn = @($Findings | Where-Object Severity -eq 'WARN')
 if (-not $Findings.Count) {
   Say 'BERSIH: tiada tanda malware ZIP WhatsApp dijumpai.' 'CLEAN: no signs of the WhatsApp ZIP malware found.' Green
@@ -1382,12 +1384,12 @@ if ($Fix -and $high.Count) {
   Say 'Cuma ada amaran, tiada apa yang tool ni akan buang. Baca amaran di atas.' 'Warnings only; nothing for this tool to remove. Read the warnings above.' Cyan
 }
 # Defender removing a trojan does not mean the PC is clean: the program that loaded it may still be there.
-if (-not $high.Count -and ($Findings | Where-Object { $_.Kind -eq 'Info' -and $_.Target -match '^Defender detected: (Trojan|Backdoor|Behavior|Exploit|HackTool|Ransom)' })) {
+if (-not $infected.Count -and ($Findings | Where-Object { $_.Kind -eq 'Info' -and $_.Target -match '^Defender detected: (Trojan|Backdoor|Behavior|Exploit|HackTool|Ransom)' })) {
   Write-Host ''
   Say 'AWAS: Windows Defender jumpa trojan di PC ni (lihat "Defender detected" di atas). Defender cuma buang fail tu; program yang muatkan dia mungkin masih ada. Tukar kata laluan bank & emel guna telefon, log keluar WhatsApp Web (Peranti dipaut > Log keluar semua), dan hantar screenshot folder dalam amaran tu kepada orang yang bantu anda. Paling selamat: backup data dan format PC.' `
       'WARNING: Windows Defender found a trojan on this PC (see "Defender detected" above). Defender only removed that file; the program that loaded it may still be there. Change bank and email passwords from your phone, log out WhatsApp Web (Linked devices > Log out all), and send a screenshot of the folder in that warning to whoever is helping you. Safest: back up data and reinstall Windows.' Red
 }
-if ($high.Count) {
+if ($infected.Count) {
   Write-Host ''
   Say 'PENTING: dari telefon/PC lain, tukar kata laluan bank & emel, dan log keluar WhatsApp Web (Peranti dipaut > Log keluar semua).' `
       'IMPORTANT: from another device, change bank/email passwords and log out WhatsApp Web (Linked devices > Log out all).' Yellow

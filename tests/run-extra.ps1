@@ -324,7 +324,7 @@ Start-Sleep 3
 
 $r8 = Scan "$env:TEMP\x8.json"
 Check (Has $r8 'File' 'HIGH' 'Dokumen penting\.img$' 'WhatsApp Web') 'disk image downloaded from WhatsApp Web is HIGH'
-Check (Has $r8 'File' 'WARN' 'Gambar raya\.zip$' 'WhatsApp Web') 'zip downloaded from WhatsApp Web is WARN'
+Check (Has $r8 'File' 'HIGH' 'Gambar raya\.zip$' 'WhatsApp Web') 'zip downloaded from WhatsApp Web is HIGH (tidied away)'
 Check (Has $r8 'Info' 'WARN' 'Malware program ran: C:\\ProgramData\\MicroPoint\\WinCombo\.exe$') 'program-launch list entry for WinCombo.exe is WARN'
 Check (-not (Has $r8 'Info' 'WARN' 'notepad')) 'ordinary programs in the launch list are ignored'
 Check (Has $r8 'Info' 'WARN' 'Malware program ran: TAXFILING\.EXE$' 'Prefetch') 'Prefetch entry for TaxFiling.exe is WARN'
@@ -332,12 +332,11 @@ $has5007 = $histOk -and [bool](Get-WinEvent -FilterHashtable @{ LogName = 'Micro
 if ($has5007) { Check (Has $r8 'Info' 'WARN' 'Defender exclusion added: C:\\Users\\Public\\WazHistTest') 'exclusion added after the last clean-up is listed from Defender history' }
 else { Write-Host 'SKIP Defender history: no 5007 event on this runner' -ForegroundColor Yellow }
 $scanLog = Get-ChildItem $q -Filter 'scan-*.log' | Sort-Object LastWriteTime | Select-Object -Last 1
-Check ($scanLog -and (Select-String -LiteralPath $scanLog.FullName -SimpleMatch 'Maksud: Fail ni dimuat turun dari WhatsApp Web' -Quiet)) 'WhatsApp download warning explained in plain Malay'
 Check ($scanLog -and (Select-String -LiteralPath $scanLog.FullName -SimpleMatch 'Maksud: Rekod Windows tunjuk program malware' -Quiet)) 'ran-program warning explained in plain Malay'
 
 $r9 = Scan "$env:TEMP\x9.json" -Fix
 Check (-not (Test-Path -LiteralPath $waImg)) 'WhatsApp disk image quarantined'
-Check (Test-Path -LiteralPath $waZip) 'WhatsApp zip (WARN only) left in place'
+Check (-not (Test-Path -LiteralPath $waZip)) 'WhatsApp zip quarantined'
 $r10 = Scan "$env:TEMP\x10.json"
 Check (-not (Has $r10 'Info' 'WARN' 'Malware program ran')) 'history before the last clean-up is not reported again'
 Remove-Item -LiteralPath $waZip, $pcaTest -Force -ErrorAction SilentlyContinue
