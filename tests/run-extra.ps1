@@ -490,6 +490,79 @@ Check (-not (Test-Path -LiteralPath $libExe)) 'Public\Libraries program quaranti
 Check (-not (Test-Path -LiteralPath (Join-Path $symDir 'host.exe'))) 'symbol folder program quarantined'
 Remove-Item -LiteralPath $libDir, $symDir -Recurse -Force -ErrorAction SilentlyContinue
 
+Write-Host '=== TankRAT / Overlord (LHDN and Penyata Akaun lures) ===' -ForegroundColor Cyan
+$tc = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Explorer\thumbcache_a1b2c3d4'
+New-Item -ItemType Directory -Force -Path $tc | Out-Null
+(Get-Item -LiteralPath $tc -Force).Attributes = 'Hidden, Directory'
+foreach ($n in 'ExplorerBroker.exe', 'tedutil.dll', 'settings.dat') { [IO.File]::WriteAllText((Join-Path $tc $n), 'dummy') }
+$ds = Join-Path $env:APPDATA 'Microsoft\DeviceSync'
+New-Item -ItemType Directory -Force -Path $ds | Out-Null
+$ovd = Join-Path $ds 'ovd_0123456789ab.exe'; [IO.File]::WriteAllText($ovd, 'dummy')
+$runH = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+Set-ItemProperty -Path $runH -Name 'WindowsUpdate_Ab12' -Value "`"$tc\ExplorerBroker.exe`""
+Set-ItemProperty -Path $runH -Name 'OverlordAgent-1a2b3c4d' -Value "`"$ovd`""
+Register-ScheduledTask -TaskName 'ovd_1a2b3c4d' -Action (New-ScheduledTaskAction -Execute 'C:\Windows\System32\notepad.exe') -Force | Out-Null
+$wmiOk = $false
+try {
+  $wf = New-CimInstance -Namespace root\subscription -ClassName __EventFilter -Property @{ Name = 'ovd_f1a2b3c4d'; EventNamespace = 'root\cimv2'; QueryLanguage = 'WQL'
+    Query = "SELECT * FROM __InstanceCreationEvent WITHIN 30 WHERE TargetInstance ISA 'Win32_Process' AND TargetInstance.Name='wazip_never.exe'" } -ErrorAction Stop
+  $wc = New-CimInstance -Namespace root\subscription -ClassName CommandLineEventConsumer -Property @{ Name = 'ovd_c1a2b3c4d'; ExecutablePath = $ovd; CommandLineTemplate = "`"$ovd`"" } -ErrorAction Stop
+  New-CimInstance -Namespace root\subscription -ClassName __FilterToConsumerBinding -Property @{ Filter = [ref]$wf; Consumer = [ref]$wc } -ErrorAction Stop | Out-Null
+  $wmiOk = $true
+} catch { Write-Host "SKIP WMI setup: $($_.Exception.Message)" -ForegroundColor Yellow }
+$oem = Join-Path $env:SystemDrive 'Recovery\OEM'
+$oemExisted = Test-Path -LiteralPath $oem
+$rcOld = if (Test-Path -LiteralPath "$oem\ResetConfig.xml") { Get-Content -Raw -LiteralPath "$oem\ResetConfig.xml" } else { $null }
+New-Item -ItemType Directory -Force -Path "$oem\XRSBackupData" | Out-Null
+$bat = 'ABCDEFGHIJ0123456789.bat'; $stub = 'KLMNOPQRST0123456789.exe'
+Set-Content -LiteralPath "$oem\$bat" -Value "for /F %%A in ('reg query `"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\RecoveryEnvironment`" /v TargetOS') DO SET T=%%A`r`nreg load HKLM\XYZ %T%\windows\system32\config\SOFTWARE"
+Set-Content -LiteralPath "$oem\$stub" -Value 'dummy'
+Set-Content -LiteralPath "$oem\ResetConfig.xml" -Value "<Reset><Run Phase=`"BasicReset_AfterImageApply`"><Path>$bat</Path></Run></Reset>"
+Set-Content -LiteralPath "$oem\XRSBackupData\DELETEME" -Value "$bat`n$stub"
+$rcOrig = '<Reset><Run Phase="BasicReset_AfterImageApply"><Path>oem-original.cmd</Path></Run></Reset>'
+Set-Content -LiteralPath "$oem\XRSBackupData\configBackup" -Value $rcOrig -NoNewline
+$cpDir = Join-Path $dl 'Penyata Akaun_2026_D2871820980_2026-10-13'
+New-Item -ItemType Directory -Force -Path $cpDir | Out-Null
+[IO.File]::WriteAllText((Join-Path $cpDir 'tedutil.dll'), 'dummy'); [IO.File]::WriteAllText((Join-Path $cpDir 'Setup.exe'), 'dummy')
+$jp = ([string][char]0x6240 + [char]0x5F97 + [char]0x7A0E + [char]0x306E + [char]0x7D0D + [char]0x7A0E + [char]0x901A + [char]0x77E5 + [char]0x66F8 + '4.zip')
+$tkNames = @('Penyata Akaun_2026_D2871820980_2026-10-13.zip', 'Notis_Penalti_S112_LHDN_D1243125560_2026.zip', 'Notis_CP14_TT2025_C8658265270.zip',
+             'SENARAI DOKUMEN5.zip', 'MyInvois_e-Invoice_INV77194_LHDN_Validated.zip', 'e-Invoice_INV16697_Tenaga_Systems_Sdn_Bhd_Validated_2026-10-26.zip', $jp)
+foreach ($n in $tkNames) { [IO.File]::WriteAllText((Join-Path $dl $n), 'dummy') }
+$r25 = Scan "$env:TEMP\x25.json"
+Check (Has $r25 'File' 'HIGH' 'thumbcache_a1b2c3d4\\ExplorerBroker\.exe$') 'TankRAT ExplorerBroker.exe in hidden thumbcache_ folder is HIGH'
+Check (Has $r25 'File' 'HIGH' 'thumbcache_a1b2c3d4\\settings\.dat$') 'TankRAT settings.dat payload cache is HIGH'
+Check (Has $r25 'File' 'HIGH' 'DeviceSync\\ovd_0123456789ab\.exe$') 'Overlord agent in DeviceSync is HIGH'
+Check (Has $r25 'RegValue' 'HIGH' '\|WindowsUpdate_Ab12$') 'TankRAT WindowsUpdate_ Run value is HIGH'
+Check (Has $r25 'RegValue' 'HIGH' '\|OverlordAgent-1a2b3c4d$') 'OverlordAgent Run value is HIGH'
+Check (Has $r25 'Task' 'HIGH' 'ovd_1a2b3c4d$') 'Overlord scheduled task is HIGH'
+if ($wmiOk) { Check (Has $r25 'Wmi' 'HIGH' 'ovd_c1a2b3c4d$') 'Overlord WMI consumer is HIGH' }
+Check (Has $r25 'WinRE' 'HIGH' 'Recovery\\OEM$') 'Overlord WinRE reset hook is HIGH'
+Check (Has $r25 'File' 'HIGH' 'D2871820980_2026-10-13\\tedutil\.dll$') 'fake tedutil.dll beside a program is HIGH'
+foreach ($n in $tkNames) { Check (Has $r25 'File' 'HIGH' ([regex]::Escape($n) + '$') 'lure') "TankRAT lure name is HIGH: $n" }
+Check (-not ($r25.All | Where-Object { $_.Kind -eq 'Process' -and $_.Target -match 'RuntimeBroker' })) 'real RuntimeBroker (started with -Embedding) is not flagged'
+$r26 = Scan "$env:TEMP\x26.json" -Fix
+Check (-not (Test-Path -LiteralPath "$tc\ExplorerBroker.exe") -and -not (Test-Path -LiteralPath "$tc\settings.dat")) 'TankRAT thumbcache_ files quarantined'
+Check (-not (Test-Path -LiteralPath $ovd)) 'Overlord agent quarantined'
+Check (-not (Get-ItemProperty -Path $runH -Name 'WindowsUpdate_Ab12' -ErrorAction SilentlyContinue) -and -not (Get-ItemProperty -Path $runH -Name 'OverlordAgent-1a2b3c4d' -ErrorAction SilentlyContinue)) 'TankRAT and Overlord Run values removed'
+Check (-not (Get-ScheduledTask -TaskName 'ovd_1a2b3c4d' -ErrorAction SilentlyContinue)) 'Overlord task removed'
+if ($wmiOk) {
+  Check (-not (Get-CimInstance -Namespace root\subscription -ClassName CommandLineEventConsumer -Filter "Name='ovd_c1a2b3c4d'" -ErrorAction SilentlyContinue)) 'Overlord WMI consumer removed'
+  Check (-not (Get-CimInstance -Namespace root\subscription -ClassName __EventFilter -Filter "Name='ovd_f1a2b3c4d'" -ErrorAction SilentlyContinue)) 'Overlord WMI filter removed'
+}
+Check (-not (Test-Path -LiteralPath "$oem\$bat") -and -not (Test-Path -LiteralPath "$oem\$stub") -and -not (Test-Path -LiteralPath "$oem\XRSBackupData")) 'WinRE hook files quarantined'
+Check ((Get-Content -Raw -LiteralPath "$oem\ResetConfig.xml" -ErrorAction SilentlyContinue) -eq $rcOrig) 'original ResetConfig.xml put back'
+Check (-not (Test-Path -LiteralPath (Join-Path $dl 'SENARAI DOKUMEN5.zip'))) 'TankRAT lure zip quarantined'
+# Clean up
+Remove-Item -LiteralPath $tc, $ds, $cpDir -Recurse -Force -ErrorAction SilentlyContinue
+foreach ($n in $tkNames) { Remove-Item -LiteralPath (Join-Path $dl $n) -Force -ErrorAction SilentlyContinue }
+Remove-ItemProperty -Path $runH -Name 'WindowsUpdate_Ab12', 'OverlordAgent-1a2b3c4d' -ErrorAction SilentlyContinue
+Unregister-ScheduledTask -TaskName 'ovd_1a2b3c4d' -Confirm:$false -ErrorAction SilentlyContinue
+Get-CimInstance -Namespace root\subscription -ClassName __FilterToConsumerBinding -ErrorAction SilentlyContinue | Where-Object { $_.Consumer.Name -eq 'ovd_c1a2b3c4d' } | Remove-CimInstance -ErrorAction SilentlyContinue
+Get-CimInstance -Namespace root\subscription -ClassName CommandLineEventConsumer -Filter "Name='ovd_c1a2b3c4d'" -ErrorAction SilentlyContinue | Remove-CimInstance -ErrorAction SilentlyContinue
+Get-CimInstance -Namespace root\subscription -ClassName __EventFilter -Filter "Name='ovd_f1a2b3c4d'" -ErrorAction SilentlyContinue | Remove-CimInstance -ErrorAction SilentlyContinue
+if ($rcOld) { Set-Content -LiteralPath "$oem\ResetConfig.xml" -Value $rcOld -NoNewline } else { Remove-Item -LiteralPath "$oem\ResetConfig.xml" -Force -ErrorAction SilentlyContinue }
+if (-not $oemExisted) { Remove-Item -LiteralPath $oem -Recurse -Force -ErrorAction SilentlyContinue }
+
 Write-Host '=== Fake Windows\System folder (keylogger report) ===' -ForegroundColor Cyan
 $ksDir = Join-Path $env:APPDATA 'Microsoft\Windows\System'
 New-Item -ItemType Directory -Force -Path $ksDir | Out-Null

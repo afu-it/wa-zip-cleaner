@@ -179,6 +179,19 @@ Other reports:
 - Kaspersky register (151 lure containers, in MA-1491): 143 had a size on VirusTotal and are matched by hash; 8 were not on VirusTotal. Name patterns from the register: `13211621092027.VHDX`, `36251322092026.71A.vhdx`, `CIT.Number.<14 digits>.IMG`, `I.T.R.Number-<14 digits>.IMG`, `IMPS_2121-9-2026.img`, `UTR_422-9-2026.7CA.vhdx`, `SOA3.IMG`, `E-statement2026.vhdx`, `20260827224326.DC40CD2841F6.zip`.
 - Source: https://www.mycert.org.my/portal/advisory?id=MA-1491.102026 and https://www.mycert.org.my/portal/details?menu=431fab9c-d24c-4a27-ba93-e92edafdefa5&id=437b1ce7-4a9a-4c38-a740-cb0f0a3b7945
 
+## TankRAT / Overlord RAT (LHDN and finance lures, Oct-Nov 2026)
+
+Sources: amirulcyber.com (2 Nov 2026), NetbyteSEC (28 Oct 2026), @bomccss on X (Japan, Sep 2026), the open-source Overlord client code, and Triage (`family:overlord`).
+
+- Delivery: WhatsApp zips (`Penyata Akaun_2026_D2871820980_2026-10-13.zip`, `Notis_Penalti_S112_LHDN_D1243125560_2026.zip`, `UnkLown_D2302767703_2026.zip`, `SENARAI DOKUMEN2/3/5.zip`, `CP14_Increase_Tax_2025_D6584623300_2026-10-12.zip`) and fake LHDN pages (hasilgov-my.shop, hasil-gov-my.shop, hasilgov-my.my.id, mida.cam, midaoity.my, mhftee.my.id, wwcvda.my.id, satgob-mx.shop on 103.97.131.121). Most names carry `_D` or `_C` plus 10 digits.
+- Sideload pairs: Microsoft-signed `topoedit.exe` (1688fe46..., 0/71 on VirusTotal) + fake `tedutil.dll`; Glorylogic True Burner (e0ee8df4...) + fake `badata_x64.dll`; Japanese arm: exe + `event.dll` (DonutLoader).
+- Loader persistence: hidden `%LOCALAPPDATA%\Microsoft\Windows\Explorer\thumbcache_<8>\` with `ExplorerBroker.exe` (renamed topoedit), `tedutil.dll` and `settings.dat` (encrypted payload); Run value `WindowsUpdate_<4>`. The loader hollows a `RuntimeBroker.exe` it starts itself (no `-Embedding`).
+- Second stage: `github.com/mariauyrnq/devin-update/releases/download/v1.0.01/devin-us.dat` (568 downloads by 3 Nov 2026). `devin-update-v23` is gone and `server-update` was emptied on 1 Nov 2026. C2/panel: devin-us.com (103.59.101.28), fileserver.devin-hk.shop (85.137.60.92); Japan lure mjdou.vip (149.104.24.197).
+- Overlord client defaults (source code): `%APPDATA%\Microsoft\DeviceSync\ovd_<12 hex>.exe` (hidden folder), Startup `ovd_<12 hex>.exe`, Run `OverlordAgent-<8 hex>`, task `ovd_<8 hex>`, WMI `ovd_f<8 hex>` / `ovd_c<8 hex>`, mutex `Global\Overlord-<key>`, hidden desktop `OverlordBackstage`, plugins in `%LOCALAPPDATA%\Overlord\plugins`, temp files in `%TEMP%\Overlord*` and `%TEMP%\ovld_*`.
+- WinRE hook: files in `C:\Recovery\OEM\` (two 20-character .bat files, a stub exe, a changed `ResetConfig.xml`, and `XRSBackupData\DELETEME` / `configBackup`) put the RAT back after "Reset this PC". The tool moves the listed files out and restores `configBackup`.
+- Overlord can mark itself a critical process; killing it blue-screens Windows. The tool checks this and leaves such a process for the restart.
+- Hashes are in `$KnownBad`; the two signed hosts are in `$AbusedLegit` (flagged outside their real install folders).
+
 ## References
 
 - CloudSEK, Silver Fox targeting India using tax-themed phishing lures (2025-12-24): https://www.cloudsek.com/blog/silver-fox-targeting-india-using-tax-themed-phishing-lures
@@ -191,4 +204,6 @@ Other reports:
 - @a.xydiel on Threads, 22 and 24 Oct 2026: https://www.threads.com/@a.xydiel/post/DeyKrHwk2D6 and https://www.threads.com/@a.xydiel/post/De4hGk6E7sg
 - Pelagos Intel, SilverFox in the Desktop (2026-09-27): https://research.pelagos-intel.com/silverfox-in-the-desktop
 - eSentire, Winos4.0 online module staging component: https://www.esentire.com/blog/winos4-0-online-module-staging-component-used-in-cleversoar-campaign
+- amirulcyber.com, Malaysia LHDN tax-audit impersonation (2 Nov 2026): https://amirulcyber.com/2026/11/02/malaysia-lhdn-tax-audit-impersonate/
+- NetbyteSEC, Malaysian WhatsApp phishing wave delivers Overlord (28 Oct 2026): https://notes.netbytesec.com/2026/10/malaysian-whatsapp-phishing-wave.html
 - The Star, 29 Sep 2026: https://www.thestar.com.my/tech/tech-news/2026/09/29/malaysians-report-being-targeted-by-malware-file-sent-through-whatsapp

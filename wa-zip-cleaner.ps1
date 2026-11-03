@@ -31,7 +31,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.02.2'
+$Version = '2026.11.03'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -271,6 +271,25 @@ fb7479d6787a44d210a0ec730a39fbd0697194b70b9bda6d0b3e0c0101765a36 37748736
   if ($sz) { $KnownBad += @{ Sha = $h; Size = [long]$sz; Name = 'Lure disk image or archive (Kaspersky register, MyCERT MA-1491)' } }
 }
 # Signed, legitimate files that this malware abuses. Bad only outside their vendor folder.
+# TankRAT / Overlord LHDN and finance lures (amirulcyber.com 2 Nov 2026, NetbyteSEC 28 Oct 2026, bomccss Sep 2026).
+$KnownBad += @(
+  @{ Sha = '50e2d8a24a26e22cc179767299fd65dde83bd166ab8ed9c3ae25278a1b953cfc'; Size = 2018504; Name = 'TankRAT lure ZIP CP14_Notice_*.zip (fake LHDN audit)' }
+  @{ Sha = '37203ae9e53b8dea346882ca9fc782abcde8006764d8c70f23cdf2e26a1566ee'; Size = 2017936; Name = 'TankRAT lure ZIP Notis_CP14_*.zip (fake LHDN audit)' }
+  @{ Sha = 'd10163e71436cf8a827af30737a5b0c96dddbcc0cfdf861142493a871cd1f0be'; Size = 122962;  Name = 'TankRAT lure ZIP MyInvois_e-Invoice_*.zip' }
+  @{ Sha = 'a07ef268104ccd8691a0f80ab698820f4c202a4955d0fd40564e7f48f84ed9d2'; Size = 123280;  Name = 'TankRAT lure ZIP e-Invoice_INV*_Tenaga_*.zip' }
+  @{ Sha = 'a594af1439096e08255b7fe89b736ad7bda8b194bd6674bf464d985b185c3778'; Size = 122309;  Name = 'TankRAT lure ZIP Penyata Akaun_*.zip (WhatsApp)' }
+  @{ Sha = 'ba0a76532db536e62034c212536f3e60594cd2248fdedc9ba73b8a2380367f99'; Size = 123510;  Name = 'Overlord lure ZIP, Japanese tax-notice name' }
+  @{ Sha = '78714f6f57c5177201837ce7a6185a2b2bb00a074883fc6cf03b8ade192a20ba'; Size = 135680;  Name = 'TankRAT loader badata_x64.dll (build 1)' }
+  @{ Sha = '79667b9fab75fb02b3a2ff59bb1fad5bc1b4feb3cd7942c143ce4a15d6d04856'; Size = 132096;  Name = 'TankRAT loader badata_x64.dll (build 2)' }
+  @{ Sha = '9500e41175cbe66a3e95bd863e0e855cf15f51ab9a44024fa082697ec992db0f'; Size = 109056;  Name = 'TankRAT loader tedutil.dll (MyInvois)' }
+  @{ Sha = '4841193715abddabd3b85e8d9bab651ffd7169286365f59b6dc0f1fde1be8d97'; Size = 109568;  Name = 'TankRAT loader tedutil.dll (Tenaga)' }
+  @{ Sha = 'e509be3c9befe158b710542bf3409ddff9866b0a74f3d321c39750f9017087a5'; Size = 105472;  Name = 'TankRAT loader tedutil.dll (Penyata Akaun)' }
+  @{ Sha = '4e79b2033fe0c38372face45443f38799aa22253b380d3d553261c991bdbdc56'; Size = 7513303; Name = 'Encrypted Overlord payload devin-update.dat' }
+  @{ Sha = '0eb261b68a7e9c671984a95fec2c50d2a213b4b8343ae5411044ef2291d01d16'; Size = 7513193; Name = 'Encrypted Overlord payload settings.dat' }
+  @{ Sha = '7a30d6bf458da8cd1261e2c04428711e5b6d22a559b494e158520d2b3118a7fa'; Size = 7513295; Name = 'Encrypted Overlord payload (TankRAT file share)' }
+  @{ Sha = '493a99e679eb26d7be631fee3956b2cec4fe1e384f58ba8b65d80d0661ab1ee4'; Size = 7513302; Name = 'Encrypted Overlord payload devin-us.dat (GitHub mariauyrnq)' }
+  @{ Sha = 'e2883329bbfc82612181b883f30298992cbfbe22cf17041940e51227a92f4a31'; Size = 19432960; Name = 'Overlord RAT agent devin-update.exe' }
+)
 $AbusedLegit = @(
   @{ Sha = '1c5129b4d63f2d5252b5b02a0a7d655dac3b6eac23dd4ed92b4dd55f243387ff'; Size = 18248;   Name = 'ardrv.sys (OPSWAT, abused as AV killer)'; Vendor = 'OPSWAT' }
   @{ Sha = 'c74f55247aa2c72001024bd977c869cb5adce6f8604a4d32329f015b73ae2a49'; Size = 1994600; Name = 'KafanInputService.exe (sideload host)';      Vendor = 'Kafan' }
@@ -279,6 +298,8 @@ $AbusedLegit = @(
   @{ Sha = '4cc729b554326ccc62205d46b95353dcb34cadf095b904e941814e902e0925b2'; Size = 969608;  Name = 'VLC vlc.exe 3.0.21 (libvlc.dll sideload host, MyCERT MA-1493)'; Vendor = 'VideoLAN' }
   @{ Sha = 'b2ee510d0b5012487dee143b459e4e2fcfb758960d3fe7ec4743552bc91be9e2'; Size = 211136;  Name = 'ArphaSDK arphaCrashReport.exe (ARPHADUMP.DLL sideload host, MyCERT MA-1491/1493)'; Vendor = 'Arpha' }
   @{ Sha = '23dfe3c02f083bae6e8a8aab0d7b96f9961c930f9208b48e6245033105b58afa'; Size = 1047520; Name = 'UltraViewer_Desktop.exe (msvbvm60.dll sideload host, MyCERT MA-1493)'; Vendor = 'UltraViewer' }
+  @{ Sha = '1688fe4698c45680851f5d90aff71fffdccb19c1b283a8c10cbc729c8efca7d8'; Size = 227688;  Name = 'Microsoft topoedit.exe renamed as a document (tedutil.dll sideload host, TankRAT)'; Vendor = 'Windows Kits' }
+  @{ Sha = 'e0ee8df47283ea4b1db8662dc7409b9069753de14754258b761c40b4e0cb19c2'; Size = 5798000; Name = 'Glorylogic True Burner renamed as a document (badata_x64.dll sideload host, TankRAT)'; Vendor = 'True Burner' }
   @{ Sha = '92f68fc7f6d0f544a750bf67b4903d1a4062d1372b7f98ab5c2f698eb61359bb'; Size = 33297920; Name = 'UEMSAgent.msi 6.0.3 dropped by the WhatsApp lures (MyCERT MA-1491)'; Vendor = 'ManageEngine' }
 )
 # Test hook: extra IOCs from a JSON file, so CI can exercise hash matching without real malware.
@@ -289,13 +310,15 @@ if ($env:WAZIP_TEST_IOCS -and (Test-Path -LiteralPath $env:WAZIP_TEST_IOCS)) {
     if ($e.Vendor) { $entry.Vendor = $e.Vendor; $AbusedLegit += $entry } else { $KnownBad += $entry }
   }
 }
-$PersistRegex ='\\Users\\Public\\Libraries\\.+\.(exe|dll)|\\AppData\\Local\\[0-9A-F]{16}\\|\\AppData\\Roaming\\Microsoft\\Windows\\System\\[^\\]+\.exe|rime\.dll|_vmclientcore@16|KafanInput|vcRuntimeMinimum_x86\.exe|\\H\d{8,}\.exe|ZyArk|\\ardrv\.sys|\\AppData\\Roaming\\Microsoft\\Update\\[^\\]+\.exe|active_desktop_(launcher|render)|Add-MpPreference|eneio64\.dat|plcc3a\.dat|-m\s+appclient|\\appclient\\python\\|HealthApp-[0-9a-f]{6}\.bat|\\ProgramData\\MicroPoint\\|WinCombo\.exe|CRClient\.dll|\\Toolkit\\winhttp\.dll|webview2_integration\.exe|encrashrep\.dll|\\ProgramData\\WindowsData\\|ExceptCatch\.dll|\\QNWallpaper\\|\\msvc-rt14\\|NtHandleCallback\.exe|\\(XiaoH|rwdriver|kabuto)\.sys'
-$LureRegex    = '^(Click here to view.*\.(zip|vhd|vhdx)|Notice.*\.vhdx?|(PDF|DOC)_[A-Z0-9-]{3,8}_20\d{12}\.(zip|img|iso|exe|vhd|vhdx)|20\d{6}[.-]MYS20\d{2}Y\d{4}[A-Z0-9]{4,6}\.(zip|img|iso|vhd|vhdx)|(RES-20\d{6}_\d{6}|ORCAMENTO_\d{6}|COMPROVANTE_20\d{6}_\d{6}|ComprovanteSantander-[\d.]+|NEW-20\d{6}_\d{6}-PED_[0-9A-F]+|DOC-\d{8}_[0-9A-F]{8})\.(zip|lnk)|20\d{12}-[0-9A-F]{14}\.zip|SENARAI ?DOKUMEN.*\.zip|.+\.(vhdx?|img|iso)\.zip|LHDN.*\.(iso|img|vhdx?)|Open_to_view.*\.(iso|img)|TAX_[A-Za-z0-9]{6,}\.img(\.zip)?|SSM-\d+\.img(\.zip)?|20\d{6}[0-9A-F]{8}\.(zip|exe|img|iso|vhd|vhdx)|20\d{6}_\d{6}_\d{4}\.(zip|img|iso|vhd|vhdx)|Financial_Report_20\d{6}_PDF\.\d+\.(zip|exe|img|iso|vhdx?)|\d{14}(\.[0-9A-F]{3})?\.(img|iso|vhdx?)|[A-Z.]{3,9}[.-]Number[.-]20\d{10,12}\.(img\d?|iso|vhdx?)|(IMPS|UTR|TWV)_\d{3,4}-\d{1,2}-20\d{2}\d*(\.[0-9A-F]{3})?\.(img|iso|vhdx?)|20\d{12}\.[0-9A-F]{12}\.zip|SOA\d*\.(img|iso|vhdx?)|E-statement\d*\.(img|iso|vhdx?)|RT\d{10}\.\d{3}\.img)$'
+$PersistRegex ='\\Explorer\\thumbcache_[^\\]+\\|\\Microsoft\\DeviceSync\\[^\\]+\.exe|\\(Roaming|Local)\\Overlord\\|\bovd_[0-9a-f]{12}\.exe|\\Users\\Public\\Libraries\\.+\.(exe|dll)|\\AppData\\Local\\[0-9A-F]{16}\\|\\AppData\\Roaming\\Microsoft\\Windows\\System\\[^\\]+\.exe|rime\.dll|_vmclientcore@16|KafanInput|vcRuntimeMinimum_x86\.exe|\\H\d{8,}\.exe|ZyArk|\\ardrv\.sys|\\AppData\\Roaming\\Microsoft\\Update\\[^\\]+\.exe|active_desktop_(launcher|render)|Add-MpPreference|eneio64\.dat|plcc3a\.dat|-m\s+appclient|\\appclient\\python\\|HealthApp-[0-9a-f]{6}\.bat|\\ProgramData\\MicroPoint\\|WinCombo\.exe|CRClient\.dll|\\Toolkit\\winhttp\.dll|webview2_integration\.exe|encrashrep\.dll|\\ProgramData\\WindowsData\\|ExceptCatch\.dll|\\QNWallpaper\\|\\msvc-rt14\\|NtHandleCallback\.exe|\\(XiaoH|rwdriver|kabuto)\.sys'
+$LureRegex    = '^(Click here to view.*\.(zip|vhd|vhdx)|Notice.*\.vhdx?|(PDF|DOC)_[A-Z0-9-]{3,8}_20\d{12}\.(zip|img|iso|exe|vhd|vhdx)|20\d{6}[.-]MYS20\d{2}Y\d{4}[A-Z0-9]{4,6}\.(zip|img|iso|vhd|vhdx)|(RES-20\d{6}_\d{6}|ORCAMENTO_\d{6}|COMPROVANTE_20\d{6}_\d{6}|ComprovanteSantander-[\d.]+|NEW-20\d{6}_\d{6}-PED_[0-9A-F]+|DOC-\d{8}_[0-9A-F]{8})\.(zip|lnk)|20\d{12}-[0-9A-F]{14}\.zip|SENARAI ?DOKUMEN.*\.zip|.+\.(vhdx?|img|iso)\.zip|LHDN.*\.(iso|img|vhdx?)|Open_to_view.*\.(iso|img)|TAX_[A-Za-z0-9]{6,}\.img(\.zip)?|SSM-\d+\.img(\.zip)?|20\d{6}[0-9A-F]{8}\.(zip|exe|img|iso|vhd|vhdx)|20\d{6}_\d{6}_\d{4}\.(zip|img|iso|vhd|vhdx)|Financial_Report_20\d{6}_PDF\.\d+\.(zip|exe|img|iso|vhdx?)|\d{14}(\.[0-9A-F]{3})?\.(img|iso|vhdx?)|[A-Z.]{3,9}[.-]Number[.-]20\d{10,12}\.(img\d?|iso|vhdx?)|(IMPS|UTR|TWV)_\d{3,4}-\d{1,2}-20\d{2}\d*(\.[0-9A-F]{3})?\.(img|iso|vhdx?)|20\d{12}\.[0-9A-F]{12}\.zip|SOA\d*\.(img|iso|vhdx?)|E-statement\d*\.(img|iso|vhdx?)|RT\d{10}\.\d{3}\.img|.*_[CD]\d{10}[_.].*\.(zip|exe|img|iso|vhdx?)|Notis_Penalti_\w+\.(zip|exe)|SENARAI DOKUMEN\d*\.(zip|exe)|MyInvois_e-Invoice_INV\d+\w*\.(zip|exe)|e-Invoice_INV\d+_.+_Validated[\w-]*\.(zip|exe)|(TDS_Penalty_S\d+\w*_PAN_|GST_Non_Filing_Notice_|ITR_Scrutiny_\d+_Notice_PAN_).*\.(zip|exe|img|iso|vhdx?)|Common_Offline_Utility_ITR-.*\.(img|iso|vhdx?)|\u6240\u5F97\u7A0E.*\u7D0D\u7A0E\u901A\u77E5\u66F8\d*\.(zip|exe))$'
+# Overlord RAT (open source, used by TankRAT) and its TankRAT loader keep their files in these folders.
+$OverlordRegex = '(?i)\\Explorer\\thumbcache_[^\\]+\\|\\AppData\\Roaming\\Microsoft\\DeviceSync\\|\\AppData\\(Roaming|Local)\\Overlord\\|\\AppData\\Local\\Temp\\(Overlord(virtualDriver)?|ovld_[^\\]+)\\'
 # Programs the October 2026 wave tells Windows Defender to skip. No real program needs these excluded.
 $ExclProcRegex = '(?i)^(QtsUpdater|svchost|rundll32|powershell|cmd|wscript|cscript|mshta|regsvr32|explorer)\.exe$'
 # Known attacker servers (C2). A process talking to one of these is the malware.
 # Kaspersky (Apr 2026): ValleyRAT and ABCDoor servers from the Silver Fox tax campaign.
-$C2Ips = @('143.92.61.212', '134.122.128.120', '134.122.155.183', '38.207.172.161', '45.64.52.252', '45.207.219.46', '134.122.155.135', '134.122.155.148', '14.128.53.155', '45.202.1.249', '108.187.37.85', '108.187.42.63', '207.56.138.28', '45.118.133.203', '154.82.81.205', '154.82.81.192', '108.187.41.221',
+$C2Ips = @('103.59.101.28', '85.137.60.92', '103.97.131.121', '149.104.24.197', '143.92.61.212', '134.122.128.120', '134.122.155.183', '38.207.172.161', '45.64.52.252', '45.207.219.46', '134.122.155.135', '134.122.155.148', '14.128.53.155', '45.202.1.249', '108.187.37.85', '108.187.42.63', '207.56.138.28', '45.118.133.203', '154.82.81.205', '154.82.81.192', '108.187.41.221',
             '103.20.195.147', '45.207.231.94', '45.207.231.107', '160.124.9.103', '109.176.30.141',
             '202.61.160.208', '202.61.160.202', '202.61.160.201', '202.61.160.160', '202.61.160.137', '38.55.151.63', '61.18.208.27',
             '202.61.160.203', '202.61.160.145', '137.220.205.167', '137.220.205.162', '137.220.224.63', '103.140.154.117', '206.238.68.33', '43.224.224.151',
@@ -306,7 +329,7 @@ $C2Ips = @('143.92.61.212', '134.122.128.120', '134.122.155.183', '38.207.172.16
             '38.91.115.114', '8.210.25.225', '95.40.29.190', '16.163.105.153', '183.90.186.193', '52.128.226.74', '154.83.17.175', '45.204.2.166')
 # Added Oct 2026: Triage/ThreatFox ValleyRAT (Malaysian lures), Netresec Ping32 (143.92.37.168), Kaspersky QN Wallpaper,
 # Sekoia (Malaysia), Elastic TCLBANKER, and Chinese reports (ThreatBook, Huorong, QiAnXin).
-$C2Domains = '(?i)(^|\.)(fetish-friends\.com|3mkorealtd\.com|sudsmama\.com|woopami\.com|ilptour\.com|petitechanson\.com|doublemobile\.com|mcagov\.cc|roldco\.com|kcii2\.com|haijing88\.com|ggwk\.cc|yuxuanow\.top|itdd\.club|xzghjec\.com|gov-a\.(work|fit|club)|gvo-b\.club|gov-c\.club|govk\.club|swjc2025bjkb\.cn|2025swmm\.cn|zapgrande\.com|sorvetenopo(a)?te\.com|sorvetenoopote\.com|sorvetenopotel\.com|etenopote\.com|expa(h)?nsiveuser\.com|expansivebot\.com|imobiliariaricardoparanhos\.com|casadecampoamazonas\.com|bravexolutions\.com|adoblesecuryt\.com|saogeraldoshoping\.com|baskwms\.top|msopsa\.top|shoppes\.help|shaaslong\.one|baoxis\.cc|kammwv\.cc|azuheq\.s3\.ap-southeast-1\.amazonaws\.com|d156sk07toobyl\.cloudfront\.net|neescil\.top|velthora\.top|sinjiabo-1398259625\.cos\.ap-singapore\.myqcloud\.com|(bafauac|9ding)\.s3\.ap-southeast-1\.amazonaws\.com|(baolongwes|sdcwww)\.oss-ap-southeast-1\.aliyuncs\.com|(baoyuw2s|hksha3|sjdkjj23|xijkwm2|yifubafu)\.s3\.ap-southeast-1\.amazonaws\.com|(caiwuascw|facaia)\.s3\.us-east-005\.backblazeb2\.com|khltt1\.club|lsf168\.club|pxxjbh\.club|liyunee\.top|articio\.top|kyur7oz\.top|uykb10\.club|gntr30\.club|kufp16\.club|txpfproxy\.vip|jksdjkjs\.cc|shougong9\.com|thinnected\.com|tax(cerf|low|gg|zz|yy)\.top|fadaoxiao\.s3\.us-west-004\.backblazeb2\.com|xqwmwru\.top|360sdgg\.com|ef971a42\.workers\.dev|mxtestacionamentos\.com|uuuucome\.com|laosjdhd\.cn|xxxjjj250711\.com|twsww\.xin|cn-hk-oss-vip\.com|fafadownload\.com|haccrt\.top|mwkwnnn\.click|cakkaao\.com|tttkkkssww\.com)$'
+$C2Domains = '(?i)(^|\.)(fetish-friends\.com|3mkorealtd\.com|sudsmama\.com|woopami\.com|ilptour\.com|petitechanson\.com|doublemobile\.com|mcagov\.cc|roldco\.com|kcii2\.com|haijing88\.com|ggwk\.cc|yuxuanow\.top|itdd\.club|xzghjec\.com|gov-a\.(work|fit|club)|gvo-b\.club|gov-c\.club|govk\.club|swjc2025bjkb\.cn|2025swmm\.cn|zapgrande\.com|sorvetenopo(a)?te\.com|sorvetenoopote\.com|sorvetenopotel\.com|etenopote\.com|expa(h)?nsiveuser\.com|expansivebot\.com|imobiliariaricardoparanhos\.com|casadecampoamazonas\.com|bravexolutions\.com|adoblesecuryt\.com|saogeraldoshoping\.com|baskwms\.top|msopsa\.top|shoppes\.help|shaaslong\.one|baoxis\.cc|kammwv\.cc|azuheq\.s3\.ap-southeast-1\.amazonaws\.com|d156sk07toobyl\.cloudfront\.net|neescil\.top|velthora\.top|sinjiabo-1398259625\.cos\.ap-singapore\.myqcloud\.com|(bafauac|9ding)\.s3\.ap-southeast-1\.amazonaws\.com|(baolongwes|sdcwww)\.oss-ap-southeast-1\.aliyuncs\.com|(baoyuw2s|hksha3|sjdkjj23|xijkwm2|yifubafu)\.s3\.ap-southeast-1\.amazonaws\.com|(caiwuascw|facaia)\.s3\.us-east-005\.backblazeb2\.com|khltt1\.club|lsf168\.club|pxxjbh\.club|liyunee\.top|articio\.top|kyur7oz\.top|uykb10\.club|gntr30\.club|kufp16\.club|txpfproxy\.vip|jksdjkjs\.cc|shougong9\.com|thinnected\.com|tax(cerf|low|gg|zz|yy)\.top|fadaoxiao\.s3\.us-west-004\.backblazeb2\.com|xqwmwru\.top|360sdgg\.com|ef971a42\.workers\.dev|mxtestacionamentos\.com|uuuucome\.com|laosjdhd\.cn|xxxjjj250711\.com|twsww\.xin|cn-hk-oss-vip\.com|fafadownload\.com|haccrt\.top|mwkwnnn\.click|cakkaao\.com|tttkkkssww\.com|devin-us\.com|devin-hk\.shop|hasil-?gov-my\.shop|hasilgov-my\.my\.id|mida\.cam|midaoity\.my|mhftee\.my\.id|wwcvda\.my\.id|satgob-mx\.shop|mjdou\.vip)$'
 # Silver Fox fake-document programs (Kaspersky, Apr 2026: Statement of Account / GST / tax lures).
 $ExeLureRegex = '(?i)^(Statement|Tax-\d{8,}|Review the file|BillReceipt|statement verify ?|Click File|GST ?Suvidha|Related material|MCA-Ministry|RemoteInstaller_[\d_]+_\w+|Open_to_view|TaxFiling|Notice from Tax Depart\w*)\.exe$'
 if ($env:WAZIP_TEST_C2) { $C2Ips += $env:WAZIP_TEST_C2 }
@@ -384,6 +407,18 @@ $WarnHelp = @(
 function Get-WarnHelp($f) {
   $txt = "$($f.Kind)|$($f.Target)|$($f.Detail)"
   foreach ($h in $WarnHelp) { if ($txt -match $h[0]) { return $h } }
+}
+
+# Windows blue-screens when a process marked critical (BreakOnTermination) is killed.
+function Test-CriticalProcess($procId) {
+  try {
+    if (-not ('WaZip.Nt' -as [type])) {
+      Add-Type -Namespace WaZip -Name Nt -MemberDefinition '[DllImport("ntdll.dll")] public static extern int NtQueryInformationProcess(IntPtr h, int c, ref int v, int l, out int r);'
+    }
+    $h = (Get-Process -Id $procId -ErrorAction Stop).Handle
+    $v = 0; $r = 0
+    ([WaZip.Nt]::NtQueryInformationProcess($h, 29, [ref]$v, 4, [ref]$r) -eq 0) -and $v -ne 0
+  } catch { $false }
 }
 
 function Test-Admin {
@@ -538,7 +573,9 @@ function Scan-Processes {
   Say '[3/8] Semak program yang sedang berjalan...' '[3/8] Checking running programs...' Cyan
   foreach ($p in Get-CimInstance Win32_Process -ErrorAction SilentlyContinue) {
     $cl = [string]$p.CommandLine; $exe = [string]$p.ExecutablePath
-    if ($cl -match '_vmclientcore@16' -or $cl -match '(?i)-m\s+appclient\b' -or $p.Name -eq 'KafanInputService.exe' -or $exe -match '\\H\d{8,}\.exe$' -or $exe -match $StageRegex) {
+    if ($cl -match '_vmclientcore@16' -or $cl -match '(?i)-m\s+appclient\b' -or $p.Name -eq 'KafanInputService.exe' -or $exe -match '\\H\d{8,}\.exe$' -or $exe -match $StageRegex -or $exe -match $OverlordRegex -or
+        # TankRAT hollows a RuntimeBroker it starts itself; Windows always starts the real one with -Embedding.
+        ($p.Name -ieq 'RuntimeBroker.exe' -and $cl -and $cl -notmatch '(?i)-Embedding')) {
       Add-Finding 'Process' 'HIGH' "$($p.Name) (PID $($p.ProcessId))" "Malware process: $cl" @{ Pid = $p.ProcessId; Path = $exe }
     }
   }
@@ -558,6 +595,9 @@ function Scan-Processes {
       }
       if ($m.ModuleName -match '(?i)^(libvlc|arphaDump|CRClient)\.dll$' -and $m.FileName -notmatch '(?i)\\(Program Files( \(x86\))?|Windows)\\' -and $proc.ProcessName -notmatch '(?i)^vlc$') {
         Add-Finding 'Process' 'HIGH' "$($proc.ProcessName) (PID $($proc.Id))" "Renamed program running $($m.ModuleName) from $($m.FileName) (DLL sideloading, MyCERT MA-1493)" @{ Pid = $proc.Id; Path = $proc.Path }
+      }
+      if ($m.ModuleName -match '(?i)^(tedutil|badata_x64)\.dll$' -and $m.FileName -notmatch '(?i)\\(Program Files( \(x86\))?|Windows)\\') {
+        Add-Finding 'Process' 'HIGH' "$($proc.ProcessName) (PID $($proc.Id))" "Renamed program running fake $($m.ModuleName) from $($m.FileName) (TankRAT LHDN lure)" @{ Pid = $proc.Id; Path = $proc.Path }
       }
       if ($m.ModuleName -ieq 'msvbvm60.dll' -and $m.FileName -match '(?i)\\(AppData|ProgramData|Users\\Public)\\') {
         Add-Finding 'Process' 'HIGH' "$($proc.ProcessName) (PID $($proc.Id))" "Program running a fake msvbvm60.dll from $($m.FileName) (UltraViewer backdoor, MyCERT MA-1493)" @{ Pid = $proc.Id; Path = $proc.Path }
@@ -581,6 +621,8 @@ function Scan-Persistence {
     $item = Get-Item -LiteralPath $k
     foreach ($n in $item.GetValueNames()) {
       $v = [string]$item.GetValue($n)
+      if ($n -match '^OverlordAgent(-[0-9a-f]{8})?$' -or ($n -match '^WindowsUpdate_\w{4}$' -and $v -notmatch '(?i)\\Windows\\(System32|SysWOW64)\\')) {
+        Add-Finding 'RegValue' 'HIGH' "$k|$n" "Auto-start of the Overlord / TankRAT remote-control trojan: $v"; continue }
       if ($v -match $PersistRegex) { Add-Finding 'RegValue' 'HIGH' "$k|$n" "Auto-start: $v"; continue }
       # A Run entry whose target file is Hidden+System is a strong sign, even with an unknown name.
       $target = if ($v -match '"([^"]+\.(exe|dll|bat|cmd|scr))"') { $Matches[1] }
@@ -595,12 +637,26 @@ function Scan-Persistence {
   }
   foreach ($t in Get-ScheduledTask -ErrorAction SilentlyContinue) {
     $txt = ($t.Actions | ForEach-Object { "$($_.Execute) $($_.Arguments)" }) -join ' ; '
+    if ($t.TaskName -match '^ovd_[0-9a-f]{8}$' -and $txt -notmatch $PersistRegex) { Add-Finding 'Task' 'HIGH' "$($t.TaskPath)$($t.TaskName)" "Overlord RAT task: $txt" @{ Path = $t.TaskPath; Name = $t.TaskName } }
     if ($txt -match $PersistRegex) { Add-Finding 'Task' 'HIGH' "$($t.TaskPath)$($t.TaskName)" "Scheduled task: $txt" @{ Path = $t.TaskPath; Name = $t.TaskName } }
     # VulcanRAT (Morphisec via 2-Spyware, Oct 2026) hides as a fake Windows update task that runs vulkaninfo.
     # Chinese reports (2026) and Elastic TCLBANKER: task names that copy Edge, WMI or runtime updaters.
     if ($txt -notmatch $PersistRegex -and (($t.TaskPath -match '(?i)\\Microsoft\\Windows\\AppID\\$' -and $t.TaskName -match '^MicrosoftEdgeUpdateTaskUA') -or $t.TaskName -match '^(WindowsPowerShell\.WbemScripting\.WindowsData|RuntimeOptimizeService)$')) {
       Add-Finding 'Task' 'HIGH' "$($t.TaskPath)$($t.TaskName)" "Fake system task (Silver Fox): $txt" @{ Path = $t.TaskPath; Name = $t.TaskName } }
     if ($txt -notmatch $PersistRegex -and ($t.TaskName -match '^USOPrivate( Kit)?$' -or $txt -match '(?i)\\Common Files\\vulkaninfo')) { Add-Finding 'Task' 'HIGH' "$($t.TaskPath)$($t.TaskName)" "Fake Windows update task (VulcanRAT): $txt" @{ Path = $t.TaskPath; Name = $t.TaskName } }
+  }
+  # Overlord RAT can also start through WMI when explorer.exe starts.
+  foreach ($c in @(Get-CimInstance -Namespace root\subscription -ClassName CommandLineEventConsumer -ErrorAction SilentlyContinue)) {
+    $cmd = "$($c.ExecutablePath) $($c.CommandLineTemplate)"
+    if ($c.Name -match '^ovd_c[0-9a-f]{8}$' -or $cmd -match $PersistRegex) {
+      Add-Finding 'Wmi' 'HIGH' "WMI consumer $($c.Name)" "Starts malware through WMI (Overlord RAT): $cmd" @{ Name = $c.Name } }
+  }
+  # Overlord's WinRE hook puts the RAT back after "Reset this PC" (C:\Recovery\OEM, ResetConfig.xml).
+  $oem = Join-Path $env:SystemDrive 'Recovery\OEM'
+  $hook = @(Get-ChildItem -LiteralPath $oem -Filter *.bat -File -Force -ErrorAction SilentlyContinue | Where-Object {
+    $b = Get-Content -Raw -LiteralPath $_.FullName -ErrorAction SilentlyContinue; $b -match '(?i)reg load HKLM\\' -and $b -match '(?i)RecoveryEnvironment' })
+  if ($hook -or (Test-Path -LiteralPath (Join-Path $oem 'XRSBackupData'))) {
+    Add-Finding 'WinRE' 'HIGH' $oem 'Overlord RAT hook in the recovery folder: "Reset this PC" would reinstall the RAT.' @{ Bats = @($hook | ForEach-Object { $_.Name }) }
   }
   # Microsoft (Mar 2026): the WhatsApp VBS dropper's reg add leaves a junk key that Windows never creates.
   if (Test-Path -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Win') { Add-Finding 'RegKey' 'HIGH' 'HKLM:\SOFTWARE\Microsoft\Win' 'Junk registry key left by the WhatsApp VBS dropper (Microsoft, Mar 2026).' }
@@ -773,7 +829,8 @@ function Scan-Files {
   $roots = @(Get-ChildItem -LiteralPath $env:ProgramData -Force -ErrorAction SilentlyContinue | Where-Object { $_.Name -ne 'docker' } | ForEach-Object { $_.FullName })
   $roots += "$env:ProgramData\docker\config", "$env:SystemDrive\Users\Public", "$env:SystemRoot\Temp", "$env:SystemRoot\Tasks"
   foreach ($u in Get-ChildItem "$env:SystemDrive\Users" -Directory -ErrorAction SilentlyContinue) {
-    $roots += 'Downloads', 'Desktop', 'Documents', 'AppData\Roaming', 'AppData\Local\Temp', 'AppData\Local\Packages', 'AppData\Local\Toolkit' |
+    $roots += 'Downloads', 'Desktop', 'Documents', 'AppData\Roaming', 'AppData\Local\Temp', 'AppData\Local\Packages', 'AppData\Local\Toolkit',
+                 'AppData\Local\Microsoft\Windows\Explorer', 'AppData\Local\Overlord' |
       ForEach-Object { Join-Path $u.FullName $_ }
     # Victim report (2 Nov 2026): a sideload pair hidden in AppData\Local\<16 random hex characters>.
     $roots += @(Get-ChildItem -LiteralPath (Join-Path $u.FullName 'AppData\Local') -Directory -Force -ErrorAction SilentlyContinue |
@@ -804,6 +861,14 @@ function Scan-Files {
           return
         }
         if ($f.Name -match $LureRegex) { Add-Finding 'File' 'HIGH' $f.FullName 'WhatsApp lure file name.'; return }
+        if ($f.FullName -match $OverlordRegex) {
+          Add-Finding 'File' 'HIGH' $f.FullName 'Overlord / TankRAT remote-control trojan file (hidden thumbcache_, DeviceSync or Overlord folder).'; return }
+        if ($f.Name -match '(?i)^(tedutil|badata_x64)\.dll$' -and $f.DirectoryName -notmatch '(?i)\\(Program Files( \(x86\))?|Windows)(\\|$)') {
+          Add-Finding 'File' 'HIGH' $f.FullName 'Fake tedutil.dll / badata_x64.dll beside a signed program renamed as a document (TankRAT LHDN lure).'; return }
+        if ($f.Name -ieq 'event.dll' -and $f.FullName -match '(?i)^[a-z]:\\Users\\' -and
+            (Get-ChildItem -LiteralPath $f.DirectoryName -Filter *.exe -File -ErrorAction SilentlyContinue) -and
+            (Get-AuthenticodeSignature -LiteralPath $f.FullName -ErrorAction SilentlyContinue).Status -ne 'Valid') {
+          Add-Finding 'File' 'HIGH' $f.FullName 'Unsigned event.dll beside a program in a user folder (Overlord DonutLoader lure).'; return }
         if ($f.Extension -match '(?i)^\.(exe|dll)$' -and $f.Directory.Name -cmatch '^[0-9A-F]{16}$' -and $f.Directory.Parent.FullName -match '(?i)\\AppData\\Local$') {
           Add-Finding 'File' 'HIGH' $f.FullName 'Program in a random-named AppData\Local folder (sideload pair; Defender found CrashHunter_PC3.dll like this, Nov 2026).'; return }
         # Victim report (Malwarebytes, 30 Oct 2026): client.exe and keylogger.exe in this made-up folder, started by Run values named WindowsUpdate.
@@ -1156,12 +1221,56 @@ function Invoke-Fix($qdir) {
   $i = 0
   $closed = $false
   # Files inside a flagged folder go before the folder itself.
-  foreach ($f in $Findings | Sort-Object { @('Process', 'WaSession', 'Vhd', 'Task', 'DefExcl', 'RegValue', 'Service', 'RegKey', 'Cert', 'File').IndexOf($_.Kind) }, { -([string]$_.Target).Length }) {
+  foreach ($f in $Findings | Sort-Object { @('Process', 'WaSession', 'Vhd', 'Task', 'Wmi', 'DefExcl', 'RegValue', 'Service', 'RegKey', 'Cert', 'WinRE', 'File').IndexOf($_.Kind) }, { -([string]$_.Target).Length }) {
     if ($f.Severity -ne 'HIGH' -or $f.Kind -eq 'Info') { continue }
     $i++
+    $done = $true
     try {
       switch ($f.Kind) {
-        'Process' { Stop-Process -Id $f.Extra.Pid -Force -ErrorAction Stop; $log.Add(@{ Kind = 'Process'; Target = $f.Target }) }
+        'Process' {
+          # Overlord can mark itself critical: killing it blue-screens the PC. Remove its auto-start instead; it dies on restart.
+          if (Test-CriticalProcess $f.Extra.Pid) {
+            $script:NeedRestart = $true
+            Say "  LANGKAU $($f.Target): program ni dikunci (kalau dimatikan PC akan skrin biru). Dia akan mati bila PC restart." "  SKIP $($f.Target): critical process (killing it would blue-screen the PC). It stops after a restart." Yellow
+            $done = $false
+          } else { Stop-Process -Id $f.Extra.Pid -Force -ErrorAction Stop; $log.Add(@{ Kind = 'Process'; Target = $f.Target }) }
+        }
+        'Wmi' {
+          $ns = 'root\subscription'; $nm = $f.Extra.Name -replace "'", "\'"
+          $con = @(Get-CimInstance -Namespace $ns -ClassName CommandLineEventConsumer -Filter "Name='$nm'" -ErrorAction Stop)
+          $binds = @(Get-CimInstance -Namespace $ns -ClassName __FilterToConsumerBinding -ErrorAction SilentlyContinue | Where-Object { $_.Consumer.Name -eq $f.Extra.Name })
+          $filters = @($binds | ForEach-Object { $fn = $_.Filter.Name -replace "'", "\'"; Get-CimInstance -Namespace $ns -ClassName __EventFilter -Filter "Name='$fn'" -ErrorAction SilentlyContinue })
+          $bak = Join-Path $qdir "wmi-$i.json"
+          @{ Consumer = @($con | Select-Object Name, ExecutablePath, CommandLineTemplate); Filters = @($filters | Select-Object Name, Query, QueryLanguage, EventNamespace) } | ConvertTo-Json -Depth 4 | Out-File -Encoding UTF8 $bak
+          $binds | Remove-CimInstance -ErrorAction SilentlyContinue
+          $filters | Remove-CimInstance -ErrorAction SilentlyContinue
+          $con | Remove-CimInstance -ErrorAction Stop
+          $log.Add(@{ Kind = 'Wmi'; Target = $f.Target; Backup = $bak })
+        }
+        'WinRE' {
+          # Move out what the hook added (listed in XRSBackupData\DELETEME), then put the original ResetConfig.xml back.
+          $bk = Join-Path $f.Target 'XRSBackupData'
+          $names = @($f.Extra.Bats) + @(Get-Content -LiteralPath (Join-Path $bk 'DELETEME') -ErrorAction SilentlyContinue) | Where-Object { $_ -and $_.Trim() } | ForEach-Object { $_.Trim() } | Select-Object -Unique
+          foreach ($n in $names) {
+            $src = Join-Path $f.Target $n
+            if (-not (Test-Path -LiteralPath $src)) { continue }
+            $dest = Join-Path $qdir ("winre-$i-" + (Split-Path $n -Leaf) + '.quarantine')
+            Move-Item -LiteralPath $src -Destination $dest -Force -ErrorAction Stop
+            $log.Add(@{ Kind = 'File'; Target = $src; Backup = $dest })
+          }
+          $rc = Join-Path $f.Target 'ResetConfig.xml'
+          if (Test-Path -LiteralPath $rc) {
+            $dest = Join-Path $qdir "winre-$i-ResetConfig.xml.quarantine"
+            Move-Item -LiteralPath $rc -Destination $dest -Force -ErrorAction Stop
+            $log.Add(@{ Kind = 'File'; Target = $rc; Backup = $dest })
+            if (Test-Path -LiteralPath (Join-Path $bk 'configBackup')) { Copy-Item -LiteralPath (Join-Path $bk 'configBackup') -Destination $rc -Force }
+          }
+          if (Test-Path -LiteralPath $bk) {
+            $dest = Join-Path $qdir "winre-$i-XRSBackupData"
+            Move-Item -LiteralPath $bk -Destination $dest -Force -ErrorAction Stop
+            $log.Add(@{ Kind = 'File'; Target = $bk; Backup = $dest })
+          }
+        }
         'WaSession' {
           if (-not $closed) {
             Say '  Browser ditutup untuk log keluar WhatsApp Web (buka balik lepas ni).' '  Closing browsers to log out WhatsApp Web (reopen them afterwards).' Yellow
@@ -1233,7 +1342,7 @@ function Invoke-Fix($qdir) {
           $log.Add(@{ Kind = 'File'; Target = $f.Target; Backup = $dest })
         }
       }
-      Say "  OK  $($f.Kind): $($f.Target)" "  OK  $($f.Kind): $($f.Target)" Green
+      if ($done) { Say "  OK  $($f.Kind): $($f.Target)" "  OK  $($f.Kind): $($f.Target)" Green }
     } catch {
       Say "  GAGAL $($f.Kind): $($f.Target) - $($_.Exception.Message) (cuba restart & jalankan semula)" "  FAILED $($f.Kind): $($f.Target) (restart and run again)" Red
     }
@@ -1266,6 +1375,7 @@ function Invoke-Restore($mf) {
         Say "  Pengecualian Defender dipulih: $($it.Value)" "  Defender exclusion restored: $($it.Value)" Green
       }
       'Cert' { Import-Certificate -FilePath $it.Backup -CertStoreLocation Cert:\LocalMachine\Root | Out-Null; Say "  Sijil dipulih: $($it.Target)" "  Certificate restored: $($it.Target)" Green }
+      'Wmi'  { Say "  WMI tak dipulih (salinan ada di $($it.Backup)): $($it.Target)" "  WMI entry not restored (copy in $($it.Backup)): $($it.Target)" Yellow }
       'Task' { Register-ScheduledTask -TaskPath $it.Path -TaskName $it.Name -Xml (Get-Content -Raw $it.Backup) | Out-Null; Say "  Task dipulih: $($it.Target)" "  Task restored: $($it.Target)" Green }
     }
   }
