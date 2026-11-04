@@ -31,7 +31,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.03.1'
+$Version = '2026.11.04'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -289,6 +289,8 @@ $KnownBad += @(
   @{ Sha = '7a30d6bf458da8cd1261e2c04428711e5b6d22a559b494e158520d2b3118a7fa'; Size = 7513295; Name = 'Encrypted Overlord payload (TankRAT file share)' }
   @{ Sha = '493a99e679eb26d7be631fee3956b2cec4fe1e384f58ba8b65d80d0661ab1ee4'; Size = 7513302; Name = 'Encrypted Overlord payload devin-us.dat (GitHub mariauyrnq)' }
   @{ Sha = 'e2883329bbfc82612181b883f30298992cbfbe22cf17041940e51227a92f4a31'; Size = 19432960; Name = 'Overlord RAT agent devin-update.exe' }
+  @{ Sha = '8c4b1f299600584aecfec60750ac461e20d58a5dee207c40a8a9258b0e3a5595'; Size = 2175525; Name = 'WhatsApp lure TBK20261104_9635.zip (Edge helper + fake dbghelp.dll)' }
+  @{ Sha = 'a490e729feafaee29873331fbaab9b653c7e1285a3e93b21653520559c210adc'; Size = 1869312; Name = 'Fake dbghelp.dll sideloaded by a renamed Edge notification_helper.exe (TBK lure)' }
 )
 $AbusedLegit = @(
   @{ Sha = '1c5129b4d63f2d5252b5b02a0a7d655dac3b6eac23dd4ed92b4dd55f243387ff'; Size = 18248;   Name = 'ardrv.sys (OPSWAT, abused as AV killer)'; Vendor = 'OPSWAT' }
@@ -300,6 +302,7 @@ $AbusedLegit = @(
   @{ Sha = '23dfe3c02f083bae6e8a8aab0d7b96f9961c930f9208b48e6245033105b58afa'; Size = 1047520; Name = 'UltraViewer_Desktop.exe (msvbvm60.dll sideload host, MyCERT MA-1493)'; Vendor = 'UltraViewer' }
   @{ Sha = '1688fe4698c45680851f5d90aff71fffdccb19c1b283a8c10cbc729c8efca7d8'; Size = 227688;  Name = 'Microsoft topoedit.exe renamed as a document (tedutil.dll sideload host, TankRAT)'; Vendor = 'Windows Kits' }
   @{ Sha = 'e0ee8df47283ea4b1db8662dc7409b9069753de14754258b761c40b4e0cb19c2'; Size = 5798000; Name = 'Glorylogic True Burner renamed as a document (badata_x64.dll sideload host, TankRAT)'; Vendor = 'True Burner' }
+  @{ Sha = '86cc4d3f1c4aaeb8f1d94087161f17f20abb136c5e653f6f2349f32c2f0a5e92'; Size = 2812400; Name = 'Microsoft Edge notification_helper.exe renamed as a document (dbghelp.dll sideload host, TBK lure)'; Vendor = 'Microsoft\Edge' }
   @{ Sha = '92f68fc7f6d0f544a750bf67b4903d1a4062d1372b7f98ab5c2f698eb61359bb'; Size = 33297920; Name = 'UEMSAgent.msi 6.0.3 dropped by the WhatsApp lures (MyCERT MA-1491)'; Vendor = 'ManageEngine' }
 )
 # Test hook: extra IOCs from a JSON file, so CI can exercise hash matching without real malware.
@@ -311,7 +314,7 @@ if ($env:WAZIP_TEST_IOCS -and (Test-Path -LiteralPath $env:WAZIP_TEST_IOCS)) {
   }
 }
 $PersistRegex ='\\Explorer\\thumbcache_[^\\]+\\|\\Microsoft\\DeviceSync\\[^\\]+\.exe|\\(Roaming|Local)\\Overlord\\|\bovd_[0-9a-f]{12}\.exe|\\Users\\Public\\Libraries\\.+\.(exe|dll)|\\AppData\\Local\\[0-9A-F]{16}\\|\\AppData\\Roaming\\Microsoft\\Windows\\System\\[^\\]+\.exe|rime\.dll|_vmclientcore@16|KafanInput|vcRuntimeMinimum_x86\.exe|\\H\d{8,}\.exe|ZyArk|\\ardrv\.sys|\\AppData\\Roaming\\Microsoft\\Update\\[^\\]+\.exe|active_desktop_(launcher|render)|Add-MpPreference|eneio64\.dat|plcc3a\.dat|-m\s+appclient|\\appclient\\python\\|HealthApp-[0-9a-f]{6}\.bat|\\ProgramData\\MicroPoint\\|WinCombo\.exe|CRClient\.dll|\\Toolkit\\winhttp\.dll|webview2_integration\.exe|encrashrep\.dll|\\ProgramData\\WindowsData\\|ExceptCatch\.dll|\\QNWallpaper\\|\\msvc-rt14\\|NtHandleCallback\.exe|\\(XiaoH|rwdriver|kabuto)\.sys'
-$LureRegex    = '^(Click here to view.*\.(zip|vhd|vhdx)|Notice.*\.vhdx?|(PDF|DOC)_[A-Z0-9-]{3,8}_20\d{12}\.(zip|img|iso|exe|vhd|vhdx)|20\d{6}[.-]MYS20\d{2}Y\d{4}[A-Z0-9]{4,6}\.(zip|img|iso|vhd|vhdx)|(RES-20\d{6}_\d{6}|ORCAMENTO_\d{6}|COMPROVANTE_20\d{6}_\d{6}|ComprovanteSantander-[\d.]+|NEW-20\d{6}_\d{6}-PED_[0-9A-F]+|DOC-\d{8}_[0-9A-F]{8})\.(zip|lnk)|20\d{12}-[0-9A-F]{14}\.zip|SENARAI ?DOKUMEN.*\.zip|.+\.(vhdx?|img|iso)\.zip|LHDN.*\.(iso|img|vhdx?)|Open_to_view.*\.(iso|img)|TAX_[A-Za-z0-9]{6,}\.img(\.zip)?|SSM-\d+\.img(\.zip)?|20\d{6}[0-9A-F]{8}\.(zip|exe|img|iso|vhd|vhdx)|20\d{6}_\d{6}_\d{4}\.(zip|img|iso|vhd|vhdx)|Financial_Report_20\d{6}_PDF\.\d+\.(zip|exe|img|iso|vhdx?)|\d{14}(\.[0-9A-F]{3})?\.(img|iso|vhdx?)|[A-Z.]{3,9}[.-]Number[.-]20\d{10,12}\.(img\d?|iso|vhdx?)|(IMPS|UTR|TWV)_\d{3,4}-\d{1,2}-20\d{2}\d*(\.[0-9A-F]{3})?\.(img|iso|vhdx?)|20\d{12}\.[0-9A-F]{12}\.zip|SOA\d*\.(img|iso|vhdx?)|E-statement\d*\.(img|iso|vhdx?)|RT\d{10}\.\d{3}\.img|.*_[CD]\d{10}(_.*)?\.(zip|exe|img|iso|vhdx?)|Notis_Penalti_\w+\.(zip|exe)|SENARAI DOKUMEN\d*\.(zip|exe)|MyInvois_e-Invoice_INV\d+\w*\.(zip|exe)|e-Invoice_INV\d+_.+_Validated[\w-]*\.(zip|exe)|(TDS_Penalty_S\d+\w*_PAN_|GST_Non_Filing_Notice_|ITR_Scrutiny_\d+_Notice_PAN_).*\.(zip|exe|img|iso|vhdx?)|Common_Offline_Utility_ITR-.*\.(img|iso|vhdx?)|\u6240\u5F97\u7A0E.*\u7D0D\u7A0E\u901A\u77E5\u66F8\d*\.(zip|exe))$'
+$LureRegex    = '^(Click here to view.*\.(zip|vhd|vhdx)|Notice.*\.vhdx?|(PDF|DOC)_[A-Z0-9-]{3,8}_20\d{12}\.(zip|img|iso|exe|vhd|vhdx)|20\d{6}[.-]MYS20\d{2}Y\d{4}[A-Z0-9]{4,6}\.(zip|img|iso|vhd|vhdx)|(RES-20\d{6}_\d{6}|ORCAMENTO_\d{6}|COMPROVANTE_20\d{6}_\d{6}|ComprovanteSantander-[\d.]+|NEW-20\d{6}_\d{6}-PED_[0-9A-F]+|DOC-\d{8}_[0-9A-F]{8})\.(zip|lnk)|20\d{12}-[0-9A-F]{14}\.zip|SENARAI ?DOKUMEN.*\.zip|.+\.(vhdx?|img|iso)\.zip|LHDN.*\.(iso|img|vhdx?)|Open_to_view.*\.(iso|img)|TAX_[A-Za-z0-9]{6,}\.img(\.zip)?|SSM-\d+\.img(\.zip)?|20\d{6}[0-9A-F]{8}\.(zip|exe|img|iso|vhd|vhdx)|20\d{6}_\d{6}_\d{4}\.(zip|img|iso|vhd|vhdx)|Financial_Report_20\d{6}_PDF\.\d+\.(zip|exe|img|iso|vhdx?)|\d{14}(\.[0-9A-F]{3})?\.(img|iso|vhdx?)|[A-Z.]{3,9}[.-]Number[.-]20\d{10,12}\.(img\d?|iso|vhdx?)|(IMPS|UTR|TWV)_\d{3,4}-\d{1,2}-20\d{2}\d*(\.[0-9A-F]{3})?\.(img|iso|vhdx?)|20\d{12}\.[0-9A-F]{12}\.zip|SOA\d*\.(img|iso|vhdx?)|E-statement\d*\.(img|iso|vhdx?)|RT\d{10}\.\d{3}\.img|.*_[CD]\d{10}(_.*)?\.(zip|exe|img|iso|vhdx?)|Notis_Penalti_\w+\.(zip|exe)|TBK[-_]?\d{4,8}(_\d+)?\.(zip|exe)|SENARAI DOKUMEN\d*\.(zip|exe)|MyInvois_e-Invoice_INV\d+\w*\.(zip|exe)|e-Invoice_INV\d+_.+_Validated[\w-]*\.(zip|exe)|(TDS_Penalty_S\d+\w*_PAN_|GST_Non_Filing_Notice_|ITR_Scrutiny_\d+_Notice_PAN_).*\.(zip|exe|img|iso|vhdx?)|Common_Offline_Utility_ITR-.*\.(img|iso|vhdx?)|\u6240\u5F97\u7A0E.*\u7D0D\u7A0E\u901A\u77E5\u66F8\d*\.(zip|exe))$'
 # Overlord RAT (open source, used by TankRAT) and its TankRAT loader keep their files in these folders.
 $OverlordRegex = '(?i)\\Explorer\\thumbcache_[^\\]+\\|\\AppData\\Roaming\\Microsoft\\DeviceSync\\|\\AppData\\(Roaming|Local)\\Overlord\\|\\AppData\\Local\\Temp\\(Overlord(virtualDriver)?|ovld_[^\\]+)\\'
 # Programs the October 2026 wave tells Windows Defender to skip. No real program needs these excluded.
@@ -881,6 +884,11 @@ function Scan-Files {
             $f.FullName -notmatch '(?i)\\AppData\\Local\\(Docker\\|Packages\\(?!5319275A\.WhatsAppDesktop))') {
           if (Test-WaOrigin $f) { Add-Finding 'File' 'HIGH' $f.FullName 'Virtual disk (VHD) downloaded from WhatsApp Web. The WhatsApp ZIP hides its payload in a VHD.'; return }
           Add-Finding 'File' 'WARN' $f.FullName 'Virtual disk (VHD) in a user folder. The WhatsApp ZIP hides its payload in a VHD; delete it unless you made it.'; return }
+        # Victim sample (4 Nov 2026, TBK20261104_9635.zip): renamed Edge notification_helper.exe loads a fake dbghelp.dll from its own folder.
+        if ($f.Name -ieq 'dbghelp.dll' -and $f.FullName -match '(?i)^[a-z]:\\Users\\' -and
+            (Get-ChildItem -LiteralPath $f.DirectoryName -Filter *.exe -File -ErrorAction SilentlyContinue) -and
+            (Get-AuthenticodeSignature -LiteralPath $f.FullName -ErrorAction SilentlyContinue).Status -ne 'Valid') {
+          Add-Finding 'File' 'HIGH' $f.FullName 'Unsigned dbghelp.dll beside a program in a user folder (DLL sideloading, TBK lure).'; return }
         # CloudSEK (Dec 2025): signed Xunlei Thunder.exe dropped next to a fake libexpat.dll.
         if ($f.Name -ieq 'libexpat.dll' -and $f.DirectoryName -notmatch '\\Program Files( \(x86\))?\\' -and
             (Test-Path -LiteralPath (Join-Path $f.DirectoryName 'Thunder.exe'))) {

@@ -192,6 +192,13 @@ Sources: amirulcyber.com (2 Nov 2026), NetbyteSEC (28 Oct 2026), @bomccss on X (
 - Overlord can mark itself a critical process; killing it blue-screens Windows. The tool checks this and leaves such a process for the restart.
 - Hashes are in `$KnownBad`; the two signed hosts are in `$AbusedLegit` (flagged outside their real install folders).
 
+## TBK lure: renamed Edge helper plus fake dbghelp.dll (sample sent to us, 4 Nov 2026)
+
+- Lure `TBK20261104_9635.zip` (2,175,525 bytes), SHA-256 `8c4b1f299600584aecfec60750ac461e20d58a5dee207c40a8a9258b0e3a5595`. Not on VirusTotal when found.
+- `TBK20261104.exe` is the real Microsoft Edge `notification_helper.exe` (2,812,400 bytes, SHA-256 `86cc4d3f1c4aaeb8f1d94087161f17f20abb136c5e653f6f2349f32c2f0a5e92`, VirusTotal 0/75). VirusTotal also lists it as `TBK-20261103.exe` and `TBK1700_261102.exe`.
+- `dbghelp.dll` (1,869,312 bytes), SHA-256 `a490e729feafaee29873331fbaab9b653c7e1285a3e93b21653520559c210adc`, VirusTotal 2/75 (trojan.sideloader). The program loads it from its own folder instead of System32.
+- Name pattern: `TBK` plus 4 to 8 digits, sometimes with `-` or `_digits`.
+
 ## References
 
 - CloudSEK, Silver Fox targeting India using tax-themed phishing lures (2025-12-24): https://www.cloudsek.com/blog/silver-fox-targeting-india-using-tax-themed-phishing-lures

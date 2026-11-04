@@ -563,6 +563,20 @@ Get-CimInstance -Namespace root\subscription -ClassName __EventFilter -Filter "N
 if ($rcOld) { Set-Content -LiteralPath "$oem\ResetConfig.xml" -Value $rcOld -NoNewline } else { Remove-Item -LiteralPath "$oem\ResetConfig.xml" -Force -ErrorAction SilentlyContinue }
 if (-not $oemExisted) { Remove-Item -LiteralPath $oem -Recurse -Force -ErrorAction SilentlyContinue }
 
+Write-Host '=== TBK lure (renamed Edge helper + fake dbghelp.dll) ===' -ForegroundColor Cyan
+$tbkDir = Join-Path $dl 'TBK20261104_9635'
+New-Item -ItemType Directory -Force -Path $tbkDir | Out-Null
+[IO.File]::WriteAllText((Join-Path $tbkDir 'TBK20261104.exe'), 'dummy'); [IO.File]::WriteAllText((Join-Path $tbkDir 'dbghelp.dll'), 'dummy')
+[IO.File]::WriteAllText((Join-Path $dl 'TBK20261104_9635.zip'), 'dummy'); [IO.File]::WriteAllText((Join-Path $dl 'TBK1700_261102.exe'), 'dummy')
+$r27 = Scan "$env:TEMP\x27.json"
+Check (Has $r27 'File' 'HIGH' 'TBK20261104_9635\\dbghelp\.dll$') 'unsigned dbghelp.dll beside a program is HIGH'
+Check (Has $r27 'File' 'HIGH' 'TBK20261104_9635\.zip$' 'lure') 'TBK lure zip name is HIGH'
+Check (Has $r27 'File' 'HIGH' 'TBK1700_261102\.exe$' 'lure') 'TBK lure program name is HIGH'
+$r28 = Scan "$env:TEMP\x28.json" -Fix
+Check (-not (Test-Path -LiteralPath (Join-Path $tbkDir 'dbghelp.dll')) -and -not (Test-Path -LiteralPath (Join-Path $dl 'TBK20261104_9635.zip'))) 'TBK lure files quarantined'
+Remove-Item -LiteralPath $tbkDir -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath (Join-Path $dl 'TBK1700_261102.exe') -Force -ErrorAction SilentlyContinue
+
 Write-Host '=== Fake Windows\System folder (keylogger report) ===' -ForegroundColor Cyan
 $ksDir = Join-Path $env:APPDATA 'Microsoft\Windows\System'
 New-Item -ItemType Directory -Force -Path $ksDir | Out-Null
