@@ -577,6 +577,17 @@ Check (-not (Test-Path -LiteralPath (Join-Path $tbkDir 'dbghelp.dll')) -and -not
 Remove-Item -LiteralPath $tbkDir -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath (Join-Path $dl 'TBK1700_261102.exe') -Force -ErrorAction SilentlyContinue
 
+Write-Host '=== Folder link pointing back up the tree (call depth overflow report) ===' -ForegroundColor Cyan
+$loopDir = Join-Path $dl 'wazloop'
+New-Item -ItemType Directory -Force -Path "$loopDir\sub" | Out-Null
+cmd /c mklink /J "$loopDir\sub\back" "$loopDir" | Out-Null
+[IO.File]::WriteAllText((Join-Path $loopDir 'sub\TBK20261105_1111.zip'), 'dummy')
+$r29 = Scan "$env:TEMP\x29.json"
+Check (Test-Path -LiteralPath "$loopDir\sub\back") 'folder link was created'
+Check (Has $r29 'File' 'HIGH' 'wazloop\\sub\\TBK20261105_1111\.zip$' 'lure') 'file scan finishes and finds files despite a folder link loop'
+cmd /c rmdir "$loopDir\sub\back" | Out-Null
+Remove-Item -LiteralPath $loopDir -Recurse -Force -ErrorAction SilentlyContinue
+
 Write-Host '=== Fake Windows\System folder (keylogger report) ===' -ForegroundColor Cyan
 $ksDir = Join-Path $env:APPDATA 'Microsoft\Windows\System'
 New-Item -ItemType Directory -Force -Path $ksDir | Out-Null

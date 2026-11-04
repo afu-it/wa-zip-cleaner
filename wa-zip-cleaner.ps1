@@ -31,7 +31,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.04'
+$Version = '2026.11.04.1'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -431,6 +431,22 @@ function Test-Admin {
 
 $SizeIndex = @{}
 foreach ($k in $KnownBad + $AbusedLegit) { $SizeIndex[[long]$k.Size] = $true }
+
+# Every file under a folder, walked with a loop instead of Get-ChildItem -Recurse. Windows PowerShell 5.1
+# follows folder links (junctions, symlinks), so a link that points back up the tree made it recurse until
+# "call depth overflow" stopped the whole file scan (victim report, 4 Nov 2026). Links are not followed here.
+function Get-TreeFiles([string]$Root) {
+  $stack = New-Object System.Collections.Stack
+  $stack.Push((New-Object IO.DirectoryInfo $Root))
+  while ($stack.Count) {
+    $d = $stack.Pop()
+    $items = try { $d.GetFileSystemInfos() } catch { @() }
+    foreach ($i in $items) {
+      if ($i -is [IO.DirectoryInfo]) { if (-not ($i.Attributes -band [IO.FileAttributes]::ReparsePoint)) { $stack.Push($i) } }
+      else { $i }
+    }
+  }
+}
 
 function Get-Ioc([System.IO.FileInfo]$f) {
   if (-not $SizeIndex.ContainsKey([long]$f.Length)) { return $null }
@@ -844,7 +860,7 @@ function Scan-Files {
   # WAZIP_TIMING=1 prints how long each folder takes (used to find slow folders on CI and real PCs).
   foreach ($r in $roots | Where-Object { Test-Path -LiteralPath $_ }) {
     $sw = [Diagnostics.Stopwatch]::StartNew(); $tn = 0
-    Get-ChildItem -LiteralPath $r -Recurse -File -Force -ErrorAction SilentlyContinue |
+    Get-TreeFiles $r |
       Where-Object { $_.Name -match $exts } | ForEach-Object {
         $f = $_
         $tn++
@@ -959,7 +975,7 @@ function Scan-Files {
 # What a mounted disk image holds: a known bad file, a lure name, or a hidden DLL beside a program (DLL sideloading).
 function Get-ImageThreat([string[]]$Letters) {
   foreach ($l in $Letters) {
-    $files = @(Get-ChildItem -LiteralPath "$($l):\" -Recurse -File -Force -ErrorAction SilentlyContinue |
+    $files = @(Get-TreeFiles "$($l):\" |
       Where-Object { $_.Name -match '(?i)\.(exe|dll|scr|lnk|vbs|vbe|js|wsf|msi)$' } | Select-Object -First 500)
     foreach ($f in $files) {
       if ($ioc = Get-Ioc $f) { return "$($f.Name): $($ioc.Name)" }
@@ -1028,7 +1044,7 @@ function Scan-ManageEngine {
   $drops = @("$env:SystemDrive\kouren", "$env:SystemDrive\cool")
   $drops += @(Get-ChildItem -LiteralPath $env:ProgramData -Directory -Force -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^Office[0-9a-f]{4,6}$' } | ForEach-Object { $_.FullName })
   foreach ($d in $drops | Where-Object { Test-Path -LiteralPath $_ }) {
-    if (Get-ChildItem -LiteralPath $d -Recurse -File -Force -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '(?i)^(UEMSAgent\.(msi|mst)|DMRootCA(-Server)?\.crt|DCAgentServerInfo\.json|Agentinstalllog\.txt|setup1?\.(bat|vbs)|kouren\.zip)$' }) {
+    if (Get-TreeFiles $d | Where-Object { $_.Name -match '(?i)^(UEMSAgent\.(msi|mst)|DMRootCA(-Server)?\.crt|DCAgentServerInfo\.json|Agentinstalllog\.txt|setup1?\.(bat|vbs)|kouren\.zip)$' }) {
       Add-Finding 'File' 'HIGH' $d 'ManageEngine install kit left by the WhatsApp disk-image lure (MyCERT MA-1491/1493).'; $script:MeAttacker = $true
     }
   }
@@ -1126,7 +1142,7 @@ function Scan-Browsers {
       ForEach-Object { Join-Path $u.FullName $_ }
   }
   foreach ($d in $lnkDirs | Where-Object { Test-Path -LiteralPath $_ }) {
-    Get-ChildItem -LiteralPath $d -Recurse -File -Force -Filter *.lnk -ErrorAction SilentlyContinue | ForEach-Object {
+    Get-TreeFiles $d | Where-Object { $_.Extension -ieq '.lnk' } | ForEach-Object {
       $l = try { $sh.CreateShortcut($_.FullName) } catch { $null }
       if ($l -and $l.TargetPath -match '(?i)\\(chrome|msedge|brave|opera|launcher)\.exe$' -and $l.Arguments -match '(?i)--load-extension') {
         Add-Finding 'File' 'HIGH' $_.FullName "Browser shortcut loads a hidden extension: $($l.Arguments)"
