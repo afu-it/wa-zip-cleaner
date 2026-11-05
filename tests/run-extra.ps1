@@ -214,10 +214,12 @@ if (Test-Path "$repDir\posted.zip") {
   foreach ($e in $zr.Entries) { $sr = New-Object IO.StreamReader($e.Open()); $repEntries[$e.FullName] = $sr.ReadToEnd(); $sr.Close() }
   $zr.Dispose()
 }
+Check ($repEntries.ContainsKey('timeline.txt') -and $repEntries['timeline.txt'] -match '== Services installed' -and $repEntries['timeline.txt'] -match 'WazUvTest') 'report timeline lists recently installed services'
 Check ($repEntries.ContainsKey('summary.json') -and $repEntries.ContainsKey('scan.log')) "report zip holds summary.json and scan.log ($($repEntries.Keys -join ', '))"
 $repSum = $null; try { $repSum = $repEntries['summary.json'] | ConvertFrom-Json } catch {}
 Check ($repSum -and $repSum.version -and $repSum.counts.high -gt 0 -and @($repSum.findings).Count -gt 0) 'report summary has version, counts and findings'
 Check ($repSum -and @($repSum.c2) -contains '127.77.0.1') 'report summary lists the attacker server'
+Check ($repSum -and @($repSum.findings | Where-Object { $_.type -eq 'Process' -and $_.parent }).Count -gt 0) 'report shows which program started a bad process'
 Check ($repSum -and @($repSum.findings | Where-Object { $_.type -eq 'File' -and $_.sha256 -match '^[0-9a-f]{64}$' -and $_.size -gt 0 }).Count -gt 0) 'report lists SHA-256 and size of found files'
 $repAll = ($repEntries.Values | Out-String)
 Check ($repAll -and $repAll -notmatch [regex]::Escape($env:USERNAME) -and $repAll -notmatch [regex]::Escape($env:COMPUTERNAME)) 'report has no account name or PC name'

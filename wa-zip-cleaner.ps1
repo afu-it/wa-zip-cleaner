@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.05.26'
+$Version = '2026.11.05.27'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -429,6 +429,14 @@ function Test-ServicePendingDelete($name) {
 function Add-Finding($Kind, $Severity, $Target, $Detail, $Extra = $null) {
   $key = "$Kind|$Target"
   if ($Findings | Where-Object { "$($_.Kind)|$($_.Target)" -eq $key }) { return }
+  # Which program started a bad process, for the opt-in report (a fake FilmoraTray kept coming back, Nov 2026).
+  if ($Kind -eq 'Process' -and $Extra -is [hashtable] -and $Extra.Pid) {
+    try {
+      $self = Get-CimInstance Win32_Process -Filter "ProcessId=$([int]$Extra.Pid)" -ErrorAction Stop
+      $par = Get-CimInstance Win32_Process -Filter "ProcessId=$([int]$self.ParentProcessId)" -ErrorAction Stop
+      if ($par) { $Extra.Parent = "$($par.Name) (PID $($par.ProcessId)): $($par.CommandLine)" }
+    } catch {}
+  }
   $Findings.Add([pscustomobject]@{ Kind = $Kind; Severity = $Severity; Target = $Target; Detail = $Detail; Extra = $Extra })
 }
 
@@ -1930,6 +1938,33 @@ function Get-ReportHash([string]$path) {
   } catch {}
   $null
 }
+# What was installed or set to start in the last 60 days: the same records we used to pull by hand from
+# victim PCs to see how and when the attacker got in (services, MSI installs, non-Microsoft tasks, Defender hits).
+function Get-ReportTimeline {
+  $since = (Get-Date).AddDays(-60)
+  $out = New-Object System.Text.StringBuilder
+  $null = $out.AppendLine('== Services installed (System event 7045), last 60 days')
+  foreach ($e in @(try { Get-WinEvent -FilterHashtable @{ LogName = 'System'; Id = 7045; StartTime = $since } -MaxEvents 300 -ErrorAction Stop } catch {})) {
+    $p = $e.Properties
+    $null = $out.AppendLine(('{0} | {1} | {2} | {3}' -f $e.TimeCreated.ToString('yyyy-MM-dd HH:mm:ss'), $p[0].Value, $p[1].Value, $p[3].Value))
+  }
+  $null = $out.AppendLine(''); $null = $out.AppendLine('== MSI installs and removals (Application, MsiInstaller), last 60 days')
+  foreach ($e in @(try { Get-WinEvent -FilterHashtable @{ LogName = 'Application'; ProviderName = 'MsiInstaller'; Id = 1033, 1034, 11707, 11724; StartTime = $since } -MaxEvents 300 -ErrorAction Stop } catch {})) {
+    $m = ("$($e.Message)" -replace '\s+', ' ')
+    $null = $out.AppendLine(('{0} | {1} | {2}' -f $e.TimeCreated.ToString('yyyy-MM-dd HH:mm:ss'), $e.Id, $m.Substring(0, [Math]::Min(200, $m.Length))))
+  }
+  $null = $out.AppendLine(''); $null = $out.AppendLine('== Scheduled tasks outside \Microsoft\')
+  foreach ($t in @(Get-ScheduledTask -ErrorAction SilentlyContinue | Where-Object { $_.TaskPath -notlike '\Microsoft\*' })) {
+    $act = (@($t.Actions | ForEach-Object { "$($_.Execute) $($_.Arguments)".Trim() }) -join ' ; ')
+    $null = $out.AppendLine(('{0}{1} | {2} | {3} | {4}' -f $t.TaskPath, $t.TaskName, $t.Author, $t.Date, $act))
+  }
+  $null = $out.AppendLine(''); $null = $out.AppendLine('== Windows Defender detections, last 60 days')
+  foreach ($e in @(try { Get-WinEvent -FilterHashtable @{ LogName = 'Microsoft-Windows-Windows Defender/Operational'; Id = 1116, 1117; StartTime = $since } -MaxEvents 200 -ErrorAction Stop } catch {})) {
+    $d = @{}; try { foreach ($n in ([xml]$e.ToXml()).Event.EventData.Data) { $d[[string]$n.Name] = [string]$n.'#text' } } catch {}
+    $null = $out.AppendLine(('{0} | {1} | {2} | {3}' -f $e.TimeCreated.ToString('yyyy-MM-dd HH:mm:ss'), $e.Id, $d['Threat Name'], $d['Path']))
+  }
+  $out.ToString()
+}
 function New-WazReport([string]$dest) {
   $tmp = Join-Path $env:TEMP ('waz-report-' + [guid]::NewGuid().ToString('N'))
   try {
@@ -1951,6 +1986,7 @@ function New-WazReport([string]$dest) {
       findings = @($Findings | ForEach-Object {
         $o = [ordered]@{ severity = $_.Severity; type = $_.Kind; title = (Hide-Pii "$($_.Target)"); detail = (Hide-Pii "$($_.Detail)") }
         if ($_.Kind -eq 'File' -and ($h = Get-ReportHash "$($_.Target)")) { $o.sha256 = $h.Sha; $o.size = $h.Size }
+        if ($_.Extra -is [hashtable] -and $_.Extra.Parent) { $o.parent = (Hide-Pii "$($_.Extra.Parent)") }
         $o
       })
       c2       = @($c2 | Select-Object -Unique)
@@ -1958,6 +1994,8 @@ function New-WazReport([string]$dest) {
     [IO.File]::WriteAllText((Join-Path $tmp 'summary.json'), ($sum | ConvertTo-Json -Depth 5), $utf8)
     $mf = Join-Path $QuarantineRoot "$stamp\manifest.json"
     if (Test-Path -LiteralPath $mf) { $m = Read-Shared $mf 1000000; if ($m) { [IO.File]::WriteAllText((Join-Path $tmp 'manifest.json'), (Hide-Pii $m), $utf8) } }
+    $tl = Get-ReportTimeline
+    if ($tl) { [IO.File]::WriteAllText((Join-Path $tmp 'timeline.txt'), (Hide-Pii $tl), $utf8) }
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     foreach ($cap in 3000000, 300000) {
       $log = Read-Shared (Join-Path $QuarantineRoot "scan-$stamp.log") $cap
