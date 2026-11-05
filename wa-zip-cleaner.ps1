@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.05.11'
+$Version = '2026.11.05.12'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -433,7 +433,7 @@ $WarnHelp = @(
   ,@('ManageEngine UEMS', 'Program kawalan jauh. Office kadang pasang untuk urus PC staf. Kalau PC sendiri, penggodam yang pasang untuk kawal PC anda.', 'Kalau bukan office yang pasang: jalankan tool sekali lagi, pilih "PC sendiri" bila ditanya, kemudian taip Y.')
   ,@('IP-guard', 'Program pengintip IP-guard (OCular). Dia rakam skrin, apa yang ditaip, emel, browser dan internet.', 'Tanya IT office sama ada mereka yang pasang. Kalau bukan: cabut internet PC ni, backup dokumen, dan pasang semula Windows.')
   ,@('Remote-control program', 'Program kawalan jauh (contoh AnyDesk, UltraViewer). Sesiapa yang ada akses boleh guna PC anda dari jauh.', 'Kalau anda tak pasang sendiri: Settings > Apps > cari nama program tu > Uninstall.')
-  ,@('Admin permission prompt', 'Tetingkap "Benarkan program ni buat perubahan?" dah dimatikan. Program boleh pasang diri tanpa tanya anda.', 'Taip UAC dalam carian Windows > Change User Account Control settings > naikkan slider satu tingkat > OK.')
+  ,@('Admin permission prompt', 'Tetingkap "Benarkan program ni buat perubahan?" dah dimatikan. Program boleh pasang diri tanpa tanya anda.', 'Taip Y bila ditanya: tool akan hidupkan semula tetingkap ni, kemudian restart PC. Atau buat sendiri: taip UAC dalam carian Windows > Change User Account Control settings > naikkan slider satu tingkat > OK.')
   ,@('Attacker server looked up', 'PC ni pernah cuba hubungi server penggodam baru-baru ini.', 'Anggap PC dijangkiti. Tukar kata laluan guna telefon. Paling selamat: backup dokumen dan format.')
   ,@('Windows Update is disabled', 'Windows Update dimatikan. Malware buat ni supaya Windows tak dapat pembaikan keselamatan.', 'Kalau bukan anda yang matikan: taip services.msc dalam carian > Windows Update > Startup type: Manual > OK.')
   ,@('Blocklist is OFF', 'Perlindungan Windows yang sekat driver bahaya dimatikan.', 'Windows Security > Device security > Core isolation details > hidupkan Microsoft Vulnerable Driver Blocklist > restart.')
@@ -1083,7 +1083,7 @@ function Scan-ManageEngine {
   }
   # Both the VBS campaign and the MicroPoint ValleyRAT chain switch this off; only worth saying on an infected PC.
   if (($hits.Count -or ($Findings | Where-Object { $_.Severity -eq 'HIGH' -and -not $_.Extra.Tidy })) -and (Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -ErrorAction SilentlyContinue).ConsentPromptBehaviorAdmin -eq 0) {
-    Add-Finding 'Info' 'WARN' 'Admin permission prompt is switched off' 'The WhatsApp VBS campaign and ValleyRAT switch this off before installing their programs. Turn it back on: search UAC > Change User Account Control settings > move the slider up one step.'
+    Add-Finding 'Info' 'WARN' 'Admin permission prompt is switched off' 'The WhatsApp VBS campaign and ValleyRAT switch this off before installing their programs. Typing Y turns it back on (restart afterwards). Or by hand: search UAC > Change User Account Control settings > move the slider up one step.'
   }
   if ($hits.Count) {
     $d = if ($script:MeAttacker) { 'Remote-management agent connected to a known attacker server (WhatsApp VBS campaign). This tool will force-remove it.' } else { switch ($Owner) {
@@ -1440,6 +1440,24 @@ function Invoke-Fix($qdir) {
     $dest = Join-Path $qdir ("file-$i-" + (Split-Path $f.Target -Leaf) + '.quarantine')
     try { Move-Item -LiteralPath $f.Target -Destination $dest -Force -ErrorAction Stop; $log.Add(@{ Kind = 'File'; Target = $f.Target; Backup = $dest }) }
     catch { Say "  Fail driver dikunci, akan dibuang selepas restart: $($f.Target)" "  Driver file locked; restart and run -Fix again: $($f.Target)" Yellow }
+  }
+  # The lures switch the admin prompt (UAC) off. This finding only exists on an infected PC; turn UAC back on,
+  # keeping a .reg copy of the key so -Restore can put the old values back.
+  if ($Findings | Where-Object { $_.Target -eq 'Admin permission prompt is switched off' }) {
+    $uk = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+    $i++
+    $reg = Join-Path $qdir "reg-$i-uac.reg"
+    try {
+      & reg.exe export (ConvertTo-RegExePath $uk) $reg /y | Out-Null
+      $lua = (Get-ItemProperty -LiteralPath $uk -ErrorAction SilentlyContinue).EnableLUA
+      foreach ($n in 'ConsentPromptBehaviorAdmin', 'PromptOnSecureDesktop', 'EnableLUA') {
+        $v = if ($n -eq 'ConsentPromptBehaviorAdmin') { 5 } else { 1 }
+        Set-ItemProperty -LiteralPath $uk -Name $n -Value $v -Type DWord -ErrorAction Stop
+      }
+      $log.Add(@{ Kind = 'Reg'; Target = "$uk|ConsentPromptBehaviorAdmin"; Backup = $reg })
+      Say '  Tetingkap kebenaran admin (UAC) dihidupkan semula. Restart PC supaya berkesan.' '  The admin permission prompt (UAC) is switched back on. Restart the PC for it to take effect.' Green
+      if ($lua -eq 0) { Say '  UAC tadi dimatikan sepenuhnya, jadi WAJIB restart PC.' '  UAC was fully off, so a restart is required.' Yellow }
+    } catch { Say "  GAGAL hidupkan semula UAC: $($_.Exception.Message)" '  FAILED to turn UAC back on.' Red }
   }
   Set-Content -LiteralPath (Join-Path $QuarantineRoot 'last-fix.txt') -Value (Get-Date -Format o)
   $mf = Join-Path $qdir 'manifest.json'

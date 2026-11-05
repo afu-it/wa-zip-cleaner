@@ -505,6 +505,21 @@ Check (Has $r27 'Info' 'HIGH' '^IP-guard') 'IP-guard is HIGH on a personal PC'
 Check (Test-Path -LiteralPath "$ocDir\OAgent.ini") 'IP-guard is reported, never removed by -Fix'
 Remove-Item -LiteralPath $ocDir -Recurse -Force -ErrorAction SilentlyContinue
 
+Write-Host '=== -Fix turns the admin prompt (UAC) back on ===' -ForegroundColor Cyan
+$uacKey = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+$uacOld = (Get-ItemProperty -LiteralPath $uacKey -ErrorAction SilentlyContinue).ConsentPromptBehaviorAdmin
+Set-ItemProperty -LiteralPath $uacKey -Name ConsentPromptBehaviorAdmin -Value 0 -Type DWord
+$uacDir = Join-Path $env:LOCALAPPDATA '0A1B2C3D4E5F6071'
+New-Item -ItemType Directory -Force -Path $uacDir | Out-Null
+Set-Content "$uacDir\CrashHunter_PC3.dll" 'dummy'
+$r28 = Scan "$env:TEMP\x28.json"
+Check (Has $r28 'Info' 'WARN' '^Admin permission prompt') 'UAC switched off is reported on an infected PC'
+$r29 = Scan "$env:TEMP\x29.json" -Fix
+Check ((Get-ItemProperty -LiteralPath $uacKey).ConsentPromptBehaviorAdmin -eq 5) '-Fix turns the admin prompt (UAC) back on'
+if ($null -ne $uacOld) { Set-ItemProperty -LiteralPath $uacKey -Name ConsentPromptBehaviorAdmin -Value $uacOld -Type DWord }
+else { Remove-ItemProperty -LiteralPath $uacKey -Name ConsentPromptBehaviorAdmin -ErrorAction SilentlyContinue }
+Remove-Item -LiteralPath $uacDir -Recurse -Force -ErrorAction SilentlyContinue
+
 Write-Host '=== TankRAT / Overlord (LHDN and Penyata Akaun lures) ===' -ForegroundColor Cyan
 $tc = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Explorer\thumbcache_a1b2c3d4'
 New-Item -ItemType Directory -Force -Path $tc | Out-Null
