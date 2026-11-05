@@ -1,10 +1,9 @@
 name: test
 on:
   push:
-    branches-ignore: [ci-progress-*]
   workflow_dispatch:
 permissions:
-  contents: write
+  contents: read
 jobs:
   e2e:
     strategy:
@@ -19,7 +18,4 @@ jobs:
         shell: powershell
         # A hung step is stopped with its log kept, instead of the runner dropping after ~54 minutes.
         timeout-minutes: 35
-        env:
-          # The Windows 2025 run-extra runner keeps dropping with no log: push progress to a side branch every minute.
-          WAZIP_CI_PROGRESS: ${{ matrix.os == 'windows-2025' && matrix.suite == 'run-extra' && 'ci-progress-2025' || '' }}
         run: .\tests\${{ matrix.suite }}.ps1

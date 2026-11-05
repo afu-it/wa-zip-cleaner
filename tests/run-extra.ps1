@@ -10,32 +10,6 @@ $env:WAZIP_TIMING = '1'
 Get-MpComputerStatus -ErrorAction SilentlyContinue | Format-List RealTimeProtectionEnabled, AMRunningMode, OnAccessProtectionEnabled
 $progress = "$env:TEMP\waz-progress.txt"
 function Note($m) { Add-Content -LiteralPath $progress -Value ('{0} {1}' -f (Get-Date -Format 'HH:mm:ss'), $m) -ErrorAction SilentlyContinue }
-if ($env:WAZIP_CI_PROGRESS) {
-  $pushJob = Start-Job {
-    param($repo, $file, $branch)
-    Set-Location $repo
-    $env:GIT_AUTHOR_NAME = 'ci'; $env:GIT_AUTHOR_EMAIL = 'ci@users.noreply.github.com'
-    $env:GIT_COMMITTER_NAME = 'ci'; $env:GIT_COMMITTER_EMAIL = 'ci@users.noreply.github.com'
-    $env:GIT_INDEX_FILE = "$env:TEMP\waz-progress.idx"
-    while ($true) {
-      Start-Sleep 30
-      if (-not (Test-Path $file)) { continue }
-      $blob = ([string](git hash-object -w $file)).Trim()
-      git update-index --add --cacheinfo "100644,$blob,progress.txt" 2>&1 | Out-Null
-      # The tool's own transcript of the scan that is running now.
-      $live = Get-ChildItem 'C:\WAZipQuarantineExtra' -Filter 'scan-*.log' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime | Select-Object -Last 1
-      if ($live) {
-        try { $fs = [IO.File]::Open($live.FullName, 'Open', 'Read', 'ReadWrite'); $sr = New-Object IO.StreamReader($fs); $txt = $sr.ReadToEnd(); $sr.Close() } catch { $txt = "read failed: $_" }
-        Set-Content -LiteralPath "$env:TEMP\waz-live.txt" -Value $txt
-        $lb = ([string](git hash-object -w "$env:TEMP\waz-live.txt")).Trim()
-        git update-index --add --cacheinfo "100644,$lb,live-scan.log" 2>&1 | Out-Null
-      }
-      $tree = ([string](git write-tree)).Trim()
-      $commit = ([string](git commit-tree $tree -m 'CI progress')).Trim()
-      git push -f -q origin "$($commit):refs/heads/$branch" 2>&1 | Out-Null
-    }
-  } -ArgumentList $root, $progress, $env:WAZIP_CI_PROGRESS
-}
 function Check($ok, $msg) {
   if ($ok) { Write-Host "PASS $msg" -ForegroundColor Green; Note "PASS $msg" } else { Write-Host "FAIL $msg" -ForegroundColor Red; $script:fail++; Note "FAIL $msg" }
 }
