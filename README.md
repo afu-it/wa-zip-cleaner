@@ -70,6 +70,41 @@ Defender tak semestinya tangkap malware ni, sebab malware ni guna program yang s
 12. **Restart PC** (Start > Power > Restart).
 13. Lepas PC hidup balik, buat Langkah 2 sekali lagi dari mula, sampai keluar **BERSIH**.
 
+### Terlepas soalan Y?
+
+Kalau anda tekan **Enter** tanpa taip `Y`, tool tak buang apa-apa. Jangan taip `y` sorang-sorang, PowerShell tak faham. Paste ayat ni dalam tetingkap yang sama, tekan **Enter**:
+
+```
+powershell -ExecutionPolicy Bypass -File $env:TEMP\waz.ps1 -Fix
+```
+
+### Tool kata "Windows tak bagi buang" atau "ManageEngine BELUM habis dibuang"?
+
+Sesetengah bahagian ManageEngine (contoh `MEARWService`) ada pelindung diri. Masa Windows hidup, admin pun tak boleh buang dia, walaupun dah restart. Jadi kita buang dia masa Windows tak hidup. Tak payah format.
+
+Lepas taip `Y`, tool akan tanya:
+
+- **Taip `1`** (Safe Mode auto): PC restart ke Safe Mode, tool jalan sendiri, buang, lepas tu restart balik ke Windows biasa. Safe Mode minta **password** akaun Windows anda, bukan PIN. Kalau tak ingat password, pilih `2`.
+- **Taip `2`** (mod paksa): PC restart terus ke skrin biru pemulihan. Ikut langkah bawah.
+
+**Langkah mod paksa (skrin biru pemulihan):**
+
+1. Sebelum restart, ambil gambar skrin tulisan merah tu guna phone.
+2. Kat skrin biru, klik **Troubleshoot** > **Advanced options** > **Command Prompt**.
+3. Kalau dia minta, pilih akaun anda dan masukkan password PC. Kalau dia minta **BitLocker recovery key**, buka `account.microsoft.com/devices/recoverykey` guna phone.
+4. Kat tetingkap hitam, taip ayat ni, tekan **Enter**:
+   ```
+   C:\WAZipQuarantine\BUANG.bat
+   ```
+   Kalau keluar *not recognized*, cuba `D:\WAZipQuarantine\BUANG.bat`.
+5. Tunggu sampai keluar **SIAP**. Dia akan tulis apa yang dia *Dimatikan*, *Dialih* dan *Dibuang*. Semua disalin dulu ke `C:\WAZipQuarantine\winre`.
+6. Taip `exit`, tekan **Enter**, pilih **Continue**.
+7. Lepas Windows hidup, buat Langkah 2 sekali lagi dari mula, taip `Y`, sampai keluar **BERSIH**.
+
+Nak buat sendiri tanpa tunggu tool tanya? Pergi **Settings > System > Recovery > Advanced startup > Restart now**, lepas tu mula dari langkah 2 kat atas. Fail `BUANG.bat` cuma wujud lepas tool pernah cuba bersihkan (taip `Y`) dan gagal.
+
+Kalau PC tersangkut dalam Safe Mode lepas pilih `1`: buka skrin biru pemulihan (langkah 2 dan 3 atas), taip `bcdedit /deletevalue {default} safeboot`, tekan **Enter**, lepas tu `exit` > **Continue**.
+
 **BERSIH tak bermaksud PC confirm selamat.** Hacker boleh tukar malware ni bila-bila masa, dan tool ni cuma kenal versi yang kami dah bedah. Kalau anda memang dah buka fail tu kat PC, tetap buat langkah tukar password kat bawah. Kalau ragu-ragu, minta orang IT periksa.
 
 ## Kalau dah terbuka fail tu kat PC, buat benda ni juga
