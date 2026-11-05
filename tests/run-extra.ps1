@@ -67,6 +67,10 @@ Set-Content "$env:SystemRoot\System32\drivers\ardrv.sys" 'dummy'
 # D. Lure file held open by a running process (stands in for malware resisting removal)
 $locked = "$dl\Click here to view7.zip"
 Set-Content "$dl\Reconciliation Invoice.zip" 'dummy'
+# Defender caught the image inside a lure ZIP while Explorer unpacked it; the ZIP stays in a subfolder of Downloads.
+New-Item -ItemType Directory -Force -Path "$dl\wa" | Out-Null
+Set-Content "$dl\wa\Account Summary 0411.zip" 'dummy'
+$env:WAZIP_TEST_DEFDET = "Trojan:Win32/Malgent|file:_$env:TEMP\cca655ea-b3ee-49d8-bac2-64ce8eeda700_Account Summary 0411.zip.700\4.img"
 Set-Content $locked 'dummy'
 $lock = "`$f=[IO.File]::Open('$locked','Open','Read','None'); Start-Sleep 3600"
 $locker = Start-Encoded $lock
@@ -165,6 +169,7 @@ Check (-not ($r.All | Where-Object { $_.Target -eq 'OpswatLegitTest' })) 'ardrv 
 Check (Has $r 'Info' 'WARN' 'ManageEngine') 'ManageEngine agent warning'
 Check (Has $r 'File' 'HIGH' 'Click here to view7\.zip$') 'locked lure file detected'
 Check (Has $r 'File' 'HIGH' 'Reconciliation Invoice\.zip$') 'Reconciliation Invoice.zip lure name is HIGH'
+Check (Has $r 'File' 'HIGH' 'wa\\Account Summary 0411\.zip$' 'Defender flagged as Trojan:Win32/Malgent') 'lure ZIP found from the Defender detection path'
 Check (Has $r 'File' 'HIGH' 'Downloads\\Notice\.vhd$') 'Notice.vhd lure is HIGH'
 Check (Has $r 'Process' 'HIGH' "PID $($cli.Id)\)" 'attacker server') 'process connected to known C2 is HIGH'
 Check (Has $r 'File' 'WARN' 'Downloads\\Other\.vhdx$') 'other VHD in user folder is WARN'

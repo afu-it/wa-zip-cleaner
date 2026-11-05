@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.05.25'
+$Version = '2026.11.05.26'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -883,11 +883,37 @@ function Scan-DefenderExclusions {
   }
 }
 
+# Defender often catches the disk image inside a lure ZIP while Explorer unpacks it to Temp
+# (<guid>_<name>.zip.<n>\4.img), so the ZIP itself stays behind in Downloads or WhatsApp's folder.
+# Find that ZIP by name so -Fix quarantines it and the opt-in report carries its hash (report, Nov 2026).
+function Find-DefenderLureZip($pairs) {
+  $want = [ordered]@{}
+  foreach ($pr in $pairs) {
+    foreach ($pp in (("$($pr[1])" -split ';') -replace '^\w+:_', '')) {
+      if ($pp -match '(?i)\\[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}_([^\\]+\.zip)\.[0-9a-f]+\\') { $want[$Matches[1]] = $pr[0] }
+      elseif ($pp -match '(?i)^([A-Z]:\\[^>]+?\.zip)->') { $want[$Matches[1]] = $pr[0] }
+    }
+  }
+  if (-not $want.Count) { return }
+  $roots = @(foreach ($u in Get-ChildItem "$env:SystemDrive\Users" -Directory -Force -ErrorAction SilentlyContinue) {
+    foreach ($sub in 'Downloads', 'Desktop', 'Documents') { Join-Path $u.FullName $sub }
+    Get-ChildItem -LiteralPath (Join-Path $u.FullName 'AppData\Local\Packages') -Directory -Filter '*WhatsApp*' -Force -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }
+  }) | Where-Object { Test-Path -LiteralPath $_ }
+  foreach ($k in $want.Keys) {
+    $hits = if ($k -match '^[A-Za-z]:\\') { @(Get-Item -LiteralPath $k -Force -ErrorAction SilentlyContinue) } else {
+      @(foreach ($r in $roots) { Get-ChildItem -LiteralPath $r -Recurse -Depth 8 -File -Force -ErrorAction SilentlyContinue | Where-Object { $_.Name -eq $k } }) }
+    foreach ($h in $hits) {
+      Add-Finding 'File' 'HIGH' $h.FullName "ZIP that held a file Windows Defender flagged as $($want[$k]). WhatsApp lure: do not open it."
+    }
+  }
+}
+
 # Defender's own log keeps what it found, when it was switched off and which exclusions were added,
 # even after the malware removed its exclusions again. Only events since the last clean-up count.
 function Scan-DefenderHistory {
   $ev = @(try { Get-WinEvent -FilterHashtable @{ LogName = 'Microsoft-Windows-Windows Defender/Operational'; Id = 1116, 1117, 5001, 5007; StartTime = $HistorySince } -MaxEvents 500 -ErrorAction Stop } catch { })
-  $det = [ordered]@{}; $rtp = @()
+  $det = [ordered]@{}; $rtp = @(); $defPaths = @()
+  if ($env:WAZIP_TEST_DEFDET) { $tt, $tp = $env:WAZIP_TEST_DEFDET -split '\|', 2; $defPaths += ,@($tt, $tp) }
   foreach ($e in $ev) {
     $d = @{}
     try { foreach ($n in ([xml]$e.ToXml()).Event.EventData.Data) { $d[[string]$n.Name] = [string]$n.'#text' } } catch { continue }
@@ -896,6 +922,7 @@ function Scan-DefenderHistory {
       $t = $d['Threat Name']; if (-not $t) { continue }
       if (-not $det.Contains($t)) { $det[$t] = @{ Count = 0; Last = $when; Path = ($d['Path'] -replace '^\w+:_', '') } }
       $det[$t].Count++
+      $defPaths += ,@($t, $d['Path'])
     } elseif ($e.Id -eq 5001) { $rtp += $when }
     elseif ($e.Id -eq 5007 -and -not $d['Old Value'] -and $d['New Value'] -match '(?i)\\Exclusions\\(Paths|Processes|Extensions)\\(.+?) = ') {
       Add-Finding 'Info' 'WARN' "Defender exclusion added: $($Matches[2])" "Added on $when. If it is no longer in the exclusion list, it was removed since."
@@ -904,6 +931,7 @@ function Scan-DefenderHistory {
   foreach ($t in $det.Keys) {
     Add-Finding 'Info' 'WARN' "Defender detected: $t" "Windows Defender found this $($det[$t].Count) time(s), last on $($det[$t].Last): $($det[$t].Path)"
   }
+  Find-DefenderLureZip $defPaths
   if ($rtp) { Add-Finding 'Info' 'WARN' 'Defender real-time protection was turned off' "Last on $($rtp[0]) ($($rtp.Count) time(s) since $($HistorySince.ToString('yyyy-MM-dd')))." }
 }
 
