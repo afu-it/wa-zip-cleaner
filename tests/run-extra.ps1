@@ -44,7 +44,10 @@ function Scan($report, [switch]$Fix, [switch]$RemoveME, [string]$Owner, [string]
   if ($Fix) { $a += '-Fix' }
   if ($RemoveME) { $a += '-RemoveManageEngine' }
   if ($Owner) { $a += '-Owner', $Owner }
-  Note "scan start $(Split-Path $report -Leaf) $(if ($Fix) { '-Fix' })"
+  $os = Get-CimInstance Win32_OperatingSystem -ErrorAction SilentlyContinue
+  $dc = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'" -ErrorAction SilentlyContinue
+  $np = @(Get-Process -ErrorAction SilentlyContinue).Count
+  Note ("scan start $(Split-Path $report -Leaf) $(if ($Fix) { '-Fix' }) | C: free {0:N0} MB | RAM free {1:N0} MB | {2} processes" -f ($dc.FreeSpace / 1MB), ($os.FreePhysicalMemory / 1KB), $np)
   $t0 = Get-Date; Write-Host "--- scan start $($t0.ToString('HH:mm:ss')) $(Split-Path $report -Leaf) $($a[6..($a.Count-1)] -join ' ')" -ForegroundColor DarkCyan
   if ($Out) { & powershell @a 2>&1 | Tee-Object -FilePath $Out | Out-Host } else { & powershell @a | Out-Host }
   Note "scan end $([int]((Get-Date) - $t0).TotalSeconds) s"
