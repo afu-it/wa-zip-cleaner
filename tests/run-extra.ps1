@@ -118,6 +118,13 @@ $vul = New-Object byte[] 4101; (New-Object Random 4).NextBytes($vul); [IO.File]:
   "$((Get-FileHash "$drvDir\wazlolv.sys").Hash.ToLower()),vulnerable,test-vulnerable.sys") | Set-Content -Encoding ASCII "$env:TEMP\test-lol.csv"
 $env:WAZIP_TEST_LOLDRIVERS = "$env:TEMP\test-lol.csv"
 & sc.exe create WazRmmTest start= demand binPath= "C:\Program Files (x86)\AnyDesk\AnyDesk.exe --service" | Out-Null
+# UltraViewer is always removed (AFU, Nov 2026): planted folder, service and Apps entry.
+$uvDir = 'C:\Program Files (x86)\UltraViewer'
+New-Item -ItemType Directory $uvDir -Force | Out-Null
+'harmless stand-in' | Set-Content -Encoding ASCII "$uvDir\UltraViewer_Service.exe"
+& sc.exe create WazUvTest start= demand binPath= "$uvDir\UltraViewer_Service.exe" | Out-Null
+$uvKey = 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\WazUvTest'
+New-Item $uvKey -Force | Out-Null; Set-ItemProperty $uvKey DisplayName 'UltraViewer 6.6'
 $ciKey = 'HKLM:\SYSTEM\CurrentControlSet\Control\CI\Config'
 $ciOld = (Get-ItemProperty -LiteralPath $ciKey -ErrorAction SilentlyContinue).VulnerableDriverBlocklistEnable
 New-Item -Path $ciKey -Force -ErrorAction SilentlyContinue | Out-Null
@@ -163,6 +170,10 @@ Check (-not ($r.All | Where-Object { $_.Target -match 'ext4\.vhdx' })) 'WSL ext4
 Check (Has $r 'Service' 'HIGH' '^WazLolMal$' 'LOLDrivers') 'LOLDrivers malicious driver service is HIGH'
 Check (Has $r 'Service' 'WARN' '^WazLolVuln$' 'vulnerable') 'LOLDrivers vulnerable driver service is WARN'
 Check (Has $r 'Info' 'WARN' 'Remote-control program: AnyDesk') 'remote-control program (AnyDesk) is WARN'
+Check (Has $r 'Service' 'HIGH' '^WazUvTest$' 'UltraViewer') 'UltraViewer service is HIGH'
+Check (Has $r 'File' 'HIGH' 'UltraViewer$' 'UltraViewer') 'UltraViewer folder is HIGH'
+Check (Has $r 'RegKey' 'HIGH' 'WazUvTest$' 'UltraViewer') 'UltraViewer Apps entry is HIGH'
+Check (-not ($r.All | Where-Object { $_.Target -eq 'Remote-control program: UltraViewer' })) 'UltraViewer not also listed as a plain warning'
 $scanLog = Get-ChildItem $q -Filter 'scan-*.log' | Sort-Object LastWriteTime | Select-Object -Last 1
 Check ($scanLog -and (Select-String -LiteralPath $scanLog.FullName -SimpleMatch 'Maksud: Program kawalan jauh (contoh AnyDesk' -Quiet)) 'warning explained in plain Malay'
 Check (Has $r 'Info' 'WARN' 'Blocklist is OFF') 'driver blocklist switched off is WARN'
@@ -180,6 +191,9 @@ Check (-not (Get-Process -Id $rimeHost.Id -ErrorAction SilentlyContinue)) 'rime.
 & sc.exe query ardrv | Out-Null; Check ($LASTEXITCODE -ne 0) 'ardrv service deleted'
 Check (-not (Test-Path "$env:SystemRoot\System32\drivers\ardrv.sys")) 'ardrv.sys driver file quarantined'
 Check ([bool](Get-Service MEUemsTest -ErrorAction SilentlyContinue)) 'ManageEngine left for the user to decide'
+& sc.exe query WazUvTest | Out-Null; Check ($LASTEXITCODE -ne 0) 'UltraViewer service deleted'
+Check (-not (Test-Path -LiteralPath $uvDir)) 'UltraViewer folder quarantined'
+Check (-not (Test-Path $uvKey)) 'UltraViewer Apps entry removed'
 Check (Test-Path 'C:\ProgramData\OPSWAT\helper.exe') 'vendor-folder legit file untouched'
 Check (-not (Get-Process -Id $cli.Id -ErrorAction SilentlyContinue)) 'C2-connected process stopped'
 Check (-not (Test-Path $lnk)) 'hidden-extension shortcut quarantined'

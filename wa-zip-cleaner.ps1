@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.05.15'
+$Version = '2026.11.05.16'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -1137,6 +1137,7 @@ function Scan-ManageEngine {
     if ($cfg -and ($cfg | Select-String -SimpleMatch -Pattern $C2Ips -List -ErrorAction SilentlyContinue)) { $script:MeAttacker = $true }
   }
   Scan-Ping32
+  Scan-UltraViewer
   Scan-IpGuard
   Scan-CnRmm
   # MyCERT MA-1491/1493: work folders the ManageEngine lures create.
@@ -1349,12 +1350,41 @@ function Scan-Ping32 {
   }
 }
 
+# AFU, Nov 2026: UltraViewer is always removed, on every PC. MyCERT MA-1493 lures sideload a fake
+# msvbvm60.dll into it, and victims rarely install it themselves. AnyDesk and TeamViewer stay a warning.
+function Scan-UltraViewer {
+  $rx = '(?i)\\UltraViewer[^\\]*\.exe$|\\UltraViewer\\'
+  $why = 'UltraViewer remote-control program. MyCERT MA-1493: attackers hide a backdoor inside it, so this tool removes it on every PC. Reinstall it from ultraviewer.net later if you really need it.'
+  $dirs = @()
+  foreach ($svc in Get-ChildItem 'HKLM:\SYSTEM\CurrentControlSet\Services' -ErrorAction SilentlyContinue) {
+    $pr = Get-ItemProperty -LiteralPath $svc.PSPath -ErrorAction SilentlyContinue
+    $img = [string]$pr.ImagePath
+    if ($img -notmatch '(?i)UltraViewer' -or $pr.DeleteFlag -eq 1) { continue }
+    Add-Finding 'Service' 'HIGH' $svc.PSChildName "$why ($img)" @{ RegPath = $svc.PSPath; Image = '' }
+    $dirs += Split-Path (Resolve-ImagePath ($img -replace '^"([^"]+)".*', '$1' -replace '(?i)(\.exe)\s.*$', '$1'))
+  }
+  foreach ($p in @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { [string]$_.ExecutablePath -match $rx })) {
+    Add-Finding 'Process' 'HIGH' "$($p.Name) (PID $($p.ProcessId))" $why @{ Pid = $p.ProcessId; Path = $p.ExecutablePath }
+    $dirs += Split-Path $p.ExecutablePath
+  }
+  foreach ($root in @($env:ProgramFiles, ${env:ProgramFiles(x86)})) { if ($root) { $dirs += Join-Path $root 'UltraViewer' } }
+  foreach ($d in $dirs | Where-Object { $_ } | Sort-Object -Unique) {
+    if ($d -notmatch '(?i)^[a-z]:\\Windows(\\|$)' -and (Test-Path -LiteralPath $d)) { Add-Finding 'File' 'HIGH' $d "UltraViewer program folder. $why" }
+  }
+  foreach ($u in Get-ChildItem 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall', 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall' -ErrorAction SilentlyContinue) {
+    if ([string](Get-ItemProperty -LiteralPath $u.PSPath -ErrorAction SilentlyContinue).DisplayName -match '(?i)^UltraViewer') {
+      Add-Finding 'RegKey' 'HIGH' ($u.PSPath -replace '^Microsoft\.PowerShell\.Core\\Registry::', 'Registry::') 'UltraViewer entry in Settings > Apps'
+    }
+  }
+}
+
 function Scan-Rmm {
   $paths = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | ForEach-Object { [string]$_.ExecutablePath })
   $paths += Get-CimInstance Win32_Service -ErrorAction SilentlyContinue | ForEach-Object {
     $pn = [string]$_.PathName
     if ($pn -match '^"([^"]+)"') { $Matches[1] } elseif ($pn -match '^(\S+\.exe)') { $Matches[1] } else { $pn } }
   foreach ($tool in $RmmTools.Keys) {
+    if ($tool -eq 'UltraViewer') { continue }  # Scan-UltraViewer removes it
     $hit = $paths | Where-Object { $_ -and (($_ -split '\\')[-1] -match $RmmTools[$tool] -or $_ -match $RmmTools[$tool]) } | Select-Object -First 1
     if (-not $hit) { continue }
     $d = if ($Owner -eq 'Office') { "Remote-control program ($hit). Ask your IT team if they installed it." }
