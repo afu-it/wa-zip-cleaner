@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.05.8'
+$Version = '2026.11.05.9'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -361,8 +361,42 @@ $VbsLureRegex = '(?i)(Statement|Debt|Hutang|Outstanding|Balance Sheet|Financial 
 
 # ------------------------------------------------------------- helpers ---
 function Say([string]$ms, [string]$en, [string]$color = 'Gray') {
+  # A step row waits on one line for its result tag; any message in between starts a fresh line.
+  if ($script:MidLine) { Write-Host ''; $script:MidLine = $false }
   Write-Host "$ms" -ForegroundColor $color
   Write-Host "  ($en)" -ForegroundColor DarkGray
+}
+
+$script:MidLine = $false
+$Rule = '  ' + ('_' * 62)
+# Section title in the menu style: a ruled line, then the title indented.
+function Show-Head([string]$ms, [string]$en) {
+  Write-Host ''
+  Write-Host $Rule -ForegroundColor DarkCyan
+  Write-Host ''
+  Write-Host "      $ms" -ForegroundColor White -NoNewline
+  Write-Host "  ($en)" -ForegroundColor DarkGray
+}
+# A short status word on a coloured background, like BERSIH in green, so it reads at a glance.
+function Show-Tag([string]$text, [string]$fg, [string]$bg) {
+  Write-Host ' ' -NoNewline
+  Write-Host " $text " -ForegroundColor $fg -BackgroundColor $bg
+}
+# One scan step: label and dots on one line, then the result tag once the step finishes.
+function Invoke-Step([int]$n, [string]$ms, [scriptblock]$run) {
+  $before = $Findings.Count
+  $label = "  [$n/8] $ms"
+  Write-Host $label -ForegroundColor Gray -NoNewline
+  Write-Host (' ' + ('.' * [Math]::Max(3, 46 - $label.Length))) -ForegroundColor DarkGray -NoNewline
+  $script:MidLine = $true
+  & $run
+  if (-not $script:MidLine) { Write-Host (' ' * 48) -NoNewline }
+  $script:MidLine = $false
+  $new = @($Findings | Select-Object -Skip $before)
+  $h = @($new | Where-Object Severity -eq 'HIGH').Count
+  if ($h) { Show-Tag "BAHAYA $h" White DarkRed }
+  elseif ($new.Count) { Show-Tag "PERIKSA $($new.Count)" Black DarkYellow }
+  else { Show-Tag 'BERSIH' Black DarkGreen }
 }
 
 $Findings = New-Object System.Collections.Generic.List[object]
@@ -510,7 +544,6 @@ function ConvertTo-RegExePath([string]$psPath) {
 
 # --------------------------------------------------------------- scans ---
 function Scan-Registry {
-  Say '[1/8] Semak registry (tempat malware sorok muatan)...' '[1/8] Checking registry (where the payload hides)...' Cyan
   foreach ($hive in Get-UserHives) {
     foreach ($sub in '0', '1') {
       $k = "$hive\Console\$sub"
@@ -547,7 +580,6 @@ function Scan-Registry {
 }
 
 function Scan-Services {
-  Say '[2/8] Semak driver & servis (pembunuh antivirus)...' '[2/8] Checking drivers & services (antivirus killers)...' Cyan
   $root = 'HKLM:\SYSTEM\CurrentControlSet\Services'
   foreach ($svc in Get-ChildItem $root -ErrorAction SilentlyContinue) {
     $p = Get-ItemProperty -LiteralPath $svc.PSPath -ErrorAction SilentlyContinue
@@ -592,7 +624,6 @@ function Scan-Services {
 }
 
 function Scan-Processes {
-  Say '[3/8] Semak program yang sedang berjalan...' '[3/8] Checking running programs...' Cyan
   foreach ($p in Get-CimInstance Win32_Process -ErrorAction SilentlyContinue) {
     $cl = [string]$p.CommandLine; $exe = [string]$p.ExecutablePath
     if ($cl -match '_vmclientcore@16' -or $cl -match '(?i)-m\s+appclient\b' -or $p.Name -eq 'KafanInputService.exe' -or $exe -match '\\H\d{8,}\.exe$' -or $exe -match $StageRegex -or $exe -match $OverlordRegex -or
@@ -632,7 +663,6 @@ function Scan-Processes {
 }
 
 function Scan-Persistence {
-  Say '[4/8] Semak program yang auto-jalan bila PC hidup...' '[4/8] Checking auto-start entries...' Cyan
   $runKeys = @('HKLM:\Software\Microsoft\Windows\CurrentVersion\Run', 'HKLM:\Software\Microsoft\Windows\CurrentVersion\RunOnce',
                'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Run', 'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\RunOnce')
   foreach ($hive in Get-UserHives) {
@@ -845,7 +875,6 @@ function Scan-RanPrograms {
 }
 
 function Scan-Files {
-  Say '[5/8] Imbas fail (boleh ambil 2-10 minit)...' '[5/8] Scanning files (can take 2-10 minutes)...' Cyan
   # ProgramData is walked one level down so Docker's Windows container layers (docker\windowsfilter,
   # tens of thousands of copied Windows files) are skipped. Top-level files are still checked.
   $roots = @(Get-ChildItem -LiteralPath $env:ProgramData -Force -ErrorAction SilentlyContinue | Where-Object { $_.Name -ne 'docker' } | ForEach-Object { $_.FullName })
@@ -971,7 +1000,7 @@ function Scan-Files {
         if ($f.Extension -match '(?i)^\.(zip|rar|7z)$' -and (Test-WaOrigin $f)) {
           Add-Finding 'File' 'HIGH' $f.FullName 'Archive downloaded from WhatsApp Web. The WhatsApp malware arrives as a zip, so it is moved to quarantine (it can be restored).' @{ Tidy = $true } }
       }
-    if ($env:WAZIP_TIMING) { Write-Host "[timing] $r : $tn files checked, $([int]$sw.Elapsed.TotalSeconds)s" }
+    if ($env:WAZIP_TIMING) { if ($script:MidLine) { Write-Host ''; $script:MidLine = $false }; Write-Host "[timing] $r : $tn files checked, $([int]$sw.Elapsed.TotalSeconds)s" }
   }
 }
 
@@ -991,7 +1020,6 @@ function Get-ImageThreat([string[]]$Letters) {
 }
 
 function Scan-Vhd {
-  Say '[6/8] Semak cakera maya (VHD, IMG, ISO) yang sedang dibuka...' '[6/8] Checking mounted virtual disks (VHD, IMG, ISO)...' Cyan
   foreach ($d in Get-Disk -ErrorAction SilentlyContinue | Where-Object { $_.BusType -eq 'File Backed Virtual' }) {
     $loc = [string]$d.Location
     $bad = Get-ImageThreat @($d | Get-Partition -ErrorAction SilentlyContinue | Where-Object DriveLetter | ForEach-Object { [string]$_.DriveLetter })
@@ -1014,7 +1042,6 @@ function Scan-Vhd {
 }
 
 function Scan-ManageEngine {
-  Say '[7/8] Semak program kawalan jauh (ManageEngine, AnyDesk, dll)...' '[7/8] Checking remote-control programs (ManageEngine, AnyDesk, etc.)...' Cyan
   Scan-Rmm
   $hits = @()
   $svcs = @(Get-Service -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -match 'ManageEngine|UEMS' })
@@ -1124,7 +1151,6 @@ function Get-BrowserProfiles {
 }
 
 function Scan-Browsers {
-  Say '[8/8] Semak browser (Chrome, Edge, Brave, Opera, Firefox)...' '[8/8] Checking browsers (Chrome, Edge, Brave, Opera, Firefox)...' Cyan
   # Extensions forced in by policy. Offices do this on purpose; a personal PC never should.
   foreach ($h in @('HKLM:\SOFTWARE') + @(Get-UserHives | ForEach-Object { "$_\Software" })) {
     foreach ($b in $BrowserRoots | Where-Object { $_.Policy }) {
@@ -1412,7 +1438,14 @@ function Invoke-Restore($mf) {
 }
 
 # ---------------------------------------------------------------- main ---
-Write-Host "WA-ZIP Cleaner v$Version" -ForegroundColor White
+try { $Host.UI.RawUI.WindowTitle = "WA-ZIP Cleaner v$Version" } catch {}
+Write-Host ''
+Write-Host $Rule -ForegroundColor DarkCyan
+Write-Host ''
+Write-Host "      WA-ZIP Cleaner  v$Version" -ForegroundColor White
+Write-Host '      Imbas & buang malware ZIP WhatsApp' -ForegroundColor Gray -NoNewline
+Write-Host '  (scan & remove the WhatsApp ZIP malware)' -ForegroundColor DarkGray
+Write-Host $Rule -ForegroundColor DarkCyan
 if (-not (Test-Admin)) {
   Say 'Sila jalankan sebagai Administrator (klik kanan > Run as administrator).' 'Please run as Administrator.' Red
   exit 2
@@ -1459,7 +1492,16 @@ Start-Transcript -Path (Join-Path $QuarantineRoot "scan-$stamp.log") | Out-Null
 $LolDrivers = Get-LolDrivers
 if (-not $LolDrivers) { Say '  (Senarai driver bahaya tak dapat dimuat, semakan driver LOLDrivers dilangkau.)' '  (Could not load the LOLDrivers list; that driver check is skipped.)' DarkGray }
 
-Scan-Processes; Scan-Vhd; Scan-Registry; Scan-Services; Scan-Persistence; Scan-Files; Scan-ManageEngine; Scan-Browsers
+Show-Head 'IMBASAN' 'SCAN'
+Write-Host ''
+Invoke-Step 1 'Program yang sedang berjalan' { Scan-Processes }
+Invoke-Step 2 'Cakera maya (VHD, ISO)' { Scan-Vhd }
+Invoke-Step 3 'Registry' { Scan-Registry }
+Invoke-Step 4 'Driver & servis' { Scan-Services }
+Invoke-Step 5 'Program auto-jalan' { Scan-Persistence }
+Invoke-Step 6 'Fail (2-10 minit)' { Scan-Files }
+Invoke-Step 7 'Program kawalan jauh' { Scan-ManageEngine }
+Invoke-Step 8 'Browser' { Scan-Browsers }
 
 # ManageEngine: a personal PC should never have it, an office PC often does.
 $me = $Findings | Where-Object { $_.Kind -eq 'Info' -and $_.Target -match 'ManageEngine' }
@@ -1493,17 +1535,22 @@ if ($ReportPath) {
   @($Findings | Select-Object Kind, Severity, Target, Detail) | ConvertTo-Json -Depth 3 | Out-File -Encoding UTF8 $ReportPath
 }
 
-Write-Host ''
 $high = @($Findings | Where-Object Severity -eq 'HIGH')
 $infected = @($high | Where-Object { -not $_.Extra.Tidy })
 $warn = @($Findings | Where-Object Severity -eq 'WARN')
+Show-Head 'KEPUTUSAN' 'RESULT'
+Write-Host ''
 if (-not $Findings.Count) {
+  Write-Host '      ' -NoNewline; Show-Tag 'PC BERSIH' Black DarkGreen
+  Write-Host ''
   Say 'BERSIH: tiada tanda malware ZIP WhatsApp dijumpai.' 'CLEAN: no signs of the WhatsApp ZIP malware found.' Green
   Stop-Transcript | Out-Null; exit 0
 }
 foreach ($f in $Findings) {
-  $c = if ($f.Severity -eq 'HIGH') { 'Red' } else { 'Yellow' }
-  Write-Host ("[{0}] {1}: {2}" -f $f.Severity, $f.Kind, $f.Target) -ForegroundColor $c
+  if ($f.Severity -eq 'HIGH') { $c = 'Red'; $fg = 'White'; $bg = 'DarkRed'; $t = 'BAHAYA' } else { $c = 'Yellow'; $fg = 'Black'; $bg = 'DarkYellow'; $t = 'AMARAN' }
+  Write-Host '  ' -NoNewline
+  Write-Host " $t " -ForegroundColor $fg -BackgroundColor $bg -NoNewline
+  Write-Host (" {0}: {1}" -f $f.Kind, $f.Target) -ForegroundColor $c
   if ($f.Severity -eq 'WARN' -and ($h = Get-WarnHelp $f)) {
     Write-Host ("        Maksud: {0}" -f $h[1]) -ForegroundColor White
     Write-Host ("        Buat:   {0}" -f $h[2]) -ForegroundColor Cyan
@@ -1511,7 +1558,11 @@ foreach ($f in $Findings) {
   Write-Host ("        {0}" -f $f.Detail) -ForegroundColor DarkGray
 }
 Write-Host ''
-Say "Jumpa: $($high.Count) bahaya, $($warn.Count) amaran." "Found: $($high.Count) high, $($warn.Count) warnings." White
+Write-Host '      ' -NoNewline
+if ($high.Count) { Show-Tag "$($high.Count) BAHAYA, $($warn.Count) AMARAN" White DarkRed } else { Show-Tag "$($warn.Count) AMARAN" Black DarkYellow }
+Say "      Jumpa: $($high.Count) bahaya, $($warn.Count) amaran." "      Found: $($high.Count) high, $($warn.Count) warnings." White
+Show-Head 'LANGKAH SETERUSNYA' 'NEXT STEPS'
+Write-Host ''
 
 if ($Fix -and $high.Count) {
   $qdir = Join-Path $QuarantineRoot $stamp
@@ -1520,7 +1571,7 @@ if ($Fix -and $high.Count) {
   Say "Kuarantin siap. Salinan & manifest: $mf" "Quarantine done. Backups & manifest: $mf" Green
   Say 'Seterusnya: RESTART PC, kemudian imbas sekali lagi.' 'Next: RESTART the PC, then scan again.' Cyan
 } elseif ($high.Count) {
-  Say 'Untuk buang semua yang [HIGH] di atas, taip Y bila ditanya kat bawah (atau jalankan semula dengan -Fix / 2-CLEAN-BERSIH.bat).' 'To remove everything marked [HIGH], type Y when asked below (or run again with -Fix / 2-CLEAN-BERSIH.bat).' Cyan
+  Say 'Untuk buang semua yang BAHAYA di atas, taip Y bila ditanya kat bawah (atau jalankan semula dengan -Fix / 2-CLEAN-BERSIH.bat).' 'To remove everything marked BAHAYA (high), type Y when asked below (or run again with -Fix / 2-CLEAN-BERSIH.bat).' Cyan
   # Users press Enter without Y, then type y at the PowerShell prompt (error). Show the command that still works.
   if ($PSCommandPath) { Say "Terlepas soalan Y? Paste arahan ni dan Enter: powershell -ExecutionPolicy Bypass -File `"$PSCommandPath`" -Fix" "Missed the Y question? Paste this and press Enter: powershell -ExecutionPolicy Bypass -File `"$PSCommandPath`" -Fix" Cyan }
 } else {
@@ -1661,15 +1712,20 @@ if ($SafeAuto) {
     & shutdown.exe /r /t 60
   }
 } elseif ($blocked -and -not $env:WAZIP_NO_PROMPT) {
+  Show-Head 'PAKSA BUANG' 'FORCE REMOVAL'
   Write-Host ''
-  Say 'Nak tool paksa buang? Pilih:' 'Want the tool to force the removal? Choose:' White
-  Say '  1 = Safe Mode auto: PC restart ke Safe Mode, tool jalan sendiri dan buang, kemudian restart ke Windows biasa. Safe Mode minta PASSWORD akaun Windows (bukan PIN), pastikan anda ingat.' `
-      '  1 = Automatic Safe Mode: the PC restarts into Safe Mode, the tool runs and removes by itself, then restarts into normal Windows. Safe Mode asks for your Windows PASSWORD (not PIN); make sure you know it.' White
+  Say 'Nak tool paksa buang? Pilih satu nombor:' 'Want the tool to force the removal? Pick a number:' White
+  Write-Host ''
+  Say '  [1] Safe Mode auto: PC restart ke Safe Mode, tool jalan sendiri dan buang, kemudian restart ke Windows biasa. Safe Mode minta PASSWORD akaun Windows (bukan PIN), pastikan anda ingat.' `
+      '  [1] Automatic Safe Mode: the PC restarts into Safe Mode, the tool runs and removes by itself, then restarts into normal Windows. Safe Mode asks for your Windows PASSWORD (not PIN); make sure you know it.' White
   if ($winreBat) {
-    Say '  2 = Mod paksa: PC restart terus ke skrin pemulihan, anda taip satu baris (arahan merah di atas; ambil gambar skrin dulu).' `
-        '  2 = Force mode: the PC restarts straight into the recovery screen and you type one line (red steps above; take a photo first).' White
+    Say '  [2] Mod paksa: PC restart terus ke skrin pemulihan, anda taip satu baris (arahan merah di atas; ambil gambar skrin dulu).' `
+        '  [2] Force mode: the PC restarts straight into the recovery screen and you type one line (red steps above; take a photo first).' White
   }
-  Say '  Enter je = buat sendiri nanti.' '  Just Enter = do it yourself later.' White
+  Say '  [Enter] Buat sendiri nanti.' '  [Enter] Do it yourself later.' White
+  Write-Host $Rule -ForegroundColor DarkCyan
+  Write-Host ''
+  Write-Host '  Pilihan anda [1,2,Enter] : ' -ForegroundColor Green -NoNewline
   $ans = ([string](Read-Host)).Trim()
   if ($ans -eq '1') { Start-SafeAuto }
   elseif ($ans -eq '2' -and $winreBat) {
