@@ -30,3 +30,4 @@ sha256,9af5d2aa96fae12f4e374523c02f0579002c63964b0114d2cc79782e9412b33f,UX64 pay
 filename,unityplayer.dll,Fake DLL loaded by a signed Toolkit.exe from %LOCALAPPDATA%\Toolkit (victim PC Nov 2026)
 task,WindowsUpdateSync,Root scheduled task that starts Toolkit.exe from AppData\Local (victim PC Nov 2026)
 path,%LOCALAPPDATA%\Microsoft\Windows\Caches\<folder>\DCAgentServerInfo.json,ManageEngine installer kit hidden in the Windows Caches folder (victim PC Nov 2026)
+ip,137.220.205.162,IP-guard agent connection target blocked by Malwarebytes on a victim PC (Nov 2026); also ManageEngine agent server port 8383 (Triage sweep)

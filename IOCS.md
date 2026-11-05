@@ -227,6 +227,20 @@ Programs from these companies are WARN (AMARAN) wherever they run, even renamed;
 Also added by file name (LOLRMM): AnyViewer (`AnyViewer.exe`) and AweSun / AweRay (`AweSun.exe`, `aweray_remote*.exe`).
 Left out: AOMEI as a signer (it also signs AOMEI Backupper and Partition Assistant, common legit tools; AnyViewer is matched by name instead); Sunlogin / Oray (already matched by name; no signer subject we could confirm from a known hash).
 
+## Fake FilmoraTray + UltraViewer (third Malaysia victim, Nov 2026)
+From the tool's scan output on a third victim's PC (screenshots; no samples or hashes collected).
+- `FilmoraTray` running from the Wondershare Filmora folder and loading a fake `libvlc.dll` from that folder (DLL sideloading, same pattern as the VLC + `libvlc.dll` host in MyCERT MA-1493). It came back once with a new process ID after the first clean-up; after a second clean-up and a restart it did not return.
+- Start Menu shortcut named like a real program ("V-Ray Swarm UI") that runs a hidden command; caught by the SORVEPOTEL-style shortcut check.
+- Two lure ZIPs from WhatsApp (Downloads and Desktop; the Desktop one named as a construction-industry certificate) and six WhatsApp Web sessions in Chrome.
+- UltraViewer installed without the owner's knowledge. Since v2026.11.05.16 the tool always removes UltraViewer (service, process, folder, Apps entry); AnyDesk and TeamViewer stay warnings.
+
+## IP-guard surviving the first Safe Mode pass (fourth Malaysia victim, Nov 2026)
+From the tool's scan logs and registry queries on a fourth victim's PC.
+- IP-guard agent `wrdlv4.exe` ("OCular Agent") connecting to `137.220.205.162` (already listed above as a ManageEngine agent server on port 8383); Malwarebytes on the PC blocked the connection.
+- Tool v2026.11.05.18 deleted the `.Winhlpsvr` SafeBoot entries, then waited 3 seconds before restarting; IP-guard re-added them in that time. In Safe Mode `winrdgv3.exe`, `systecv3.exe` and `winwdgsvr.exe` were still running ("Access denied" on move) and its services were still enabled (`.Winhlpsvr Start=2`, `TsdEncrypt Start=0`).
+- Fixed in v2026.11.05.19-.21: delete the SafeBoot entries repeatedly until Windows shuts down; in Safe Mode stop processes, set `Start=4`, delete services, then move files; at most 2 Safe Mode rounds, then `BUANG.bat` for the recovery Command Prompt. The next run cleaned the PC without a reinstall.
+- Case write-up: [`docs/reports/2026-11-malaysia-four-pcs.md`](docs/reports/2026-11-malaysia-four-pcs.md).
+
 ## References
 
 - CloudSEK, Silver Fox targeting India using tax-themed phishing lures (2025-12-24): https://www.cloudsek.com/blog/silver-fox-targeting-india-using-tax-themed-phishing-lures
