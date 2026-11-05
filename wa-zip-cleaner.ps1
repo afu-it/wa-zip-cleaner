@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.05.27'
+$Version = '2026.11.05.28'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -371,7 +371,21 @@ $BrowserRoots = @(
   @{ Name = 'Brave'; Dir = 'AppData\Local\BraveSoftware\Brave-Browser\User Data'; Proc = 'brave'; Policy = 'BraveSoftware\Brave' }
   @{ Name = 'Opera'; Dir = 'AppData\Roaming\Opera Software\Opera Stable'; Proc = 'opera'; Policy = $null }
 )
-$VbsLureRegex = '(?i)(Statement|Debt|Hutang|Outstanding|Balance Sheet|Financial ?Report|Penyata|Invoice|Invois|Payment|Billing|Sila semak|Promissory|Reconciliation|Acknowledg|Application ?form|Income Tax|Cukai|Work Snapshot|Salary|Gaji|Claim|Tuntutan|LHDN|KWSP|EPF).*\.(vbs|vbe|js|wsf)$'
+$VbsLureRegex = '(?i)(?<![a-z])(Statement|Debt|Hutang|Outstanding|Balance Sheet|Financial ?Report|Penyata|Invoice|Invois|Payment|Billing|Sila semak|Promissory|Reconciliation|Acknowledg|Application ?form|Income Tax|Cukai|Work Snapshot|Salary|Gaji|Claim|Tuntutan|LHDN|KWSP|EPF).*\.(vbs|vbe|js|wsf)$'
+# A document-named script is only a lure when it is not part of a developer tool, and a .js only when it
+# uses Windows Script Host. A developer PC had 11 Node.js files (firebase-tools, jose, VS Code extensions,
+# build_salary_deck.js) quarantined by name alone (opt-in report, Nov 2026).
+$DevPathRegex = '(?i)\\(node_modules|\.git|\.vscode|\.cursor|\.npm|site-packages|bower_components|vendor)\\|\\AppData\\Roaming\\(npm|Code|Cursor)\\|\\AppData\\Local\\Programs\\'
+function Test-ScriptLure($f) {
+  if ($f.Name -notmatch $VbsLureRegex -or $f.FullName -match $DevPathRegex) { return $false }
+  if ($f.Extension -ine '.js') { return $true }
+  try {
+    $fs = [IO.File]::Open($f.FullName, 'Open', 'Read', 'ReadWrite')
+    $buf = New-Object byte[] ([Math]::Min(65536, [int]$f.Length)); $n = $fs.Read($buf, 0, $buf.Length); $fs.Close()
+    $txt = [Text.Encoding]::ASCII.GetString($buf, 0, $n)
+    return [bool]($txt -match '(?i)WScript\.|ActiveXObject|GetObject\s*\(|\bWSH\b')
+  } catch { return $false }
+}
 
 # ------------------------------------------------------------- helpers ---
 function Say([string]$ms, [string]$en, [string]$color = 'Gray') {
@@ -1072,7 +1086,7 @@ function Scan-Files {
         # Reading version info opens the file, so only try DLLs (and sc.exe) the size of curl or bitsadmin.
         if (($f.Extension -ieq '.dll' -or $f.Name -ieq 'sc.exe') -and $f.Length -gt 150KB -and $f.Length -lt 1MB -and $f.FullName -match '(?i)\\(ProgramData|Users\\Public)\\' -and [string]$f.VersionInfo.OriginalFilename -match '(?i)^(curl|bitsadmin)\.exe') {
           Add-Finding 'File' 'HIGH' $f.FullName 'curl or bitsadmin renamed to a Windows DLL name (WhatsApp VBS campaign downloader).'; return }
-        if ($f.Name -match $VbsLureRegex) { Add-Finding 'File' 'HIGH' $f.FullName 'Script disguised as a document (WhatsApp VBS campaign).'; return }
+        if (Test-ScriptLure $f) { Add-Finding 'File' 'HIGH' $f.FullName 'Script disguised as a document (WhatsApp VBS campaign).'; return }
         if ($f.Extension -ieq '.sys' -and ($lol = Get-LolMatch $f.FullName)) {
           $sev = if ($lol.kind -eq 'malicious') { 'HIGH' } else { 'WARN' }
           Add-Finding 'File' $sev $f.FullName "Driver listed by LOLDrivers ($($lol.kind)): $($lol.name). Attackers use these to switch off antivirus."; return }
@@ -1114,7 +1128,7 @@ function Get-ImageThreat([string[]]$Letters) {
       Where-Object { $_.Name -match '(?i)\.(exe|dll|scr|lnk|vbs|vbe|js|wsf|msi)$' } | Select-Object -First 500)
     foreach ($f in $files) {
       if ($ioc = Get-Ioc $f) { return "$($f.Name): $($ioc.Name)" }
-      if ($f.Name -match $LureRegex -or $f.Name -match $ExeLureRegex -or $f.Name -match $VbsLureRegex) { return "$($f.Name): lure name" }
+      if ($f.Name -match $LureRegex -or $f.Name -match $ExeLureRegex -or (Test-ScriptLure $f)) { return "$($f.Name): lure name" }
     }
     $hidDll = $files | Where-Object { $_.Extension -ieq '.dll' -and ($_.Attributes -band [IO.FileAttributes]::Hidden) } | Select-Object -First 1
     if ($hidDll -and ($files | Where-Object { $_.Extension -ieq '.exe' -and $_.DirectoryName -eq $hidDll.DirectoryName })) {

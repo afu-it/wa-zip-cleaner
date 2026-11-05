@@ -67,6 +67,13 @@ Set-Content "$env:SystemRoot\System32\drivers\ardrv.sys" 'dummy'
 # D. Lure file held open by a running process (stands in for malware resisting removal)
 $locked = "$dl\Click here to view7.zip"
 Set-Content "$dl\Reconciliation Invoice.zip" 'dummy'
+# Developer files whose names contain a lure word must stay untouched (false positives from an opt-in report, Nov 2026).
+$devNpm = "$env:APPDATA\npm\node_modules\wazfake\lib"; $devDoc = "$env:USERPROFILE\Documents\WazDev"
+New-Item -ItemType Directory -Force -Path $devNpm, $devDoc | Out-Null
+Set-Content "$devNpm\checkProjectBilling.js" 'module.exports = function () { return 1 }'
+Set-Content "$devDoc\build_salary_deck.js" 'console.log("deck")'
+Set-Content "$devDoc\WorkflowsStepFailedResponse.js" 'export {}'
+Set-Content "$dl\Invoice Nov 2026.js" 'var s = new ActiveXObject("WScript.Shell");'
 # Defender caught the image inside a lure ZIP while Explorer unpacked it; the ZIP stays in a subfolder of Downloads.
 New-Item -ItemType Directory -Force -Path "$dl\wa" | Out-Null
 Set-Content "$dl\wa\Account Summary 0411.zip" 'dummy'
@@ -169,6 +176,8 @@ Check (-not ($r.All | Where-Object { $_.Target -eq 'OpswatLegitTest' })) 'ardrv 
 Check (Has $r 'Info' 'WARN' 'ManageEngine') 'ManageEngine agent warning'
 Check (Has $r 'File' 'HIGH' 'Click here to view7\.zip$') 'locked lure file detected'
 Check (Has $r 'File' 'HIGH' 'Reconciliation Invoice\.zip$') 'Reconciliation Invoice.zip lure name is HIGH'
+Check (-not ($r.All | Where-Object { $_.Target -match 'checkProjectBilling\.js$|build_salary_deck\.js$|WorkflowsStepFailedResponse\.js$' })) 'developer .js files with lure words are not flagged'
+Check (Has $r 'File' 'HIGH' 'Invoice Nov 2026\.js$' 'VBS campaign') 'document-named .js that uses Windows Script Host is HIGH'
 Check (Has $r 'File' 'HIGH' 'wa\\Account Summary 0411\.zip$' 'Defender flagged as Trojan:Win32/Malgent') 'lure ZIP found from the Defender detection path'
 Check (Has $r 'File' 'HIGH' 'Downloads\\Notice\.vhd$') 'Notice.vhd lure is HIGH'
 Check (Has $r 'Process' 'HIGH' "PID $($cli.Id)\)" 'attacker server') 'process connected to known C2 is HIGH'
