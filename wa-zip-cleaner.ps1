@@ -31,7 +31,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.05.2'
+$Version = '2026.11.05.3'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -1525,6 +1525,30 @@ if (-not $infected.Count -and ($Findings | Where-Object { $_.Kind -eq 'Info' -an
   Say 'AWAS: Windows Defender jumpa trojan di PC ni (lihat "Defender detected" di atas). Defender cuma buang fail tu; program yang muatkan dia mungkin masih ada. Tukar kata laluan bank & emel guna telefon, log keluar WhatsApp Web (Peranti dipaut > Log keluar semua), dan hantar screenshot folder dalam amaran tu kepada orang yang bantu anda. Paling selamat: backup data dan format PC.' `
       'WARNING: Windows Defender found a trojan on this PC (see "Defender detected" above). Defender only removed that file; the program that loaded it may still be there. Change bank and email passwords from your phone, log out WhatsApp Web (Linked devices > Log out all), and send a screenshot of the folder in that warning to whoever is helping you. Safest: back up data and reinstall Windows.' Red
 }
+# Safe Mode usually has no internet: leave a copy of the tool and a launcher on the C: drive.
+$safeBat = $null
+if ($Fix -and ($script:SvcLeft -or $script:MeLeft) -and $PSCommandPath) {
+  try {
+    $copy = Join-Path $QuarantineRoot 'wa-zip-cleaner.ps1'
+    if ($PSCommandPath -ne $copy) { Copy-Item -LiteralPath $PSCommandPath -Destination $copy -Force -ErrorAction Stop }
+    $safeBat = Join-Path $QuarantineRoot 'MULA-SINI.bat'
+    Set-Content -LiteralPath $safeBat -Encoding ASCII -ErrorAction Stop -Value @(
+      '@echo off', 'cd /d "%~dp0"', 'set ANS=',
+      'net session >nul 2>&1 || (powershell -NoProfile -Command "Start-Process -FilePath ''%~f0'' -Verb RunAs" & exit /b)',
+      'powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0wa-zip-cleaner.ps1"',
+      'if errorlevel 1 if not errorlevel 2 set /p ANS=Taip Y dan Enter untuk bersihkan: ',
+      'if /i "%ANS%"=="Y" powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0wa-zip-cleaner.ps1" -Fix',
+      'pause')
+  } catch { $safeBat = $null }
+}
+$safePath = 'Settings > System > Recovery > Advanced startup > Restart now > Troubleshoot > Advanced options > Startup Settings > Restart'
+if ($safeBat) {
+  $safeMs = "Masuk Safe Mode ($safePath > tekan 4). Tak perlu internet: tekan Windows+R, taip cmd, tekan Ctrl+Shift+Enter, kemudian taip $safeBat dan Enter."
+  $safeEn = "Start in Safe Mode ($safePath > press 4). No internet needed: press Windows+R, type cmd, press Ctrl+Shift+Enter, then type $safeBat and press Enter."
+} else {
+  $safeMs = "Masuk Safe Mode dengan internet ($safePath > tekan 5). Tekan Windows+R, taip cmd, tekan Ctrl+Shift+Enter, taip powershell dan Enter, kemudian paste arahan tool ni macam biasa."
+  $safeEn = "Start in Safe Mode with Networking ($safePath > press 5). Press Windows+R, type cmd, press Ctrl+Shift+Enter, type powershell and press Enter, then paste this tool's command as usual."
+}
 if ($infected.Count) {
   Write-Host ''
   Say 'PENTING: dari telefon/PC lain, tukar kata laluan bank & emel, dan log keluar WhatsApp Web (Peranti dipaut > Log keluar semua).' `
@@ -1543,8 +1567,8 @@ if ($infected.Count) {
         'This malware told Windows Defender to ignore it, which is why antivirus scans looked clean. After cleaning and restarting, run a Windows Defender full scan again.' Yellow
   }
   if ($script:SvcLeft) {
-    Say "Windows tak bagi buang servis ni: $($script:SvcLeft -join ', '). Masuk Safe Mode (Settings > System > Recovery > Advanced startup > Restart now > Troubleshoot > Advanced options > Startup Settings > Restart > tekan 5 untuk Safe Mode dengan internet), kemudian jalankan tool ni sekali lagi. Dalam Safe Mode, Terminal tak boleh buka: tekan Windows+R, taip powershell, kemudian tekan Ctrl+Shift+Enter." `
-        "Windows would not let the tool remove these services: $($script:SvcLeft -join ', '). Start in Safe Mode (Settings > System > Recovery > Advanced startup > Restart now > Troubleshoot > Advanced options > Startup Settings > Restart > press 5 for Safe Mode with Networking), then run this tool again. In Safe Mode, Terminal will not open: press Windows+R, type powershell, then press Ctrl+Shift+Enter." Red
+    Say "Windows tak bagi buang servis ni: $($script:SvcLeft -join ', '). $safeMs Lepas tu ikut arahan dalam skrin." `
+        "Windows would not let the tool remove these services: $($script:SvcLeft -join ', '). $safeEn Then follow the steps on screen." Red
   } elseif ($script:NeedRestart) {
     Say 'Servis jahat dah dibuang, tapi masih nampak sampai PC di-restart. RESTART dulu sebelum imbas semula.' 'Bad services are removed but stay listed until the PC restarts. RESTART before scanning again.' Yellow
   }
@@ -1554,8 +1578,8 @@ if ($infected.Count) {
   }
 }
 if ($me -and $meRemove -and $Fix -and $script:MeLeft) {
-  Say "ManageEngine BELUM habis dibuang. Windows halang: $($script:MeLeft -join ', '). Restart dan jalankan tool ni sekali lagi. Kalau masih gagal, masuk Safe Mode (Settings > System > Recovery > Advanced startup > Restart now > Troubleshoot > Advanced options > Startup Settings > Restart > tekan 5) dan jalankan semula. Dalam Safe Mode, Terminal tak boleh buka: tekan Windows+R, taip powershell, kemudian tekan Ctrl+Shift+Enter. Paling selamat: backup data & pasang semula Windows, dan tukar semua password guna phone." `
-      "ManageEngine is NOT fully removed. Windows blocked: $($script:MeLeft -join ', '). Restart and run this tool again. If it still fails, start in Safe Mode (Settings > System > Recovery > Advanced startup > Restart now > Troubleshoot > Advanced options > Startup Settings > Restart > press 5) and run it again. In Safe Mode, Terminal will not open: press Windows+R, type powershell, then press Ctrl+Shift+Enter. Safest option: back up data and reinstall Windows, and change every password from your phone." Red
+  Say "ManageEngine BELUM habis dibuang. Windows halang: $($script:MeLeft -join ', '). Restart dan jalankan tool ni sekali lagi. Kalau masih gagal: $safeMs Paling selamat: backup data & pasang semula Windows, dan tukar semua password guna phone." `
+      "ManageEngine is NOT fully removed. Windows blocked: $($script:MeLeft -join ', '). Restart and run this tool again. If it still fails: $safeEn Safest option: back up data and reinstall Windows, and change every password from your phone." Red
 } elseif ($me -and $meRemove -and $Fix) {
   Say 'ManageEngine dah dibuang. Program ni bagi hacker control penuh PC ni, jadi paling selamat: backup data & pasang semula Windows, dan tukar semua password guna phone.' `
       'ManageEngine removed. It gave the attacker full control of this PC, so the safest option is to back up data and reinstall Windows, and change every password from your phone.' Yellow
