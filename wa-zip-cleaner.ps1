@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.05.7'
+$Version = '2026.11.05.8'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -1598,10 +1598,12 @@ if ($infected.Count) {
     Say 'Malware ni suruh Windows Defender abaikan dia, sebab tu scan antivirus nampak bersih. Lepas bersihkan dan restart, buat Full scan Windows Defender sekali lagi.' `
         'This malware told Windows Defender to ignore it, which is why antivirus scans looked clean. After cleaning and restarting, run a Windows Defender full scan again.' Yellow
   }
-  if ($script:SvcLeft) {
-    Say "Windows tak bagi buang servis ni: $($script:SvcLeft -join ', '). $safeMs Kemudian jalankan tool ni sekali lagi dan taip Y." `
-        "Windows would not let the tool remove these services: $($script:SvcLeft -join ', '). $safeEn Then run this tool again and type Y." Red
-  } elseif ($script:NeedRestart) {
+  # ManageEngine services get their own message below; show the recovery steps only once.
+  $svcOnly = @($script:SvcLeft | Where-Object { $script:MeLeft -notcontains $_ })
+  if ($svcOnly) {
+    Say "Windows tak bagi buang servis ni: $($svcOnly -join ', '). $safeMs Kemudian jalankan tool ni sekali lagi dan taip Y." `
+        "Windows would not let the tool remove these services: $($svcOnly -join ', '). $safeEn Then run this tool again and type Y." Red
+  } elseif ($script:NeedRestart -and -not $script:SvcLeft) {
     Say 'Servis jahat dah dibuang, tapi masih nampak sampai PC di-restart. RESTART dulu sebelum imbas semula.' 'Bad services are removed but stay listed until the PC restarts. RESTART before scanning again.' Yellow
   }
   if ($Findings | Where-Object { $_.Kind -eq 'Service' -and $_.Severity -eq 'HIGH' -and $_.Detail -ne 'ManageEngine service' -and $_.Detail -notmatch '^Ping32' }) {
