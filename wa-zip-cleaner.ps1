@@ -31,7 +31,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.05.3'
+$Version = '2026.11.05.4'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -371,6 +371,7 @@ $MeSvcRegex = '(?i)^MEARW?Service$'
 $MeRegKeys = 'HKLM:\SOFTWARE\ManageEngine', 'HKLM:\SOFTWARE\WOW6432Node\ManageEngine', 'HKLM:\SOFTWARE\AdventNet', 'HKLM:\SOFTWARE\WOW6432Node\AdventNet'
 $SvcLeft = @()
 $MeLeft = @()
+$FileLeft = @()
 $NeedRestart = $false
 # A deleted service stays listed until the next restart, with DeleteFlag set.
 function Test-ServicePendingDelete($name) {
@@ -1370,6 +1371,7 @@ function Invoke-Fix($qdir) {
       if ($done) { Say "  OK  $($f.Kind): $($f.Target)" "  OK  $($f.Kind): $($f.Target)" Green }
     } catch {
       if ($f.Detail -match 'ManageEngine') { $script:MeLeft += $f.Target }
+      if ($f.Kind -eq 'File') { $script:FileLeft += $f.Target }
       Say "  GAGAL $($f.Kind): $($f.Target) - $($_.Exception.Message) (cuba restart & jalankan semula)" "  FAILED $($f.Kind): $($f.Target) (restart and run again)" Red
     }
   }
@@ -1525,29 +1527,42 @@ if (-not $infected.Count -and ($Findings | Where-Object { $_.Kind -eq 'Info' -an
   Say 'AWAS: Windows Defender jumpa trojan di PC ni (lihat "Defender detected" di atas). Defender cuma buang fail tu; program yang muatkan dia mungkin masih ada. Tukar kata laluan bank & emel guna telefon, log keluar WhatsApp Web (Peranti dipaut > Log keluar semua), dan hantar screenshot folder dalam amaran tu kepada orang yang bantu anda. Paling selamat: backup data dan format PC.' `
       'WARNING: Windows Defender found a trojan on this PC (see "Defender detected" above). Defender only removed that file; the program that loaded it may still be there. Change bank and email passwords from your phone, log out WhatsApp Web (Linked devices > Log out all), and send a screenshot of the folder in that warning to whoever is helping you. Safest: back up data and reinstall Windows.' Red
 }
-# Safe Mode usually has no internet: leave a copy of the tool and a launcher on the C: drive.
-$safeBat = $null
-if ($Fix -and ($script:SvcLeft -or $script:MeLeft) -and $PSCommandPath) {
+# Self-protected leftovers (ManageEngine MEARWService) block even Safe Mode. Write BUANG.bat for the
+# Windows recovery Command Prompt: there the infected Windows is not running, so nothing can block it.
+# It backs up and disables the blocked services in the offline registry and moves the blocked folders.
+$winreBat = $null
+if ($Fix -and ($script:SvcLeft -or $script:MeLeft)) {
   try {
-    $copy = Join-Path $QuarantineRoot 'wa-zip-cleaner.ps1'
-    if ($PSCommandPath -ne $copy) { Copy-Item -LiteralPath $PSCommandPath -Destination $copy -Force -ErrorAction Stop }
-    $safeBat = Join-Path $QuarantineRoot 'MULA-SINI.bat'
-    Set-Content -LiteralPath $safeBat -Encoding ASCII -ErrorAction Stop -Value @(
-      '@echo off', 'cd /d "%~dp0"', 'set ANS=',
-      'net session >nul 2>&1 || (powershell -NoProfile -Command "Start-Process -FilePath ''%~f0'' -Verb RunAs" & exit /b)',
-      'powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0wa-zip-cleaner.ps1"',
-      'if errorlevel 1 if not errorlevel 2 set /p ANS=Taip Y dan Enter untuk bersihkan: ',
-      'if /i "%ANS%"=="Y" powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0wa-zip-cleaner.ps1" -Fix',
-      'pause')
-  } catch { $safeBat = $null }
+    $b = New-Object System.Collections.Generic.List[string]
+    foreach ($l in '@echo off', 'set D=%~d0', 'set CS=',
+      'if not exist "%D%\Windows\System32\config\SYSTEM" (echo Windows tak dijumpai di %D% & pause & exit /b)',
+      'reg load HKLM\WAZOFF "%D%\Windows\System32\config\SYSTEM" || (echo GAGAL buka registry Windows. & pause & exit /b)',
+      'for /f "tokens=3" %%a in (''reg query HKLM\WAZOFF\Select /v Current'') do set /a CS=%%a',
+      'if not defined CS set CS=1',
+      'set S=HKLM\WAZOFF\ControlSet00%CS%\Services') { $b.Add($l) }
+    foreach ($n in @($script:SvcLeft) | Select-Object -Unique) { $b.Add("call :off `"$n`"") }
+    if ($script:MeLeft) { $b.Add('for /f "tokens=5 delims=\" %%a in (''reg query %S% /s /f ManageEngine /d ^| find "HKEY_"'') do call :off "%%a"') }
+    $b.Add('reg unload HKLM\WAZOFF'); $b.Add('mkdir "%D%\WAZipQuarantine\winre" 2>nul')
+    $k = 0
+    foreach ($t in @($script:FileLeft) | Where-Object { $_ -match '^[A-Za-z]:\\' -and $_.Substring(0, 2) -ieq $env:SystemDrive } | Select-Object -Unique) {
+      $k++; $rel = $t.Substring(2) -replace '%', '%%'
+      $b.Add("move `"%D%$rel`" `"%D%\WAZipQuarantine\winre\$k-$((Split-Path $t -Leaf) -replace '%', '%%')`" && echo Dialih: $rel")
+    }
+    foreach ($l in 'echo.', 'echo SIAP. Taip exit, pilih Continue, kemudian jalankan tool ni sekali lagi dalam Windows dan taip Y.', 'pause', 'exit /b',
+      ':off', 'reg export "%S%\%~1" "%D%\WAZipQuarantine\winre\svc-%~1.reg" /y >nul 2>&1',
+      'reg add "%S%\%~1" /v Start /t REG_DWORD /d 4 /f >nul && echo Dimatikan: %~1', 'exit /b') { $b.Add($l) }
+    $winreBat = Join-Path $QuarantineRoot 'BUANG.bat'
+    New-Item -ItemType Directory -Force -Path (Join-Path $QuarantineRoot 'winre') | Out-Null
+    Set-Content -LiteralPath $winreBat -Encoding ASCII -Value $b -ErrorAction Stop
+  } catch { $winreBat = $null }
 }
-$safePath = 'Settings > System > Recovery > Advanced startup > Restart now > Troubleshoot > Advanced options > Startup Settings > Restart'
-if ($safeBat) {
-  $safeMs = "Masuk Safe Mode ($safePath > tekan 4). Tak perlu internet: tekan Windows+R, taip cmd, tekan Ctrl+Shift+Enter, kemudian taip $safeBat dan Enter."
-  $safeEn = "Start in Safe Mode ($safePath > press 4). No internet needed: press Windows+R, type cmd, press Ctrl+Shift+Enter, then type $safeBat and press Enter."
+$recPath = 'Settings > System > Recovery > Advanced startup > Restart now > Troubleshoot > Advanced options'
+if ($winreBat) {
+  $safeMs = "Buang dari skrin pemulihan (Windows tak boleh halang di situ): $recPath > Command Prompt (kalau diminta, pilih akaun dan masukkan password PC atau BitLocker key). Taip $winreBat dan Enter (kalau tak jumpa, tukar huruf C: kepada D:). Lepas siap, taip exit, pilih Continue."
+  $safeEn = "Remove it from the recovery screen (Windows cannot block it there): $recPath > Command Prompt (if asked, pick your account and enter the PC password or BitLocker key). Type $winreBat and press Enter (if not found, change C: to D:). When done, type exit and choose Continue."
 } else {
-  $safeMs = "Masuk Safe Mode dengan internet ($safePath > tekan 5). Tekan Windows+R, taip cmd, tekan Ctrl+Shift+Enter, taip powershell dan Enter, kemudian paste arahan tool ni macam biasa."
-  $safeEn = "Start in Safe Mode with Networking ($safePath > press 5). Press Windows+R, type cmd, press Ctrl+Shift+Enter, type powershell and press Enter, then paste this tool's command as usual."
+  $safeMs = "Masuk Safe Mode dengan internet ($recPath > Startup Settings > Restart > tekan 5). Tekan Windows+R, taip cmd, tekan Ctrl+Shift+Enter, taip powershell dan Enter, kemudian paste arahan tool ni macam biasa."
+  $safeEn = "Start in Safe Mode with Networking ($recPath > Startup Settings > Restart > press 5). Press Windows+R, type cmd, press Ctrl+Shift+Enter, type powershell and press Enter, then paste this tool's command as usual."
 }
 if ($infected.Count) {
   Write-Host ''
@@ -1567,8 +1582,8 @@ if ($infected.Count) {
         'This malware told Windows Defender to ignore it, which is why antivirus scans looked clean. After cleaning and restarting, run a Windows Defender full scan again.' Yellow
   }
   if ($script:SvcLeft) {
-    Say "Windows tak bagi buang servis ni: $($script:SvcLeft -join ', '). $safeMs Lepas tu ikut arahan dalam skrin." `
-        "Windows would not let the tool remove these services: $($script:SvcLeft -join ', '). $safeEn Then follow the steps on screen." Red
+    Say "Windows tak bagi buang servis ni: $($script:SvcLeft -join ', '). $safeMs Kemudian jalankan tool ni sekali lagi dan taip Y." `
+        "Windows would not let the tool remove these services: $($script:SvcLeft -join ', '). $safeEn Then run this tool again and type Y." Red
   } elseif ($script:NeedRestart) {
     Say 'Servis jahat dah dibuang, tapi masih nampak sampai PC di-restart. RESTART dulu sebelum imbas semula.' 'Bad services are removed but stay listed until the PC restarts. RESTART before scanning again.' Yellow
   }
@@ -1578,8 +1593,8 @@ if ($infected.Count) {
   }
 }
 if ($me -and $meRemove -and $Fix -and $script:MeLeft) {
-  Say "ManageEngine BELUM habis dibuang. Windows halang: $($script:MeLeft -join ', '). Restart dan jalankan tool ni sekali lagi. Kalau masih gagal: $safeMs Paling selamat: backup data & pasang semula Windows, dan tukar semua password guna phone." `
-      "ManageEngine is NOT fully removed. Windows blocked: $($script:MeLeft -join ', '). Restart and run this tool again. If it still fails: $safeEn Safest option: back up data and reinstall Windows, and change every password from your phone." Red
+  Say "ManageEngine BELUM habis dibuang. Windows halang: $($script:MeLeft -join ', '). $safeMs Kemudian jalankan tool ni sekali lagi dan taip Y. Paling selamat: backup data & pasang semula Windows, dan tukar semua password guna phone." `
+      "ManageEngine is NOT fully removed. Windows blocked: $($script:MeLeft -join ', '). $safeEn Then run this tool again and type Y. Safest option: back up data and reinstall Windows, and change every password from your phone." Red
 } elseif ($me -and $meRemove -and $Fix) {
   Say 'ManageEngine dah dibuang. Program ni bagi hacker control penuh PC ni, jadi paling selamat: backup data & pasang semula Windows, dan tukar semua password guna phone.' `
       'ManageEngine removed. It gave the attacker full control of this PC, so the safest option is to back up data and reinstall Windows, and change every password from your phone.' Yellow
