@@ -553,7 +553,7 @@ $lnSvc = (Select-String -LiteralPath $o2 -Pattern 'OK  Service: TNullFilter' | S
 $lnFile = (Select-String -LiteralPath $o2 -Pattern 'OK  File: .*wrdlv4\.exe' | Select-Object -First 1).LineNumber
 Check ($lnKill -and $lnSvc -and $lnFile -and $lnKill -lt $lnSvc -and $lnSvc -lt $lnFile) "Safe Mode pass order: kill, then switch off the service, then move files ($lnKill < $lnSvc < $lnFile)"
 Check (-not (Get-NetFirewallRule -DisplayName 'WAZip block IP-guard server*' -ErrorAction SilentlyContinue) -and -not (Select-String -LiteralPath $o2 -Pattern 'GAGAL sekat' -Quiet)) 'Safe Mode pass skips the firewall (it does not run there) with no GAGAL line'
-Check (((Get-Content -LiteralPath $roundFile -ErrorAction SilentlyContinue) -eq '2') -and (Select-String -LiteralPath $o2 -Pattern 'SEKALI LAGI' -Quiet)) 'IP-guard that was running in Safe Mode gets one more automatic Safe Mode round'
+Check (((Get-Content -LiteralPath $roundFile -ErrorAction SilentlyContinue) -eq '2') -and (Select-String -LiteralPath $o2 -Pattern 'SEKALI LAGI' -CaseSensitive -Quiet)) 'IP-guard that was running in Safe Mode gets one more automatic Safe Mode round'
 Remove-Item Env:\WAZIP_TEST_IPG_SAFE
 Remove-Item -LiteralPath $roundFile -ErrorAction SilentlyContinue
 $rI3 = Scan "$env:TEMP\xi3.json" -Owner Personal
@@ -567,13 +567,11 @@ $lk2 = [System.IO.File]::Open("$ocDir\OAgent.ini", 'Open', 'Read', 'Read')
 Remove-Item -LiteralPath (Join-Path $q 'BUANG.bat'), $roundFile -ErrorAction SilentlyContinue
 $env:WAZIP_TEST_IPG_SAFE = '1'
 $rI5 = Scan "$env:TEMP\xi5.json" -Owner Personal -Fix -Out "$env:TEMP\xi5.txt"
-Check (((Get-Content -LiteralPath $roundFile -ErrorAction SilentlyContinue) -eq '2') -and (Select-String -LiteralPath "$env:TEMP\xi5.txt" -Pattern 'SEKALI LAGI' -Quiet)) 'locked IP-guard file in Safe Mode schedules round 2'
+Check (((Get-Content -LiteralPath $roundFile -ErrorAction SilentlyContinue) -eq '2') -and (Select-String -LiteralPath "$env:TEMP\xi5.txt" -Pattern 'SEKALI LAGI' -CaseSensitive -Quiet)) 'locked IP-guard file in Safe Mode schedules round 2'
 $rI6 = Scan "$env:TEMP\xi6.json" -Owner Personal -Fix -Out "$env:TEMP\xi6.txt"
 Remove-Item Env:\WAZIP_TEST_IPG_SAFE
 $bat = Join-Path $q 'BUANG.bat'
-Check ((Test-Path -LiteralPath $bat) -and (Select-String -LiteralPath $bat -Pattern 'winoav3\.dll' -Quiet) -and -not (Select-String -LiteralPath "$env:TEMP\xi6.txt" -Pattern 'SEKALI LAGI' -Quiet)) 'after 2 Safe Mode rounds IP-guard goes to the recovery screen (BUANG.bat), no third round'
-Get-ChildItem -LiteralPath $q -File | ForEach-Object { Write-Host "  q: $($_.Name)" }
-if (Test-Path -LiteralPath $bat) { Get-Content -LiteralPath $bat | Select-Object -Last 25 | ForEach-Object { Write-Host "  bat: $_" } }
+Check ((Test-Path -LiteralPath $bat) -and (Select-String -LiteralPath $bat -Pattern 'winoav3\.dll' -Quiet) -and -not (Select-String -LiteralPath "$env:TEMP\xi6.txt" -Pattern 'SEKALI LAGI' -CaseSensitive -Quiet)) 'after 2 Safe Mode rounds IP-guard goes to the recovery screen (BUANG.bat), no third round'
 $lk1.Close(); $lk2.Close()
 Remove-Item -LiteralPath $ocDir -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath "$w64\winoav3.dll", $bat, $roundFile -Force -ErrorAction SilentlyContinue
