@@ -31,7 +31,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.05.4'
+$Version = '2026.11.05.5'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -1518,6 +1518,8 @@ if ($Fix -and $high.Count) {
   Say 'Seterusnya: RESTART PC, kemudian imbas sekali lagi.' 'Next: RESTART the PC, then scan again.' Cyan
 } elseif ($high.Count) {
   Say 'Untuk buang semua yang [HIGH] di atas, taip Y bila ditanya kat bawah (atau jalankan semula dengan -Fix / 2-CLEAN-BERSIH.bat).' 'To remove everything marked [HIGH], type Y when asked below (or run again with -Fix / 2-CLEAN-BERSIH.bat).' Cyan
+  # Users press Enter without Y, then type y at the PowerShell prompt (error). Show the command that still works.
+  if ($PSCommandPath) { Say "Terlepas soalan Y? Paste arahan ni dan Enter: powershell -ExecutionPolicy Bypass -File `"$PSCommandPath`" -Fix" "Missed the Y question? Paste this and press Enter: powershell -ExecutionPolicy Bypass -File `"$PSCommandPath`" -Fix" Cyan }
 } else {
   Say 'Cuma ada amaran, tiada apa yang tool ni akan buang. Baca amaran di atas.' 'Warnings only; nothing for this tool to remove. Read the warnings above.' Cyan
 }
@@ -1608,5 +1610,7 @@ if ($me -and $meRemove -and $Fix -and $script:MeLeft) {
       'ManageEngine found. If this is your own PC, run this tool again and answer 2 (personal); it will remove it. Or remove it yourself: (1) install Bulk Crap Uninstaller (free, bcuninstaller.com), find ManageEngine, right-click > Uninstall manually (normal uninstall asks for the attacker''s PIN); (2) open services.msc and set every ManageEngine service to Disabled; (3) open Task Scheduler and delete ManageEngine tasks; (4) restart and scan again. Safest: back up data and reinstall Windows.' Yellow
 }
 Stop-Transcript | Out-Null
+# Drop Enter presses typed during the scan so they do not answer the launcher's Y question.
+if (-not $Fix) { try { $Host.UI.RawUI.FlushInputBuffer() } catch {} }
 if ($high.Count) { exit 1 }
 exit 3
