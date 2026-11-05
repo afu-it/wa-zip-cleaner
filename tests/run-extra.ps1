@@ -16,7 +16,9 @@ function Scan($report, [switch]$Fix, [switch]$RemoveME, [string]$Owner, [string]
   if ($Fix) { $a += '-Fix' }
   if ($RemoveME) { $a += '-RemoveManageEngine' }
   if ($Owner) { $a += '-Owner', $Owner }
+  $t0 = Get-Date; Write-Host "--- scan start $($t0.ToString('HH:mm:ss')) $(Split-Path $report -Leaf) $($a[6..($a.Count-1)] -join ' ')" -ForegroundColor DarkCyan
   if ($Out) { & powershell @a 2>&1 | Tee-Object -FilePath $Out | Out-Host } else { & powershell @a | Out-Host }
+  Write-Host "--- scan end after $([int]((Get-Date) - $t0).TotalSeconds) s" -ForegroundColor DarkCyan
   $code = $LASTEXITCODE
   $items = @()
   if (Test-Path $report) { $parsed = Get-Content -Raw $report | ConvertFrom-Json; $items = @($parsed | ForEach-Object { $_ }) }
