@@ -32,7 +32,7 @@ Defender ni antivirus yang memang dah ada dalam Windows. Tak payah download apa-
 
 Defender tak semestinya tangkap malware ni, sebab malware ni guna program yang sah untuk tipu antivirus. Versi Oktober siap suruh Defender abaikan dia, jadi scan nampak bersih padahal tak. Tool ni cari kesan malware WhatsApp ni secara khusus, termasuk arahan "abaikan" tu, dan buang semua sekali.
 
-> **Hati-hati:** ada hacker yang suruh mangsa copy paste arahan dalam PowerShell untuk pasang malware. Jangan copy paste arahan dari orang yang anda tak kenal. Arahan bawah ni cuma ambil fail dari GitHub rasmi projek ni, dan code dia terbuka untuk sesiapa semak. Kalau ragu-ragu, tunjuk page ni kat orang IT yang anda percaya dan minta dia buat untuk anda.
+> **Hati-hati:** ada hacker yang suruh mangsa copy paste arahan dalam PowerShell untuk pasang malware. Jangan copy paste arahan dari orang yang anda tak kenal. Arahan bawah ni cuma ambil fail dari GitHub rasmi projek ni (`waz.afuit.dev` hantar terus ke fail [`run.ps1`](run.ps1) dalam repo ni), dan code dia terbuka untuk sesiapa semak. Kalau ragu-ragu, tunjuk page ni kat orang IT yang anda percaya dan minta dia buat untuk anda.
 
 **A. Buka tetingkap admin**
 
@@ -46,8 +46,16 @@ Defender tak semestinya tangkap malware ni, sebab malware ni guna program yang s
 5. Tekan butang **copy** kat hujung kanan kotak bawah ni (atau highlight semua tulisan dalam kotak, pastu tekan **Ctrl + C**):
 
 ```powershell
+irm waz.afuit.dev | iex
+```
+
+<details><summary>Arahan pendek tak jalan? Guna arahan panjang ni</summary>
+
+```powershell
 [Net.ServicePointManager]::SecurityProtocol="Tls12"; $p="$env:TEMP\waz.ps1"; iwr https://raw.githubusercontent.com/afu-it/wa-zip-cleaner/main/wa-zip-cleaner.ps1 -OutFile $p; powershell -ExecutionPolicy Bypass -File $p; if ($LASTEXITCODE -eq 1 -and (Read-Host "Taip Y dan Enter untuk bersihkan") -eq "Y") { powershell -ExecutionPolicy Bypass -File $p -Fix }
 ```
+
+</details>
 
 6. Klik sekali dalam tetingkap hitam/biru tadi. Tekan **Ctrl + V** (atau klik kanan) untuk paste.
 7. Tekan **Enter**.
