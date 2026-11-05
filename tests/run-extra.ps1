@@ -191,7 +191,7 @@ $repJob = Start-Job {
   $ctx = $l.GetContext()
   $ms = New-Object IO.MemoryStream; $ctx.Request.InputStream.CopyTo($ms); [IO.File]::WriteAllBytes($out, $ms.ToArray())
   $b = [Text.Encoding]::ASCII.GetBytes('{"id":"WAZ-TEST7"}')
-  $ctx.Response.ContentType = 'application/json'; $ctx.Response.OutputStream.Write($b, 0, $b.Length); $ctx.Response.Close(); $l.Stop()
+  $ctx.Response.ContentType = 'application/json'; $ctx.Response.ContentLength64 = $b.Length; $ctx.Response.OutputStream.Write($b, 0, $b.Length); $ctx.Response.Close(); $l.Stop()
 } -ArgumentList "$repDir\posted.zip"
 Start-Sleep 5
 $env:WAZIP_TEST_REPORT_DIR = $repDir

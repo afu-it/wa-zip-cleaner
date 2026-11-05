@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.05.22'
+$Version = '2026.11.05.23'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -1934,9 +1934,12 @@ function Send-WazReport([string]$zip) {
   try {
     [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
     $r = Invoke-WebRequest -Uri $ReportUrl -Method Post -InFile $zip -ContentType 'application/zip' -UseBasicParsing -TimeoutSec 60 -ErrorAction Stop
-    $id = [string]($r.Content | ConvertFrom-Json).id
-    if ($id -match '^WAZ-[A-Z0-9]{3,12}$') { return $id }
-  } catch {}
+    # Windows PowerShell 5.1 hands back application/json as bytes, not text.
+    $c = $r.Content
+    if ($c -is [byte[]]) { $c = [Text.Encoding]::UTF8.GetString($c) }
+    if ("$c" -match '"id"\s*:\s*"(WAZ-[A-Z0-9]{3,12})"') { return $Matches[1] }
+    if ($env:WAZIP_TEST_REPORT_DIR) { Write-Host "  (report inbox answer: $c)" -ForegroundColor DarkGray }
+  } catch { if ($env:WAZIP_TEST_REPORT_DIR) { Write-Host "  (report send error: $($_.Exception.Message))" -ForegroundColor DarkGray } }
   $null
 }
 function Invoke-ReportOffer {
