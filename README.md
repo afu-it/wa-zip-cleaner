@@ -94,10 +94,9 @@ Sesetengah bahagian ManageEngine (contoh `MEARWService`) ada pelindung diri. Mas
 
 Lepas taip `Y`, tool akan tanya:
 
-- **Taip `1`** (Safe Mode auto): PC restart ke Safe Mode, tool jalan sendiri, buang, lepas tu restart balik ke Windows biasa. Safe Mode minta **password** akaun Windows anda, bukan PIN. Kalau tak ingat password, pilih `2`.
-- **Taip `2`** (mod paksa): PC restart terus ke skrin biru pemulihan. Ikut langkah bawah.
+- **Taip `1`** (Safe Mode auto, disyorkan): PC restart ke Safe Mode, tool buang semua, lepas tu restart balik ke Windows biasa. **Jangan sentuh apa-apa.** Cuma taip **password** akaun Windows anda (bukan PIN) bila Safe Mode minta.
 
-**Langkah mod paksa (skrin biru pemulihan):**
+**Kalau Safe Mode pun tak cukup** (tool sendiri akan beritahu), ikut langkah skrin biru pemulihan ni:
 
 1. Sebelum restart, ambil gambar skrin tulisan merah tu guna phone.
 2. Kat skrin biru, klik **Troubleshoot** > **Advanced options** > **Command Prompt**.

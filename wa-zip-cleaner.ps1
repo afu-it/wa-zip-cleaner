@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.05.16'
+$Version = '2026.11.05.17'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -2080,7 +2080,7 @@ function Start-SafeAuto {
     if ($LASTEXITCODE) { throw 'bcdedit failed' }
   } catch {
     Remove-ItemProperty -LiteralPath $rk -Name '*WAZipSafeMode' -ErrorAction SilentlyContinue
-    Say 'Tak dapat sediakan Safe Mode auto. Guna pilihan 2 atau ikut arahan di atas.' 'Could not set up automatic Safe Mode. Use option 2 or follow the steps above.' Red
+    Say 'Tak dapat sediakan Safe Mode auto. Ikut arahan merah di atas (skrin biru pemulihan).' 'Could not set up automatic Safe Mode. Follow the red steps above (blue recovery screen).' Red
     return
   }
   $wait = if ($IpgPending) { 3 } else { 15 }
@@ -2103,27 +2103,20 @@ if ($SafeAuto) {
 } elseif ($blocked -and -not $env:WAZIP_NO_PROMPT) {
   Show-Head 'PAKSA BUANG' 'FORCE REMOVAL'
   Write-Host ''
-  Say 'Nak tool paksa buang? Pilih satu nombor:' 'Want the tool to force the removal? Pick a number:' White
+  Say 'Tool boleh paksa buang semua ni sendiri melalui Safe Mode. Kami syorkan pilihan 1.' 'The tool can force the removal by itself through Safe Mode. We recommend option 1.' White
   Write-Host ''
-  Say '  [1] Safe Mode auto: PC restart ke Safe Mode, tool jalan sendiri dan buang, kemudian restart ke Windows biasa. Safe Mode minta PASSWORD akaun Windows (bukan PIN), pastikan anda ingat.' `
-      '  [1] Automatic Safe Mode: the PC restarts into Safe Mode, the tool runs and removes by itself, then restarts into normal Windows. Safe Mode asks for your Windows PASSWORD (not PIN); make sure you know it.' White
-  if ($winreBat) {
-    Say '  [2] Mod paksa: PC restart terus ke skrin pemulihan, anda taip satu baris (arahan merah di atas; ambil gambar skrin dulu).' `
-        '  [2] Force mode: the PC restarts straight into the recovery screen and you type one line (red steps above; take a photo first).' White
-  }
-  Say '  [Enter] Buat sendiri nanti.' '  [Enter] Do it yourself later.' White
+  Say '  [1] Safe Mode auto (DISYORKAN): PC restart ke Safe Mode, tool buang semua, kemudian restart ke Windows biasa.' `
+      '  [1] Automatic Safe Mode (RECOMMENDED): the PC restarts into Safe Mode, the tool removes everything, then restarts into normal Windows.' White
+  Write-Host ''
+  Say 'Lepas taip 1: JANGAN SENTUH APA-APA. Cuma taip PASSWORD akaun Windows (bukan PIN) bila Safe Mode minta. Tool akan buat dan restart semua sendiri.' `
+      'After typing 1: DO NOT TOUCH ANYTHING. Only type your Windows account PASSWORD (not PIN) when Safe Mode asks. The tool does everything and restarts by itself.' Yellow
   Write-Host $Rule -ForegroundColor DarkCyan
   Write-Host ''
   # Enter presses typed during the scan would answer this at once and skip the choice (user report, Nov 2026).
   try { $Host.UI.RawUI.FlushInputBuffer() } catch {}
-  Write-Host '  Pilihan anda [1,2,Enter] : ' -ForegroundColor Green -NoNewline
+  Write-Host '  Taip 1 dan Enter : ' -ForegroundColor Green -NoNewline
   $ans = ([string](Read-Host)).Trim()
   if ($ans -eq '1') { Start-SafeAuto }
-  elseif ($ans -eq '2' -and $winreBat) {
-    & shutdown.exe /r /o /f /t 10
-    if ($LASTEXITCODE) { Say 'Tak dapat restart ke skrin pemulihan. Ikut arahan merah di atas.' 'Could not restart into the recovery screen. Follow the red steps above.' Red }
-    else { Say 'PC akan restart ke skrin pemulihan dalam 10 saat.' 'The PC restarts into the recovery screen in 10 seconds.' Yellow }
-  }
 }
 Stop-Transcript | Out-Null
 # Drop Enter presses typed during the scan so they do not answer the launcher's Y question.

@@ -96,10 +96,9 @@ Some ManageEngine parts (for example `MEARWService`) protect themselves. While W
 
 After you type `Y`, the tool asks you to pick:
 
-- **Type `1`** (automatic Safe Mode): the PC restarts into Safe Mode, the tool runs and removes by itself, then restarts into normal Windows. Safe Mode asks for your Windows account **password**, not the PIN. If you do not remember the password, pick `2`.
-- **Type `2`** (force mode): the PC restarts straight into the blue recovery screen. Follow the steps below.
+- **Type `1`** (automatic Safe Mode, recommended): the PC restarts into Safe Mode, the tool removes everything, then restarts into normal Windows. **Do not touch anything.** Only type your Windows account **password** (not PIN) when Safe Mode asks.
 
-**Force mode steps (blue recovery screen):**
+**If Safe Mode is not enough** (the tool tells you), follow these blue recovery screen steps:
 
 1. Before the restart, take a photo of the red text with your phone.
 2. On the blue screen, click **Troubleshoot** > **Advanced options** > **Command Prompt**.
