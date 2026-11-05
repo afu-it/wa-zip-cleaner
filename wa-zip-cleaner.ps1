@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.05.23'
+$Version = '2026.11.05.24'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -2021,9 +2021,9 @@ Invoke-Step 1 'Program yang sedang berjalan' { Scan-Processes }
 Invoke-Step 2 'Cakera maya (VHD, ISO)' { Scan-Vhd }
 Invoke-Step 3 'Registry' { Scan-Registry }
 Invoke-Step 4 'Driver & servis' { Scan-Services }
-Invoke-Step 5 'Program auto-jalan' { Scan-Persistence }
+Invoke-Step 5 'Auto-jalan & pengecualian antivirus' { Scan-Persistence }
 Invoke-Step 6 'Fail (2-10 minit)' { Scan-Files }
-Invoke-Step 7 'Program kawalan jauh' { Scan-ManageEngine }
+Invoke-Step 7 'Kawalan jauh & tetapan keselamatan' { Scan-ManageEngine }
 Invoke-Step 8 'Browser' { Scan-Browsers }
 
 # ManageEngine: a personal PC should never have it, an office PC often does.
