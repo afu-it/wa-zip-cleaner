@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.05.18'
+$Version = '2026.11.05.19'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -1218,6 +1218,11 @@ $IpgPending = $false
 $IpgParts = $null
 $IpgSip = $null
 $IpgNetLeft = @()
+$IpgWasRunning = $false
+$IpgFail = @()
+$IpgAgain = $false
+$IpgBlocked = $false
+$IpgSysSvc = @{}
 
 function Test-MicrosoftSigned([string]$p) {
   $s = Get-AuthenticodeSignature -LiteralPath $p -ErrorAction SilentlyContinue
@@ -1309,6 +1314,8 @@ function Add-IpGuardRemoval {
   if (-not ($SafeAuto -or $env:WAZIP_TEST_IPG_SAFE)) { $script:IpgPending = $true; return }
   $keep = @()
   foreach ($s in $parts.Services) {
+    $img = Resolve-ImagePath ([string](Get-ItemProperty -LiteralPath $s.RegPath -ErrorAction SilentlyContinue).ImagePath)
+    if ($img) { $script:IpgSysSvc[([string]($img -split '\\')[-1]).ToLower()] = $s.RegPath }
     if ($IpgNetSvc.ContainsKey($s.Name)) { $keep += $IpgNetSvc[$s.Name] -split ' '; $script:IpgNetLeft += $s.Name; continue }
     Add-Finding 'Service' 'HIGH' $s.Name 'IP-guard service' @{ RegPath = $s.RegPath; Image = ''; Disable = $true }
   }
@@ -1319,6 +1326,26 @@ function Add-IpGuardRemoval {
 }
 function Remove-IpgSafeBoot {
   foreach ($k in @(Get-IpgSafeBootKeys @($script:IpgParts.Services | ForEach-Object { $_.Name }))) { Remove-Item -LiteralPath $k -Recurse -Force -ErrorAction SilentlyContinue }
+}
+# Safe Mode pass: IP-guard can still be running there if it got back into the Safe Mode list (User D, Nov 2026).
+# Stop its services and kill its programs before anything else, or it keeps its files locked and switches its
+# services back on before the restart.
+function Stop-IpGuardProcs {
+  $files = @($script:IpgParts.Files)
+  foreach ($try in 1..5) {
+    foreach ($s in $script:IpgParts.Services) {
+      $svc = Get-Service -Name $s.Name -ErrorAction SilentlyContinue
+      if ($svc -and $svc.Status -eq 'Running' -and [string]$svc.ServiceType -notmatch 'Driver') { & sc.exe stop $s.Name | Out-Null; $script:IpgWasRunning = $true }
+    }
+    $procs = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $p = [string]$_.ExecutablePath; $p -and ($files -contains $p -or $p -match '(?i)\\Ocular\\') })
+    if (-not $procs.Count) { break }
+    $script:IpgWasRunning = $true
+    foreach ($p in $procs) {
+      try { Stop-Process -Id $p.ProcessId -Force -ErrorAction Stop; Say "  OK  IP-guard dihentikan: $($p.Name) (PID $($p.ProcessId))" "  OK  IP-guard stopped: $($p.Name) (PID $($p.ProcessId))" Green }
+      catch { Say "  GAGAL hentikan IP-guard $($p.Name) (PID $($p.ProcessId)): $($_.Exception.Message)" "  FAILED to stop IP-guard $($p.Name)" Red }
+    }
+    Start-Sleep -Milliseconds 300
+  }
 }
 
 # Netresec (Jun 2026): a WhatsApp VBS variant installs the Ping32 monitoring agent (NSecRTS.exe) instead of ManageEngine.
@@ -1575,6 +1602,9 @@ function Invoke-Fix($qdir) {
   $i = 0
   $closed = $false
   $exclScan = @()
+  $ipgSafe = ($SafeAuto -or $env:WAZIP_TEST_IPG_SAFE) -and $script:IpgParts -and -not $script:IpgPending -and -not $script:IpgNoAuto
+  if ($ipgSafe) { Stop-IpGuardProcs }
+  $ipgSwept = $false
   # Files inside a flagged folder go before the folder itself.
   foreach ($f in $Findings | Sort-Object { @('Process', 'WaSession', 'Vhd', 'Task', 'Wmi', 'DefExcl', 'RegValue', 'Service', 'RegKey', 'Cert', 'WinRE', 'File').IndexOf($_.Kind) }, { -([string]$_.Target).Length }) {
     if ($f.Severity -ne 'HIGH' -or $f.Kind -eq 'Info') { continue }
@@ -1682,7 +1712,10 @@ function Invoke-Fix($qdir) {
           $reg = Join-Path $qdir "reg-$i.reg"
           & reg.exe export (ConvertTo-RegExePath $f.Extra.RegPath) $reg /y | Out-Null
           # IP-guard: switch it off first, so it stays off even if the delete is refused.
-          if ($f.Extra.Disable) { Set-ItemProperty -LiteralPath $f.Extra.RegPath -Name Start -Value 4 -Type DWord -ErrorAction SilentlyContinue }
+          if ($f.Extra.Disable) {
+            Set-ItemProperty -LiteralPath $f.Extra.RegPath -Name Start -Value 4 -Type DWord -ErrorAction Stop
+            if ((Get-ItemProperty -LiteralPath $f.Extra.RegPath -ErrorAction SilentlyContinue).Start -ne 4) { throw 'could not switch it off (Start=4)' }
+          }
           & sc.exe stop $f.Target | Out-Null
           & sc.exe delete $f.Target | Out-Null
           # 1072 = already marked for deletion. Anything else: drop the registry entry so it is gone after a restart.
@@ -1698,6 +1731,12 @@ function Invoke-Fix($qdir) {
         'File' {
           # A disk image still open as a drive cannot be moved.
           if ($f.Target -match '(?i)\.(img|iso|vhdx?)$') { Dismount-DiskImage -ImagePath $f.Target -ErrorAction SilentlyContinue | Out-Null }
+          if ($f.Detail -eq 'IP-guard file') {
+            if ($ipgSafe -and -not $ipgSwept) { Stop-IpGuardProcs; $ipgSwept = $true }
+            # Never take away a driver Windows still loads at start-up: only once its service is Start=4.
+            $sr = $script:IpgSysSvc[([string](Split-Path $f.Target -Leaf)).ToLower()]
+            if ($sr -and (Test-Path -LiteralPath $sr) -and (Get-ItemProperty -LiteralPath $sr -ErrorAction SilentlyContinue).Start -ne 4) { throw 'its driver service is still switched on, so the file stays (Windows must still start)' }
+          }
           $dest = Join-Path $qdir ("file-$i-" + (Split-Path $f.Target -Leaf) + '.quarantine')
           Move-Item -LiteralPath $f.Target -Destination $dest -Force -ErrorAction Stop
           $log.Add(@{ Kind = 'File'; Target = $f.Target; Backup = $dest })
@@ -1707,6 +1746,7 @@ function Invoke-Fix($qdir) {
     } catch {
       if ($f.Detail -match 'ManageEngine') { $script:MeLeft += $f.Target }
       if ($f.Kind -eq 'File') { $script:FileLeft += $f.Target }
+      if ($f.Detail -match '^IP-guard (file|service)$') { $script:IpgFail += $f.Target }
       Say "  GAGAL $($f.Kind): $($f.Target) - $($_.Exception.Message) (cuba restart & jalankan semula)" "  FAILED $($f.Kind): $($f.Target) (restart and run again)" Red
     }
   }
@@ -1745,7 +1785,9 @@ function Invoke-Fix($qdir) {
     } catch { Say "  GAGAL hidupkan semula UAC: $($_.Exception.Message)" '  FAILED to turn UAC back on.' Red }
   }
   # IP-guard: block its server range at once (in and out), so nothing more leaves the PC before it is removed.
-  if ($script:IpgHigh) {
+  # The firewall service does not run in Safe Mode; the normal-Windows pass already blocked the server.
+  $fwOn = ((Get-Service MpsSvc -ErrorAction SilentlyContinue).Status -eq 'Running') -and ((Get-Service BFE -ErrorAction SilentlyContinue).Status -eq 'Running')
+  if ($script:IpgHigh -and $fwOn -and -not ($SafeAuto -or $env:WAZIP_TEST_IPG_SAFE)) {
     $addr = @('27.124.41.0/24') + @($script:IpgSip | Where-Object { $_ -and $_ -notlike '27.124.41.*' })
     foreach ($dir in 'Outbound', 'Inbound') {
       $rn = "WAZip block IP-guard server ($dir)"
@@ -1943,17 +1985,39 @@ if (-not $infected.Count -and ($Findings | Where-Object { $_.Kind -eq 'Info' -an
   Say 'AWAS: Windows Defender jumpa trojan di PC ni (lihat "Defender detected" di atas). Defender cuma buang fail tu; program yang muatkan dia mungkin masih ada. Tukar kata laluan bank & emel guna telefon, log keluar WhatsApp Web (Peranti dipaut > Log keluar semua), dan hantar screenshot folder dalam amaran tu kepada orang yang bantu anda. Paling selamat: backup data dan format PC.' `
       'WARNING: Windows Defender found a trojan on this PC (see "Defender detected" above). Defender only removed that file; the program that loaded it may still be there. Change bank and email passwords from your phone, log out WhatsApp Web (Linked devices > Log out all), and send a screenshot of the folder in that warning to whoever is helping you. Safest: back up data and reinstall Windows.' Red
 }
+# IP-guard Safe Mode pass: if it kept anything, switched a service back on, or was running at all, it fought back.
+# One more automatic Safe Mode round (its services are off now), then the recovery screen (BUANG.bat).
+$IpgRoundFile = Join-Path $QuarantineRoot 'ipguard-safe-round.txt'
+if ($Fix -and ($SafeAuto -or $env:WAZIP_TEST_IPG_SAFE)) {
+  if ($IpgParts -and $IpgHigh -and -not $IpgNoAuto -and -not $IpgPending) {
+    $rev = @($IpgParts.Services | Where-Object { $IpgNetLeft -notcontains $_.Name } | Where-Object { $pr = Get-ItemProperty -LiteralPath $_.RegPath -ErrorAction SilentlyContinue; $pr -and $pr.Start -ne 4 } | ForEach-Object { $_.Name })
+    $ipgLeftAll = @(@($IpgFail) + $rev | Select-Object -Unique)
+    if ($ipgLeftAll.Count -or $IpgWasRunning) {
+      $round = 1
+      try { $round = [int](Get-Content -LiteralPath $IpgRoundFile -ErrorAction Stop | Select-Object -First 1) } catch {}
+      if ($round -lt 2) {
+        Set-Content -LiteralPath $IpgRoundFile -Value 2
+        $IpgAgain = $true
+        Say 'IP-guard masih melawan dalam Safe Mode. Servis dia dah dimatikan, jadi PC akan masuk Safe Mode SEKALI LAGI untuk habiskan kerja. Taip PASSWORD Windows sekali lagi bila diminta, dan jangan sentuh apa-apa.' `
+            'IP-guard still fought back in Safe Mode. Its services are off now, so the PC goes into Safe Mode ONE MORE TIME to finish. Type your Windows PASSWORD again when asked and do not touch anything.' Yellow
+      } elseif ($ipgLeftAll.Count) {
+        $IpgBlocked = $true
+        Say "IP-guard masih tak habis selepas 2 kali Safe Mode: $($ipgLeftAll -join ', ')." "IP-guard is still not fully removed after 2 Safe Mode rounds: $($ipgLeftAll -join ', ')." Red
+      } else { Remove-Item -LiteralPath $IpgRoundFile -ErrorAction SilentlyContinue }
+    } else { Remove-Item -LiteralPath $IpgRoundFile -ErrorAction SilentlyContinue }
+  } elseif (-not $IpgHigh) { Remove-Item -LiteralPath $IpgRoundFile -ErrorAction SilentlyContinue }
+}
 # Self-protected leftovers (ManageEngine MEARWService) block even Safe Mode. Write BUANG.bat for the
 # Windows recovery Command Prompt: there the infected Windows is not running, so nothing can block it.
 # It backs up and disables the blocked services in the offline registry and moves the blocked folders.
 $winreBat = $null
 # IP-guard waiting for Safe Mode: offline its services and files too (network filters only once netcfg unbound them).
 $ipgSvcOff = @(); $ipgFileOff = @()
-if ($Fix -and $IpgPending) {
+if ($Fix -and ($IpgPending -or $IpgBlocked)) {
   $netLeft = @($IpgNetSvc.Keys | Where-Object { Test-Path -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\$_" })
-  $ipgSvcOff = @($IpgParts.Services | ForEach-Object { $_.Name } | Where-Object { $netLeft -notcontains $_ })
+  $ipgSvcOff = @($IpgParts.Services | ForEach-Object { $_.Name } | Where-Object { $netLeft -notcontains $_ -and (Test-Path -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\$_") })
   $skip = @($netLeft | ForEach-Object { $IpgNetSvc[$_] -split ' ' })
-  $ipgFileOff = @($IpgParts.Files | Where-Object { $skip -notcontains (Split-Path $_ -Leaf) })
+  $ipgFileOff = @($IpgParts.Files | Where-Object { $skip -notcontains (Split-Path $_ -Leaf) -and (Test-Path -LiteralPath $_) })
 }
 if ($Fix -and ($script:SvcLeft -or $script:MeLeft -or $ipgSvcOff -or $ipgFileOff)) {
   try {
@@ -2050,7 +2114,7 @@ if ($Findings | Where-Object { $_.Target -match '^IP-guard' -and $_.Severity -eq
     Say 'IP-guard (program pengintip) dijumpai. Dia rakam skrin, apa yang ditaip, emel dan internet, dan salah satu driver dia melekat pada peranti PC, jadi tool ni TAK buang dia sendiri. Cabut internet PC ni sekarang, backup dokumen (pastikan boleh dibuka di PC lain dulu), kemudian pasang semula Windows atau minta orang IT buang dia.' `
         'IP-guard (a spy program) was found. It records the screen, typing, email and internet traffic, and one of its drivers is attached to a device, so this tool does NOT remove it by itself. Disconnect this PC from the internet now, back up your documents (check they open on another PC first), then reinstall Windows or ask an IT person to remove it.' Red
   } elseif ($SafeAuto -or $env:WAZIP_TEST_IPG_SAFE) {
-    if ($Fix) {
+    if ($Fix -and -not ($IpgAgain -or $IpgBlocked)) {
       Say 'IP-guard (program pengintip) dah dibuang. Lepas PC buka semula, buka 3 atau 4 dokumen lama (Word, Excel, PDF) untuk pastikan isinya normal. Kalau isinya bercelaru, jalankan 3-RESTORE-PULIH.bat dengan manifest di atas dan hubungi orang IT.' `
           'IP-guard (spy program) removed. When the PC is back, open 3 or 4 old documents (Word, Excel, PDF) to check they read fine. If they look scrambled, run 3-RESTORE-PULIH.bat with the manifest above and contact an IT person.' Yellow
       if ($IpgNetLeft) { Say "Penapis rangkaian IP-guard masih ada: $($IpgNetLeft -join ', '). Jalankan tool ni sekali lagi dalam Windows biasa dan taip Y." "IP-guard network filter still installed: $($IpgNetLeft -join ', '). Run this tool again in normal Windows and type Y." Yellow }
@@ -2072,8 +2136,7 @@ function Start-SafeAuto {
     $cmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$copy`" -SafeAuto -Fix"
     if ($meRemove) { $cmd += ' -RemoveManageEngine' }
     if ($Owner) { $cmd += " -Owner $Owner" }
-    # IP-guard puts itself back in the Safe Mode list within seconds; take it out again just before the restart.
-    if ($IpgPending) { Remove-IpgSafeBoot }
+    if ($IpgPending) { Set-Content -LiteralPath (Join-Path $QuarantineRoot 'ipguard-safe-round.txt') -Value 1 -ErrorAction SilentlyContinue }
     # A leading * makes RunOnce run in Safe Mode too.
     Set-ItemProperty -LiteralPath $rk -Name '*WAZipSafeMode' -Value $cmd -ErrorAction Stop
     & bcdedit.exe /set '{current}' safeboot minimal | Out-Null
@@ -2083,13 +2146,22 @@ function Start-SafeAuto {
     Say 'Tak dapat sediakan Safe Mode auto. Ikut arahan merah di atas (skrin biru pemulihan).' 'Could not set up automatic Safe Mode. Follow the red steps above (blue recovery screen).' Red
     return
   }
-  $wait = if ($IpgPending) { 3 } else { 15 }
+  $ipg = $IpgPending -or $IpgAgain
+  $wait = if ($ipg) { 0 } else { 15 }
   Say "PC akan restart ke Safe Mode dalam $wait saat. Log masuk guna PASSWORD akaun Windows (bukan PIN). Tool akan jalan sendiri, kemudian restart ke Windows biasa. Kalau tersangkut dalam Safe Mode: skrin pemulihan > Troubleshoot > Advanced options > Command Prompt, taip bcdedit /deletevalue {default} safeboot dan Enter." `
       "The PC restarts into Safe Mode in $wait seconds. Sign in with your Windows account PASSWORD (not PIN). The tool runs by itself, then restarts into normal Windows. If stuck in Safe Mode: recovery screen > Troubleshoot > Advanced options > Command Prompt, type bcdedit /deletevalue {default} safeboot and press Enter." Yellow
-  & shutdown.exe /r /f /t $wait
+  if (-not $ipg) { & shutdown.exe /r /f /t $wait; return }
+  # IP-guard puts itself back in the Safe Mode list within seconds (User D, Nov 2026): take it out, restart at once,
+  # and keep taking it out while Windows shuts down.
+  Remove-IpgSafeBoot
+  & shutdown.exe /r /f /t 0
+  $end = (Get-Date).AddSeconds(10)
+  while ((Get-Date) -lt $end) { Remove-IpgSafeBoot; Start-Sleep -Milliseconds 100 }
 }
-$blocked = $Fix -and ($script:SvcLeft -or $script:MeLeft -or $IpgPending)
-if ($SafeAuto) {
+$blocked = $Fix -and ($script:SvcLeft -or $script:MeLeft -or $IpgPending -or $IpgBlocked)
+if ($SafeAuto -and $IpgAgain) {
+  Start-SafeAuto
+} elseif ($SafeAuto) {
   Write-Host ''
   if ($blocked -and $winreBat) {
     Say "Safe Mode pun tak cukup. AMBIL GAMBAR SKRIN NI. Lepas restart: Troubleshoot > Advanced options > Command Prompt, taip $winreBat dan Enter (kalau tak jumpa, tukar C: kepada D:). Lepas siap, taip exit, pilih Continue, dan jalankan tool ni sekali lagi." `

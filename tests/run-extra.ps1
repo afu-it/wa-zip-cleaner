@@ -11,12 +11,12 @@ Get-MpComputerStatus -ErrorAction SilentlyContinue | Format-List RealTimeProtect
 function Check($ok, $msg) {
   if ($ok) { Write-Host "PASS $msg" -ForegroundColor Green } else { Write-Host "FAIL $msg" -ForegroundColor Red; $script:fail++ }
 }
-function Scan($report, [switch]$Fix, [switch]$RemoveME, [string]$Owner) {
+function Scan($report, [switch]$Fix, [switch]$RemoveME, [string]$Owner, [string]$Out) {
   $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $tool, '-QuarantineRoot', $q, '-ReportPath', $report)
   if ($Fix) { $a += '-Fix' }
   if ($RemoveME) { $a += '-RemoveManageEngine' }
   if ($Owner) { $a += '-Owner', $Owner }
-  & powershell @a | Out-Host
+  if ($Out) { & powershell @a 2>&1 | Tee-Object -FilePath $Out | Out-Host } else { & powershell @a | Out-Host }
   $code = $LASTEXITCODE
   $items = @()
   if (Test-Path $report) { $parsed = Get-Content -Raw $report | ConvertFrom-Json; $items = @($parsed | ForEach-Object { $_ }) }
@@ -534,15 +534,47 @@ Check (Has $rI1 'Info' 'HIGH' '^IP-guard' 'Safe Mode') 'IP-guard finding says it
 Check ([bool](Get-NetFirewallRule -DisplayName 'WAZip block IP-guard server (Outbound)' -ErrorAction SilentlyContinue)) 'online -Fix blocks the IP-guard server range'
 Check (-not (Test-Path -LiteralPath $sbk)) 'online -Fix removes IP-guard from the Safe Mode start list'
 Check ((Test-Path -LiteralPath "$w64\winoav3.dll") -and (Test-Path -LiteralPath 'HKLM:\SYSTEM\CurrentControlSet\Services\TNullFilter')) 'online -Fix leaves IP-guard files and services for Safe Mode'
+# A running IP-guard program (unsigned stand-in that only sleeps) keeps its file locked, as on User D's PC.
+Add-Type -TypeDefinition 'public static class WazIpgStub { public static void Main() { System.Threading.Thread.Sleep(600000); } }' -OutputType ConsoleApplication -OutputAssembly "$w64\wrdlv4.exe"
+$stub = Start-Process -FilePath "$w64\wrdlv4.exe" -WindowStyle Hidden -PassThru
+Get-NetFirewallRule -DisplayName 'WAZip block IP-guard server*' -ErrorAction SilentlyContinue | Remove-NetFirewallRule
+$roundFile = Join-Path $q 'ipguard-safe-round.txt'
+Remove-Item -LiteralPath $roundFile -ErrorAction SilentlyContinue
 $env:WAZIP_TEST_IPG_SAFE = '1'
-$rI2 = Scan "$env:TEMP\xi2.json" -Owner Personal -Fix
+$o2 = "$env:TEMP\xi2.txt"
+$rI2 = Scan "$env:TEMP\xi2.json" -Owner Personal -Fix -Out $o2
 Check (Has $rI2 'Service' 'HIGH' '^TNullFilter$' 'IP-guard') 'Safe Mode pass lists the IP-guard driver service'
 Check (-not (Test-Path -LiteralPath "$w64\winoav3.dll") -and -not (Test-Path -LiteralPath "$drvDirI\TNullFilter.sys") -and -not (Test-Path -LiteralPath $ocDir)) 'Safe Mode pass quarantines IP-guard files and folders'
 $tn = Get-ItemProperty -LiteralPath 'HKLM:\SYSTEM\CurrentControlSet\Services\TNullFilter' -ErrorAction SilentlyContinue
 Check (-not $tn -or $tn.DeleteFlag -eq 1) 'Safe Mode pass deletes the IP-guard driver service'
+Check ($stub.HasExited -and -not (Test-Path -LiteralPath "$w64\wrdlv4.exe")) 'Safe Mode pass kills the running IP-guard program and quarantines it'
+$lnKill = (Select-String -LiteralPath $o2 -Pattern 'OK  IP-guard (dihentikan|stopped): wrdlv4' | Select-Object -First 1).LineNumber
+$lnSvc = (Select-String -LiteralPath $o2 -Pattern 'OK  Service: TNullFilter' | Select-Object -First 1).LineNumber
+$lnFile = (Select-String -LiteralPath $o2 -Pattern 'OK  File: .*wrdlv4\.exe' | Select-Object -First 1).LineNumber
+Check ($lnKill -and $lnSvc -and $lnFile -and $lnKill -lt $lnSvc -and $lnSvc -lt $lnFile) "Safe Mode pass order: kill, then switch off the service, then move files ($lnKill < $lnSvc < $lnFile)"
+Check (-not (Get-NetFirewallRule -DisplayName 'WAZip block IP-guard server*' -ErrorAction SilentlyContinue) -and -not (Select-String -LiteralPath $o2 -Pattern 'GAGAL sekat' -Quiet)) 'Safe Mode pass skips the firewall (it does not run there) with no GAGAL line'
+Check (((Get-Content -LiteralPath $roundFile -ErrorAction SilentlyContinue) -eq '2') -and (Select-String -LiteralPath $o2 -Pattern 'SEKALI LAGI' -Quiet)) 'IP-guard that was running in Safe Mode gets one more automatic Safe Mode round'
 Remove-Item Env:\WAZIP_TEST_IPG_SAFE
+Remove-Item -LiteralPath $roundFile -ErrorAction SilentlyContinue
 $rI3 = Scan "$env:TEMP\xi3.json" -Owner Personal
 Check (-not ($rI3.All | Where-Object { $_.Target -match '^IP-guard' })) 'no IP-guard left after the Safe Mode pass'
+# IP-guard keeps a file locked in Safe Mode: round 2, then the recovery screen (BUANG.bat) - never a third loop.
+New-Item -ItemType Directory -Force -Path $ocDir | Out-Null
+Set-Content -LiteralPath "$ocDir\OAgent.ini" -Value '[AgentConfig]', 'SIP=B6297C1B' -Encoding ASCII
+Set-Content -LiteralPath "$w64\winoav3.dll" 'dummy'
+$lk1 = [System.IO.File]::Open("$w64\winoav3.dll", 'Open', 'Read', 'Read')
+$lk2 = [System.IO.File]::Open("$ocDir\OAgent.ini", 'Open', 'Read', 'Read')
+Remove-Item -LiteralPath (Join-Path $q 'BUANG.bat'), $roundFile -ErrorAction SilentlyContinue
+$env:WAZIP_TEST_IPG_SAFE = '1'
+$rI5 = Scan "$env:TEMP\xi5.json" -Owner Personal -Fix -Out "$env:TEMP\xi5.txt"
+Check (((Get-Content -LiteralPath $roundFile -ErrorAction SilentlyContinue) -eq '2') -and (Select-String -LiteralPath "$env:TEMP\xi5.txt" -Pattern 'SEKALI LAGI' -Quiet)) 'locked IP-guard file in Safe Mode schedules round 2'
+$rI6 = Scan "$env:TEMP\xi6.json" -Owner Personal -Fix -Out "$env:TEMP\xi6.txt"
+Remove-Item Env:\WAZIP_TEST_IPG_SAFE
+$bat = Join-Path $q 'BUANG.bat'
+Check ((Test-Path -LiteralPath $bat) -and (Select-String -LiteralPath $bat -Pattern 'winoav3\.dll' -Quiet) -and -not (Select-String -LiteralPath "$env:TEMP\xi6.txt" -Pattern 'SEKALI LAGI' -Quiet)) 'after 2 Safe Mode rounds IP-guard goes to the recovery screen (BUANG.bat), no third round'
+$lk1.Close(); $lk2.Close()
+Remove-Item -LiteralPath $ocDir -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath "$w64\winoav3.dll", $bat, $roundFile -Force -ErrorAction SilentlyContinue
 # Office PC with a company server: a warning only, nothing removed even in Safe Mode.
 Get-NetFirewallRule -DisplayName 'WAZip block IP-guard server*' -ErrorAction SilentlyContinue | Remove-NetFirewallRule
 New-Item -ItemType Directory -Force -Path $ocDir | Out-Null
