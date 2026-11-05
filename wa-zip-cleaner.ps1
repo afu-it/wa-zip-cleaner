@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.05.24'
+$Version = '2026.11.05.25'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -318,7 +318,7 @@ if ($env:WAZIP_TEST_IOCS -and (Test-Path -LiteralPath $env:WAZIP_TEST_IOCS)) {
   }
 }
 $PersistRegex ='\\Explorer\\thumbcache_[^\\]+\\|\\Microsoft\\DeviceSync\\[^\\]+\.exe|\\(Roaming|Local)\\Overlord\\|\bovd_[0-9a-f]{12}\.exe|\\Users\\Public\\Libraries\\.+\.(exe|dll)|\\AppData\\Local\\[0-9A-F]{16}\\|\\AppData\\Roaming\\Microsoft\\Windows\\System\\[^\\]+\.exe|rime\.dll|_vmclientcore@16|KafanInput|vcRuntimeMinimum_x86\.exe|\\H\d{8,}\.exe|ZyArk|\\ardrv\.sys|\\AppData\\Roaming\\Microsoft\\Update\\[^\\]+\.exe|active_desktop_(launcher|render)|Add-MpPreference|eneio64\.dat|plcc3a\.dat|-m\s+appclient|\\appclient\\python\\|HealthApp-[0-9a-f]{6}\.bat|\\ProgramData\\MicroPoint\\|WinCombo\.exe|CRClient\.dll|\\Toolkit\\winhttp\.dll|webview2_integration\.exe|encrashrep\.dll|\\ProgramData\\WindowsData\\|ExceptCatch\.dll|\\QNWallpaper\\|\\msvc-rt14\\|NtHandleCallback\.exe|\\(XiaoH|rwdriver|kabuto)\.sys'
-$LureRegex    = '^(Click here to view.*\.(zip|vhd|vhdx)|Notice.*\.vhdx?|(PDF|DOC)_[A-Z0-9-]{3,8}_20\d{12}\.(zip|img|iso|exe|vhd|vhdx)|20\d{6}[.-]MYS20\d{2}Y\d{4}[A-Z0-9]{4,6}\.(zip|img|iso|vhd|vhdx)|(RES-20\d{6}_\d{6}|ORCAMENTO_\d{6}|COMPROVANTE_20\d{6}_\d{6}|ComprovanteSantander-[\d.]+|NEW-20\d{6}_\d{6}-PED_[0-9A-F]+|DOC-\d{8}_[0-9A-F]{8})\.(zip|lnk)|20\d{12}-[0-9A-F]{14}\.zip|SENARAI ?DOKUMEN.*\.zip|.+\.(vhdx?|img|iso)\.zip|LHDN.*\.(iso|img|vhdx?)|Open_to_view.*\.(iso|img)|TAX_[A-Za-z0-9]{6,}\.img(\.zip)?|SSM-\d+\.img(\.zip)?|20\d{6}[0-9A-F]{8}\.(zip|exe|img|iso|vhd|vhdx)|20\d{6}_\d{6}_\d{4}\.(zip|img|iso|vhd|vhdx)|Financial_Report_20\d{6}_PDF\.\d+\.(zip|exe|img|iso|vhdx?)|\d{14}(\.[0-9A-F]{3})?\.(img|iso|vhdx?)|[A-Z.]{3,9}[.-]Number[.-]20\d{10,12}\.(img\d?|iso|vhdx?)|(IMPS|UTR|TWV)_\d{3,4}-\d{1,2}-20\d{2}\d*(\.[0-9A-F]{3})?\.(img|iso|vhdx?)|20\d{12}\.[0-9A-F]{12}\.zip|SOA\d*\.(img|iso|vhdx?)|E-statement\d*\.(img|iso|vhdx?)|RT\d{10}\.\d{3}\.img|.*_[CD]\d{10}(_.*)?\.(zip|exe|img|iso|vhdx?)|Notis_Penalti_\w+\.(zip|exe)|TBK[-_]?\d{4,8}(_\d+)?\.(zip|exe)|SENARAI DOKUMEN\d*\.(zip|exe)|MyInvois_e-Invoice_INV\d+\w*\.(zip|exe)|e-Invoice_INV\d+_.+_Validated[\w-]*\.(zip|exe)|(TDS_Penalty_S\d+\w*_PAN_|GST_Non_Filing_Notice_|ITR_Scrutiny_\d+_Notice_PAN_).*\.(zip|exe|img|iso|vhdx?)|Common_Offline_Utility_ITR-.*\.(img|iso|vhdx?)|\u6240\u5F97\u7A0E.*\u7D0D\u7A0E\u901A\u77E5\u66F8\d*\.(zip|exe))$'
+$LureRegex    = '^(Click here to view.*\.(zip|vhd|vhdx)|Notice.*\.vhdx?|(PDF|DOC)_[A-Z0-9-]{3,8}_20\d{12}\.(zip|img|iso|exe|vhd|vhdx)|20\d{6}[.-]MYS20\d{2}Y\d{4}[A-Z0-9]{4,6}\.(zip|img|iso|vhd|vhdx)|(RES-20\d{6}_\d{6}|ORCAMENTO_\d{6}|COMPROVANTE_20\d{6}_\d{6}|ComprovanteSantander-[\d.]+|NEW-20\d{6}_\d{6}-PED_[0-9A-F]+|DOC-\d{8}_[0-9A-F]{8})\.(zip|lnk)|20\d{12}-[0-9A-F]{14}\.zip|SENARAI ?DOKUMEN.*\.zip|.+\.(vhdx?|img|iso)\.zip|LHDN.*\.(iso|img|vhdx?)|Open_to_view.*\.(iso|img)|TAX_[A-Za-z0-9]{6,}\.img(\.zip)?|SSM-\d+\.img(\.zip)?|20\d{6}[0-9A-F]{8}\.(zip|exe|img|iso|vhd|vhdx)|20\d{6}_\d{6}_\d{4}\.(zip|img|iso|vhd|vhdx)|Financial_Report_20\d{6}_PDF\.\d+\.(zip|exe|img|iso|vhdx?)|\d{14}(\.[0-9A-F]{3})?\.(img|iso|vhdx?)|[A-Z.]{3,9}[.-]Number[.-]20\d{10,12}\.(img\d?|iso|vhdx?)|(IMPS|UTR|TWV)_\d{3,4}-\d{1,2}-20\d{2}\d*(\.[0-9A-F]{3})?\.(img|iso|vhdx?)|20\d{12}\.[0-9A-F]{12}\.zip|SOA\d*\.(img|iso|vhdx?)|Reconciliation[ _-]?Invoice.*\.(zip|img|iso|vhdx?)|E-statement\d*\.(img|iso|vhdx?)|RT\d{10}\.\d{3}\.img|.*_[CD]\d{10}(_.*)?\.(zip|exe|img|iso|vhdx?)|Notis_Penalti_\w+\.(zip|exe)|TBK[-_]?\d{4,8}(_\d+)?\.(zip|exe)|SENARAI DOKUMEN\d*\.(zip|exe)|MyInvois_e-Invoice_INV\d+\w*\.(zip|exe)|e-Invoice_INV\d+_.+_Validated[\w-]*\.(zip|exe)|(TDS_Penalty_S\d+\w*_PAN_|GST_Non_Filing_Notice_|ITR_Scrutiny_\d+_Notice_PAN_).*\.(zip|exe|img|iso|vhdx?)|Common_Offline_Utility_ITR-.*\.(img|iso|vhdx?)|\u6240\u5F97\u7A0E.*\u7D0D\u7A0E\u901A\u77E5\u66F8\d*\.(zip|exe))$'
 # Overlord RAT (open source, used by TankRAT) and its TankRAT loader keep their files in these folders.
 $OverlordRegex = '(?i)\\Explorer\\thumbcache_[^\\]+\\|\\AppData\\Roaming\\Microsoft\\DeviceSync\\|\\AppData\\(Roaming|Local)\\Overlord\\|\\AppData\\Local\\Temp\\(Overlord(virtualDriver)?|ovld_[^\\]+)\\'
 # Programs the October 2026 wave tells Windows Defender to skip. No real program needs these excluded.
@@ -1891,6 +1891,17 @@ function Read-Shared([string]$path, [int]$max) {
     $t
   } catch { $null }
 }
+# SHA-256 and size of a found file, so new lures can be added by hash without asking the victim for the file.
+# After -Fix the file sits in this run's quarantine folder instead. Only the hash is sent, never the file.
+function Get-ReportHash([string]$path) {
+  try {
+    $fi = if (Test-Path -LiteralPath $path -PathType Leaf) { Get-Item -LiteralPath $path -Force } else {
+      Get-ChildItem -LiteralPath (Join-Path $QuarantineRoot $stamp) -File -Force -ErrorAction Stop |
+        Where-Object { $_.Name -like ('file-*-' + (Split-Path $path -Leaf) + '.quarantine') } | Select-Object -First 1 }
+    if ($fi -and $fi.Length -le 200MB) { return @{ Sha = (Get-FileHash -LiteralPath $fi.FullName -Algorithm SHA256 -ErrorAction Stop).Hash.ToLower(); Size = $fi.Length } }
+  } catch {}
+  $null
+}
 function New-WazReport([string]$dest) {
   $tmp = Join-Path $env:TEMP ('waz-report-' + [guid]::NewGuid().ToString('N'))
   try {
@@ -1909,7 +1920,11 @@ function New-WazReport([string]$dest) {
       pcType   = if ($Owner) { $Owner } else { 'Unknown' }
       mode     = if ($SafeAuto) { 'SafeMode' } elseif ($Fix) { 'Fix' } else { 'Scan' }
       counts   = [ordered]@{ high = @($Findings | Where-Object Severity -eq 'HIGH').Count; warn = @($Findings | Where-Object Severity -eq 'WARN').Count }
-      findings = @($Findings | ForEach-Object { [ordered]@{ severity = $_.Severity; type = $_.Kind; title = (Hide-Pii "$($_.Target)"); detail = (Hide-Pii "$($_.Detail)") } })
+      findings = @($Findings | ForEach-Object {
+        $o = [ordered]@{ severity = $_.Severity; type = $_.Kind; title = (Hide-Pii "$($_.Target)"); detail = (Hide-Pii "$($_.Detail)") }
+        if ($_.Kind -eq 'File' -and ($h = Get-ReportHash "$($_.Target)")) { $o.sha256 = $h.Sha; $o.size = $h.Size }
+        $o
+      })
       c2       = @($c2 | Select-Object -Unique)
     }
     [IO.File]::WriteAllText((Join-Path $tmp 'summary.json'), ($sum | ConvertTo-Json -Depth 5), $utf8)

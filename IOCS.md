@@ -241,6 +241,12 @@ From the tool's scan logs and registry queries on a fourth victim's PC.
 - Fixed in v2026.11.05.19-.21: delete the SafeBoot entries repeatedly until Windows shuts down; in Safe Mode stop processes, set `Start=4`, delete services, then move files; at most 2 Safe Mode rounds, then `BUANG.bat` for the recovery Command Prompt. The next run cleaned the PC without a reinstall.
 - Case write-up: [`docs/reports/2026-11-malaysia-four-pcs.md`](docs/reports/2026-11-malaysia-four-pcs.md).
 
+## Reconciliation Invoice lure (opt-in report, Nov 2026)
+From an opt-in report sent by the tool (Windows Defender history on the PC; no file or hash available).
+- `Reconciliation Invoice.zip` holding `4.img`. Defender flagged the image as `Trojan:Win32/Malgent` on 2026-11-05, in the temporary folder Explorer uses when a file is opened straight from a ZIP.
+- Same PC, 2026-11-03: Defender flagged `D:\is.dll` as `Trojan:Win32/Wacatac.C!ml`. `D:` was most likely an earlier lure image opened as a drive.
+- The tool found nothing left running or set to start. The name pattern `Reconciliation Invoice*.zip|img|iso|vhd(x)` is HIGH since v2026.11.05.25. From that version, reports also carry the SHA-256 and size of every file found (never the file itself).
+
 ## References
 
 - CloudSEK, Silver Fox targeting India using tax-themed phishing lures (2025-12-24): https://www.cloudsek.com/blog/silver-fox-targeting-india-using-tax-themed-phishing-lures

@@ -66,6 +66,7 @@ Set-Content "$env:SystemRoot\System32\drivers\ardrv.sys" 'dummy'
 
 # D. Lure file held open by a running process (stands in for malware resisting removal)
 $locked = "$dl\Click here to view7.zip"
+Set-Content "$dl\Reconciliation Invoice.zip" 'dummy'
 Set-Content $locked 'dummy'
 $lock = "`$f=[IO.File]::Open('$locked','Open','Read','None'); Start-Sleep 3600"
 $locker = Start-Encoded $lock
@@ -163,6 +164,7 @@ Check (Has $r 'Service' 'HIGH' '^ardrv$') 'ardrv service outside OPSWAT folder'
 Check (-not ($r.All | Where-Object { $_.Target -eq 'OpswatLegitTest' })) 'ardrv in OPSWAT folder ignored'
 Check (Has $r 'Info' 'WARN' 'ManageEngine') 'ManageEngine agent warning'
 Check (Has $r 'File' 'HIGH' 'Click here to view7\.zip$') 'locked lure file detected'
+Check (Has $r 'File' 'HIGH' 'Reconciliation Invoice\.zip$') 'Reconciliation Invoice.zip lure name is HIGH'
 Check (Has $r 'File' 'HIGH' 'Downloads\\Notice\.vhd$') 'Notice.vhd lure is HIGH'
 Check (Has $r 'Process' 'HIGH' "PID $($cli.Id)\)" 'attacker server') 'process connected to known C2 is HIGH'
 Check (Has $r 'File' 'WARN' 'Downloads\\Other\.vhdx$') 'other VHD in user folder is WARN'
@@ -211,6 +213,7 @@ Check ($repEntries.ContainsKey('summary.json') -and $repEntries.ContainsKey('sca
 $repSum = $null; try { $repSum = $repEntries['summary.json'] | ConvertFrom-Json } catch {}
 Check ($repSum -and $repSum.version -and $repSum.counts.high -gt 0 -and @($repSum.findings).Count -gt 0) 'report summary has version, counts and findings'
 Check ($repSum -and @($repSum.c2) -contains '127.77.0.1') 'report summary lists the attacker server'
+Check ($repSum -and @($repSum.findings | Where-Object { $_.type -eq 'File' -and $_.sha256 -match '^[0-9a-f]{64}$' -and $_.size -gt 0 }).Count -gt 0) 'report lists SHA-256 and size of found files'
 $repAll = ($repEntries.Values | Out-String)
 Check ($repAll -and $repAll -notmatch [regex]::Escape($env:USERNAME) -and $repAll -notmatch [regex]::Escape($env:COMPUTERNAME)) 'report has no account name or PC name'
 Check ($repAll -match 'Users\\{1,2}<user>') 'report shows user folders as <user>'
