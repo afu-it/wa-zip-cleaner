@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.05.19'
+$Version = '2026.11.05.20'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -1420,8 +1420,8 @@ function Scan-Rmm {
   }
 }
 
-# Same programs as Scan-Rmm, found by who signed them instead of by file name. Microsoft programs are skipped
-# and at most 250 files are checked, so this adds a few seconds at most.
+# Same programs as Scan-Rmm, found by who signed them instead of by file name. Microsoft programs and files
+# over 200 MB are skipped and at most 250 files are checked, so this adds a few seconds at most.
 function Scan-CnRmm {
   $procs = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.ExecutablePath })
   $paths = @($procs | ForEach-Object { [string]$_.ExecutablePath })
@@ -1435,10 +1435,10 @@ function Scan-CnRmm {
   foreach ($p in $paths | Where-Object { $_ } | Sort-Object -Unique) {
     if ($n -ge 250) { break }
     $fi = Get-Item -LiteralPath $p -ErrorAction SilentlyContinue
-    if (-not $fi -or $fi.PSIsContainer -or [string]$fi.VersionInfo.CompanyName -match 'Microsoft') { continue }
+    if (-not $fi -or $fi.PSIsContainer -or $fi.Length -gt 200MB -or [string]$fi.VersionInfo.CompanyName -match 'Microsoft') { continue }
     $n++
-    $sig = Get-AuthenticodeSignature -LiteralPath $p -ErrorAction SilentlyContinue
-    $subj = if ($sig -and $sig.SignerCertificate) { [string]$sig.SignerCertificate.Subject } else { '' }
+    # Read the signer straight from the file: no chain or revocation check, so no network wait per file.
+    $subj = try { [string][Security.Cryptography.X509Certificates.X509Certificate]::CreateFromSignedFile($p).Subject } catch { '' }
     if (-not $subj) { continue }
     foreach ($v in $CnRmmSigners.Keys) {
       if ($subj -notmatch $CnRmmSigners[$v]) { continue }
