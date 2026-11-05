@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.05.12'
+$Version = '2026.11.05.13'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -821,6 +821,38 @@ function Scan-DefenderExclusions {
       Add-Finding 'DefExcl' 'WARN' "Path|$v" 'Windows Defender skips this user folder. Remove the exclusion unless you added it yourself.' @{ Type = 'Path'; Value = $v }
     }
   }
+  # Look inside every excluded folder (victim report, Nov 2026: AppData\Local\Microsoft\Windows\Caches and
+  # AppData\Local\Toolkit were excluded). Known malware anywhere is HIGH; in a user folder, an unsigned
+  # program or any script is HIGH too and goes to quarantine with -Fix. Drive roots and Windows are skipped.
+  foreach ($v in @($mp.ExclusionPath) + @($pnames) | Where-Object { $_ } | Sort-Object -Unique) {
+    $dir = [Environment]::ExpandEnvironmentVariables($v).TrimEnd('\')
+    if ($dir -match $driveRx -or $dir -like "$env:windir*" -or -not (Test-Path -LiteralPath $dir -PathType Container)) { continue }
+    $files = @(Get-TreeFiles $dir | Where-Object { $_.Extension -match '(?i)^\.(exe|dll|scr|vbs|vbe|js|jse|wsf|ps1|bat|cmd|hta|lnk|msi|sys)$' } | Select-Object -First 2001)
+    $user = $dir -match '(?i)^[a-z]:\\Users\\'
+    $f0 = $Findings | Where-Object { $_.Kind -eq 'DefExcl' -and $_.Target -eq "Path|$v" } | Select-Object -First 1
+    if ($files.Count -gt 2000) {
+      if ($f0) { $f0.Detail += ' It holds over 2000 program files; they were not checked one by one.' }
+      continue
+    }
+    $sus = @()
+    foreach ($f in $files) {
+      $ioc = Get-Ioc $f
+      if ($ioc -and $ioc.Bad) { Add-Finding 'File' 'HIGH' $f.FullName "Known malware ($($ioc.Name)) in a folder Windows Defender was told to ignore."; $sus += $f; continue }
+      if (-not $user) { continue }
+      $script = $f.Extension -match '(?i)^\.(vbs|vbe|js|jse|wsf|ps1|bat|cmd|hta)$'
+      $bin = $f.Extension -match '(?i)^\.(exe|dll|scr|sys)$'
+      if ($script -or ($bin -and (Get-AuthenticodeSignature -LiteralPath $f.FullName -ErrorAction SilentlyContinue).Status -ne 'Valid')) {
+        Add-Finding 'File' 'HIGH' $f.FullName 'Unsigned program or script in a folder Windows Defender was told to ignore.'; $sus += $f
+      }
+    }
+    $names = (@($sus | Select-Object -First 5 | ForEach-Object { $_.Name }) -join ', ')
+    if ($sus.Count -and $user -and -not $policy[$v]) {
+      $d = "Antivirus told to ignore a folder that holds programs: $names$(if ($sus.Count -gt 5) { ', ...' }). Malware hides here so Windows Defender skips it."
+      if ($f0) { $f0.Severity = 'HIGH'; $f0.Detail = $d } else { Add-Finding 'DefExcl' 'HIGH' "Path|$v" $d @{ Type = 'Path'; Value = $v } }
+    } elseif ($f0 -and $files.Count) {
+      $f0.Detail += " It holds $($files.Count) program file(s), none flagged."
+    }
+  }
 }
 
 # Defender's own log keeps what it found, when it was switched off and which exclusions were added,
@@ -1304,6 +1336,7 @@ function Invoke-Fix($qdir) {
   $log = New-Object System.Collections.Generic.List[object]
   $i = 0
   $closed = $false
+  $exclScan = @()
   # Files inside a flagged folder go before the folder itself.
   foreach ($f in $Findings | Sort-Object { @('Process', 'WaSession', 'Vhd', 'Task', 'Wmi', 'DefExcl', 'RegValue', 'Service', 'RegKey', 'Cert', 'WinRE', 'File').IndexOf($_.Kind) }, { -([string]$_.Target).Length }) {
     if ($f.Severity -ne 'HIGH' -or $f.Kind -eq 'Info') { continue }
@@ -1389,6 +1422,7 @@ function Invoke-Fix($qdir) {
             catch { $script:DefExclLeft += $f.Extra.Value; throw }
           }
           $log.Add(@{ Kind = 'DefExcl'; Target = $f.Target; Type = $f.Extra.Type; Value = $f.Extra.Value })
+          if ($f.Extra.Type -eq 'Path') { $exclScan += [Environment]::ExpandEnvironmentVariables($f.Extra.Value) }
         }
         'RegValue' {
           $key, $val = $f.Target -split '\|', 2
@@ -1440,6 +1474,14 @@ function Invoke-Fix($qdir) {
     $dest = Join-Path $qdir ("file-$i-" + (Split-Path $f.Target -Leaf) + '.quarantine')
     try { Move-Item -LiteralPath $f.Target -Destination $dest -Force -ErrorAction Stop; $log.Add(@{ Kind = 'File'; Target = $f.Target; Backup = $dest }) }
     catch { Say "  Fail driver dikunci, akan dibuang selepas restart: $($f.Target)" "  Driver file locked; restart and run -Fix again: $($f.Target)" Yellow }
+  }
+  # Folders Defender used to skip: ask it to scan them now, in the background so the tool does not wait.
+  $mpc = Join-Path $env:ProgramFiles 'Windows Defender\MpCmdRun.exe'
+  foreach ($d in $exclScan | Where-Object { $_ -notmatch '^[A-Za-z]:\\?$' -and (Test-Path -LiteralPath $_ -PathType Container) } | Select-Object -Unique) {
+    try {
+      Start-Process -FilePath $mpc -ArgumentList '-Scan', '-ScanType', '3', '-File', "`"$d`"" -WindowStyle Hidden -ErrorAction Stop
+      Say "  Windows Defender sedang imbas folder yang dulu dia abaikan: $d" "  Windows Defender is now scanning the folder it used to skip: $d" Cyan
+    } catch {}
   }
   # The lures switch the admin prompt (UAC) off. This finding only exists on an infected PC; turn UAC back on,
   # keeping a .reg copy of the key so -Restore can put the old values back.

@@ -520,6 +520,26 @@ if ($null -ne $uacOld) { Set-ItemProperty -LiteralPath $uacKey -Name ConsentProm
 else { Remove-ItemProperty -LiteralPath $uacKey -Name ConsentPromptBehaviorAdmin -ErrorAction SilentlyContinue }
 Remove-Item -LiteralPath $uacDir -Recurse -Force -ErrorAction SilentlyContinue
 
+Write-Host '=== Programs inside a folder Defender is told to skip (Caches / Toolkit report, Nov 2026) ===' -ForegroundColor Cyan
+$exDir = 'C:\Users\Public\WazExclScan'
+New-Item -ItemType Directory -Force -Path "$exDir\sub" | Out-Null
+Set-Content "$exDir\helper.bat" '@echo hi'
+Set-Content "$exDir\sub\note.vbs" 'WScript.Echo 1'
+$exOk = $false
+try { Add-MpPreference -ExclusionPath $exDir -ErrorAction Stop; $exOk = @((Get-MpPreference).ExclusionPath) -contains $exDir } catch { }
+if ($exOk) {
+  $rE1 = Scan "$env:TEMP\xe1.json"
+  Check (Has $rE1 'DefExcl' 'HIGH' 'WazExclScan$' 'helper\.bat') 'excluded user folder holding scripts is HIGH and names them'
+  Check (Has $rE1 'File' 'HIGH' 'WazExclScan\\helper\.bat$' 'told to ignore') 'script in the excluded folder is HIGH'
+  Check (Has $rE1 'File' 'HIGH' 'WazExclScan\\sub\\note\.vbs$') 'script in a subfolder of the excluded folder is HIGH'
+  $rE2 = Scan "$env:TEMP\xe2.json" -Fix
+  Check (-not (Test-Path "$exDir\helper.bat") -and -not (Test-Path "$exDir\sub\note.vbs")) 'scripts in the excluded folder quarantined'
+  Check (-not (@((Get-MpPreference).ExclusionPath) -contains $exDir)) 'exclusion on the folder removed'
+} else { Write-Host 'SKIP excluded-folder contents: Defender not available' -ForegroundColor Yellow }
+Remove-MpPreference -ExclusionPath $exDir -ErrorAction SilentlyContinue
+Start-Sleep 2
+Remove-Item -LiteralPath $exDir -Recurse -Force -ErrorAction SilentlyContinue
+
 Write-Host '=== TankRAT / Overlord (LHDN and Penyata Akaun lures) ===' -ForegroundColor Cyan
 $tc = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Explorer\thumbcache_a1b2c3d4'
 New-Item -ItemType Directory -Force -Path $tc | Out-Null
