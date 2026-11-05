@@ -721,6 +721,40 @@ Check ($null -eq (Get-ItemProperty -Path $runK -Name WindowsUpdate -ErrorAction 
 Remove-ItemProperty -Path $runK -Name WindowsUpdate -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $ksDir -Recurse -Force -ErrorAction SilentlyContinue
 
+Write-Host '=== Chinese remote-control vendor found by code-signing company (watchlist) ===' -ForegroundColor Cyan
+# Two harmless programs that only sleep, signed with throwaway test certificates; one keeps a connection
+# to a test "attacker server" on an odd loopback address.
+$cnDir = 'C:\Program Files\WazCnTest'
+New-Item -ItemType Directory -Force -Path $cnDir | Out-Null
+$cnSrc = 'using System; using System.Net.Sockets; using System.Threading; public static class P { public static void Main(string[] a) { TcpClient t = null; if (a.Length > 0) { t = new TcpClient(); t.Connect("127.77.0.2", int.Parse(a[0])); } Thread.Sleep(3600000); GC.KeepAlive(t); } }'
+Add-Type -TypeDefinition $cnSrc -OutputAssembly "$cnDir\wazremote.exe" -OutputType ConsoleApplication
+Copy-Item "$cnDir\wazremote.exe" "$cnDir\wazspy.exe"
+$cnCerts = @()
+foreach ($x in @(@('wazremote.exe', 'CN=WAZ Test Remote Co'), @('wazspy.exe', 'CN=WAZ Test Spy Co'))) {
+  $ct = New-SelfSignedCertificate -Subject $x[1] -Type CodeSigningCert -CertStoreLocation Cert:\CurrentUser\My
+  $cnCerts += $ct
+  Set-AuthenticodeSignature -FilePath "$cnDir\$($x[0])" -Certificate $ct | Out-Null
+}
+$env:WAZIP_TEST_C2 = '127.77.0.2'
+$env:WAZIP_TEST_CNSIGNER = 'WAZ Test Remote=WAZ Test Remote Co;WAZ Test Spy=WAZ Test Spy Co'
+$cnSrv = Start-Encoded "`$l=[Net.Sockets.TcpListener]::new([Net.IPAddress]::Parse('127.77.0.2'),47124); `$l.Start(); `$c=`$l.AcceptTcpClient(); Start-Sleep 3600"
+Start-Sleep 2
+$cnA = Start-Process "$cnDir\wazremote.exe" -WindowStyle Hidden -PassThru
+$cnB = Start-Process "$cnDir\wazspy.exe" -ArgumentList '47124' -WindowStyle Hidden -PassThru
+for ($i = 0; $i -lt 20; $i++) {
+  if (Get-NetTCPConnection -RemoteAddress 127.77.0.2 -ErrorAction SilentlyContinue | Where-Object { $_.OwningProcess -eq $cnB.Id }) { break }
+  Start-Sleep 1
+}
+$rCn = Scan "$env:TEMP\xcn.json"
+Check (Has $rCn 'Info' 'WARN' '^Remote-control program: WAZ Test Remote$' 'code-signing company') 'program signed by a watched vendor is WARN'
+Check (Has $rCn 'Info' 'HIGH' '^Remote-control program: WAZ Test Spy$' '127\.77\.0\.2') 'watched vendor connected to a known attacker server is HIGH'
+Check (-not ($rCn.All | Where-Object { $_.Target -match 'WAZ Test' -and $_.Kind -ne 'Info' })) 'watchlist adds no removable items by itself'
+Stop-Process -Id $cnA.Id, $cnB.Id, $cnSrv.Id -Force -ErrorAction SilentlyContinue
+Start-Sleep 1
+Remove-Item -LiteralPath $cnDir -Recurse -Force -ErrorAction SilentlyContinue
+$cnCerts | ForEach-Object { Remove-Item -LiteralPath "Cert:\CurrentUser\My\$($_.Thumbprint)" -Force -ErrorAction SilentlyContinue }
+Remove-Item Env:\WAZIP_TEST_C2, Env:\WAZIP_TEST_CNSIGNER
+
 Write-Host '=== .bat launchers ===' -ForegroundColor Cyan
 # Clear WARN-only leftovers so a clean result reads BERSIH.
 & sc.exe delete MEUemsTest | Out-Null; & sc.exe delete OpswatLegitTest | Out-Null

@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.05.14'
+$Version = '2026.11.05.15'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -353,8 +353,17 @@ $RmmTools = [ordered]@{
   'SimpleHelp' = '^(simplehelpcustomer|simpleservice)'; 'Atera' = '^ateraagent'; 'MeshCentral' = '^meshagent'
   'Tactical RMM' = '^tacticalrmm'; 'Remote Utilities' = '^rut(serv|view)'; 'Ammyy Admin' = '^ammyy'; 'AeroAdmin' = '^aeroadmin'
   'Supremo' = '^supremo'; 'Zoho Assist' = '^(zaservice|zmagent)'; 'NetSupport' = '\\netsupport\\'; 'Action1' = '\\windows\\action1\\'
-  'Ping32' = '^nsecrts'
+  'Ping32' = '^nsecrts'; 'AnyViewer' = '^anyviewer'; 'AweSun (AweRay)' = '^(awesun|aweray_remote)'
 }
+# Chinese remote-control and staff-monitoring vendors, matched by the company that signed the program, so a
+# renamed copy is still found. Only vendors whose products are remote control or spying; big Chinese brands
+# (WeChat, WPS, Huorong, Lenovo, Xiaomi) are not here. Signer names and sources are in IOCS.md.
+$CnRmmSigners = [ordered]@{
+  'ToDesk' = 'Hainan YouQu Technology'
+  'Ping32' = '\u5c71\u4e1c\u5b89\u5728|Shandong Anzai'
+  'IP-guard' = 'Guangzhou TEC Solutions|T\.E\.C Solutions \(G\.Z\.\)'
+}
+if ($env:WAZIP_TEST_CNSIGNER) { foreach ($cnT in $env:WAZIP_TEST_CNSIGNER -split ';') { $cnK, $cnV = $cnT -split '=', 2; $CnRmmSigners[$cnK] = $cnV } }
 # Browsers whose profiles we check. Chromium ones keep profiles under User Data; Opera keeps one in its own folder.
 $BrowserRoots = @(
   @{ Name = 'Chrome'; Dir = 'AppData\Local\Google\Chrome\User Data'; Proc = 'chrome'; Policy = 'Google\Chrome' }
@@ -1129,6 +1138,7 @@ function Scan-ManageEngine {
   }
   Scan-Ping32
   Scan-IpGuard
+  Scan-CnRmm
   # MyCERT MA-1491/1493: work folders the ManageEngine lures create.
   $drops = @("$env:SystemDrive\kouren", "$env:SystemDrive\cool")
   $drops += @(Get-ChildItem -LiteralPath $env:ProgramData -Directory -Force -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^Office[0-9a-f]{4,6}$' } | ForEach-Object { $_.FullName })
@@ -1350,6 +1360,49 @@ function Scan-Rmm {
     $d = if ($Owner -eq 'Office') { "Remote-control program ($hit). Ask your IT team if they installed it." }
          else { "Remote-control program ($hit). Fine if you installed it yourself. If not, someone may be controlling this PC: uninstall it (Bulk Crap Uninstaller can force-remove it) and change your passwords from your phone." }
     Add-Finding 'Info' 'WARN' "Remote-control program: $tool" $d
+  }
+}
+
+# Same programs as Scan-Rmm, found by who signed them instead of by file name. Microsoft programs are skipped
+# and at most 250 files are checked, so this adds a few seconds at most.
+function Scan-CnRmm {
+  $procs = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.ExecutablePath })
+  $paths = @($procs | ForEach-Object { [string]$_.ExecutablePath })
+  $paths += Get-CimInstance Win32_Service -ErrorAction SilentlyContinue | ForEach-Object {
+    $pn = [string]$_.PathName
+    if ($pn -match '^"([^"]+)"') { $Matches[1] } elseif ($pn -match '^(\S+\.exe)') { $Matches[1] } }
+  $c2 = @{}
+  foreach ($c in Get-NetTCPConnection -ErrorAction SilentlyContinue | Where-Object { $C2Ips -contains $_.RemoteAddress }) { $c2[[int]$c.OwningProcess] = "$($c.RemoteAddress):$($c.RemotePort)" }
+  $hits = [ordered]@{}
+  $n = 0
+  foreach ($p in $paths | Where-Object { $_ } | Sort-Object -Unique) {
+    if ($n -ge 250) { break }
+    $fi = Get-Item -LiteralPath $p -ErrorAction SilentlyContinue
+    if (-not $fi -or $fi.PSIsContainer -or [string]$fi.VersionInfo.CompanyName -match 'Microsoft') { continue }
+    $n++
+    $sig = Get-AuthenticodeSignature -LiteralPath $p -ErrorAction SilentlyContinue
+    $subj = if ($sig -and $sig.SignerCertificate) { [string]$sig.SignerCertificate.Subject } else { '' }
+    if (-not $subj) { continue }
+    foreach ($v in $CnRmmSigners.Keys) {
+      if ($subj -notmatch $CnRmmSigners[$v]) { continue }
+      $srv = ($procs | Where-Object { $_.ExecutablePath -eq $p -and $c2.ContainsKey([int]$_.ProcessId) } | ForEach-Object { $c2[[int]$_.ProcessId] } | Select-Object -First 1)
+      if (-not $hits.Contains($v)) { $hits[$v] = @{ Path = $p; Signer = ($subj -replace '^CN=("?)([^",]+).*$', '$2'); Srv = $srv } }
+      elseif ($srv -and -not $hits[$v].Srv) { $hits[$v].Srv = $srv; $hits[$v].Path = $p }
+    }
+  }
+  foreach ($v in $hits.Keys) {
+    $h = $hits[$v]
+    # The IP-guard and Ping32 checks already explain these with their own advice; one warning is enough.
+    if ($v -eq 'IP-guard' -and ($Findings | Where-Object { $_.Target -eq 'IP-guard (OCular) monitoring agent' })) { continue }
+    if ($v -eq 'Ping32' -and ($Findings | Where-Object { $_.Detail -match 'Ping32' })) { continue }
+    $what = "Remote-control or monitoring program from $($h.Signer) ($($h.Path)), found by its code-signing company."
+    if ($h.Srv) {
+      Add-Finding 'Info' 'HIGH' "Remote-control program: $v" "$what It is connected to a known attacker server ($($h.Srv)). Someone is controlling this PC: uninstall it, and change your passwords from your phone."
+    } elseif ($Owner -eq 'Office') {
+      Add-Finding 'Info' 'WARN' "Remote-control program: $v" "$what Ask your IT team if they installed it."
+    } else {
+      Add-Finding 'Info' 'WARN' "Remote-control program: $v" "$what Fine if you installed it yourself. If not, someone may be controlling or watching this PC: uninstall it (Bulk Crap Uninstaller can force-remove it) and change your passwords from your phone."
+    }
   }
 }
 

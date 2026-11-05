@@ -216,6 +216,17 @@ From a second victim's PC (folder listing, `DCAgentServerInfo.json` and `Get-Fil
 - `unityplayer.dll` SHA-256 `67731346556f1e8921d0be0f346315298c5d683160a5d7cd906e02cc276e108e`, `UX64` SHA-256 `9af5d2aa96fae12f4e374523c02f0579002c63964b0114d2cc79782e9412b33f`. Neither is on VirusTotal. Sizes not known, so the tool matches these hashes by file name.
 - Toolkit.exe was running. A root scheduled task `WindowsUpdateSync` started it from `AppData\Local`.
 
+## Chinese remote-control / monitoring vendors, matched by code-signing company (Nov 2026)
+Programs from these companies are WARN (AMARAN) wherever they run, even renamed; HIGH (BAHAYA) when the program is connected to a known attacker server. Only remote-control or staff-monitoring vendors are listed; other Chinese software (WeChat, WPS, Huorong, Lenovo, Xiaomi) is not.
+| Vendor / product | Signer subject matched | Source |
+|---|---|---|
+| IP-guard / OCular (TEC Solutions) | `Guangzhou TEC Solutions Co., Ltd.`, `T.E.C Solutions (G.Z.)Limited` | VirusTotal `signature_info` of the binaries from the Nov 2026 Malaysia victim (e.g. `wrdlv4.exe` 7db962200026c0afa923f559d2155a2a27b7a026553c9ca24e3dee1ec81e395d, `THlpDrv64.sys` 7e783b0a0ff4710306bb3bca29296cf962ae77abc81245a99f12a9039158226f) |
+| ToDesk (Hainan YouQu Technology) | `Hainan YouQu Technology Co., Ltd` | VirusTotal `signature_info` of ToDesk 4.7.4.3 installer fb3fd77cbb36aba970e2b419b826c8f3ad6fe629b6ee9dd87896971bec1612ce (hash from winget-pkgs `Youqu.ToDesk`) |
+| Ping32 (Shandong Anzai / NSecsoft) | Chinese company name `山东安在信息技术有限责任公司` (or `Shandong Anzai`) | QiAnXin RedDrip, signer of the NsecRTS.exe agent abused by a crime group: https://ti.qianxin.com/blog/articles/genuine-surveillance-software-used-by-hackers/ ; Netresec, Ping32 in the WhatsApp VBS campaign: https://www.netresec.com/?page=Blog&month=2026-06&post=Ping32-RMM-and-ValleyRAT |
+
+Also added by file name (LOLRMM): AnyViewer (`AnyViewer.exe`) and AweSun / AweRay (`AweSun.exe`, `aweray_remote*.exe`).
+Left out: AOMEI as a signer (it also signs AOMEI Backupper and Partition Assistant, common legit tools; AnyViewer is matched by name instead); Sunlogin / Oray (already matched by name; no signer subject we could confirm from a known hash).
+
 ## References
 
 - CloudSEK, Silver Fox targeting India using tax-themed phishing lures (2025-12-24): https://www.cloudsek.com/blog/silver-fox-targeting-india-using-tax-themed-phishing-lures
