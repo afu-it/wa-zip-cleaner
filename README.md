@@ -1,5 +1,7 @@
 # WA-ZIP Cleaner
 
+[English](README.en.md) | **Bahasa Melayu**
+
 Ada orang hantar fail zip kat WhatsApp (contoh `Click here to view....zip`, `Notice.zip`, `PDF_C2841_20260911100446.zip`, `20261019-MYS2026Y1019E51AC.zip` atau `101.zip`), dan anda terbuka kat laptop atau PC Windows? Relax. Tool free ni akan scan PC anda, dan kalau ada malware tu, dia buang terus.
 
 Kalau anda buka kat phone (Android, iPhone) atau Mac, takpe, anda selamat. Malware ni cuma kacau Windows je.
@@ -66,14 +68,14 @@ irm waz.afuit.dev | iex
    - PC/laptop yang office bagi, dan ada orang IT yang urus: taip `1`, tekan **Enter**.
    - PC/laptop sendiri: taip `2`, tekan **Enter**.
    - Tak pasti: tekan **Enter** je.
-9. Tool mula scan. Tunggu 2 sampai 10 minit. Jangan tutup tetingkap. Tulisan akan bergerak sendiri dari `[1/8]` sampai `[8/8]`.
+9. Tool mula scan. Tunggu 2 sampai 10 minit. Jangan tutup tetingkap. Akan keluar lapan baris, `[1/8]` sampai `[8/8]`, setiap satu ada label berwarna kat hujung.
 
 **D. Baca keputusan**
 
-10. Tengok tulisan kat bawah sekali:
+10. Tengok bahagian **KEPUTUSAN** kat bawah sekali:
     - **BERSIH** (hijau): tool tak jumpa malware ni. Boleh tutup tetingkap.
-    - **Cuma ada amaran** (kuning): tool tak buang apa-apa. Baca ayat kuning tu dan ikut nasihat dia. Kalau dia sebut **ManageEngine** dan ni PC office, tunjuk skrin tu kat orang IT office anda. Kalau dia sebut **Remote-control program** (contoh AnyDesk, TeamViewer) dan anda tak pernah pasang, buang program tu (cara kat bawah, bahagian *Program yang tak boleh di-uninstall*).
-    - **BAHAYA** (tulisan merah `[HIGH]`): kat bawah sekali keluar *Taip Y dan Enter untuk bersihkan*. Taip `Y`, tekan **Enter**, pergi langkah 11. Chrome, Edge atau browser lain akan tertutup sendiri, sebab tool log keluar WhatsApp Web kat PC ni. Buka balik lepas siap (kalau anda baca panduan ni dalam browser, buka semula page ni).
+    - **AMARAN** sahaja (kuning): tool tak buang apa-apa. Baca ayat kuning tu dan ikut nasihat dia. Kalau dia sebut **ManageEngine** dan ni PC office, tunjuk skrin tu kat orang IT office anda. Kalau dia sebut **Remote-control program** (contoh AnyDesk, TeamViewer) dan anda tak pernah pasang, buang program tu (cara kat bawah, bahagian *Program yang tak boleh di-uninstall*).
+    - **BAHAYA** (merah): kat bawah sekali keluar *Taip Y dan Enter untuk bersihkan*. Taip `Y`, tekan **Enter**, pergi langkah 11. Chrome, Edge atau browser lain akan tertutup sendiri, sebab tool log keluar WhatsApp Web kat PC ni. Buka balik lepas siap (kalau anda baca panduan ni dalam browser, buka semula page ni).
 11. Tunggu sampai keluar **Kuarantin siap**. Fail jahat tu tak delete terus. Tool pindahkan dia ke folder `C:\WAZipQuarantine`, jadi kalau tersalah buang, boleh pulihkan balik.
 12. **Restart PC** (Start > Power > Restart).
 13. Lepas PC hidup balik, buat Langkah 2 sekali lagi dari mula, sampai keluar **BERSIH**.
@@ -344,21 +346,6 @@ Projek ni free dan open source. Sesiapa pun boleh tolong: developer, vibecoder, 
 - Reti code? Tambah detection dalam `wa-zip-cleaner.ps1` atau rule dalam `winos4-whatsapp.yar`, buka Pull Request. Pastikan test lulus.
 - Reti tulis atau design? Tolong baiki panduan ni, translate, atau buat poster amaran.
 - Orang security? Semak [docs/REPORT.md](docs/REPORT.md), atau share IOC ke MalwareBazaar/ThreatFox.
-
-</details>
-
-<details>
-<summary><b>English</b></summary>
-
-Free scanner and cleaner for Windows PCs that opened a WhatsApp ZIP lure such as `Click here to view*.zip`, `Notice.zip`, `PDF_EXZ12S_20261022110417.zip` or `20261019-MYS2026Y1019E51AC.zip` (ValleyRAT / Winos 4.0 / Silver Fox). Phones and Macs are not affected, but a phone that auto-saves to a cloud drive synced to a PC can still deliver the file to that PC.
-
-This tool covers the VHD and VBS variants. It also flags the shortcut (`.lnk`) used by the SORVEPOTEL variant that Trend Micro reported in Brazil, but not the stages it downloads, so also run a Windows Defender full scan.
-
-The October 2026 wave tells Windows Defender to ignore `svchost.exe` and `QtsUpdater.exe`, so a Defender scan can look clean; this tool finds and removes those exclusions. First run a Windows Defender full scan. Then press **Windows + X**, open **Terminal (Admin)**, paste the command from the top of this page, and press Enter. It first asks whether the PC is managed by your office (1) or your own (2); on a personal PC a ManageEngine agent is treated as malware and removed. If it finds something, type `Y` to quarantine it. Only paste commands from sources you trust; if unsure, ask an IT person you trust to run it. A clean result does not prove the PC is safe, since the malware can change.
-
-Or download the repo, extract it, and double-click `MULA-SINI.bat`.
-
-If anything is found: from your phone, log out of WhatsApp Linked devices, change every password saved in or typed into Chrome/Edge on that PC, sign out other sessions and turn on 2FA. If the tool warns about a remote-control program you did not install (ManageEngine, AnyDesk, TeamViewer and others), remove it with [Bulk Crap Uninstaller](https://www.bcuninstaller.com/) (right-click > Uninstall manually). Drivers are also checked against the [LOLDrivers](https://www.loldrivers.io) list. If the tool warns about ManageEngine or an antivirus-killing driver, back up your documents and reinstall Windows. If WhatsApp keeps sending the lure after the PC is clean or reinstalled, the attacker is reusing stolen sessions, not the PC: log out every Linked device, turn on WhatsApp Two-step verification, sign out of other Google sessions and change passwords; as a last resort delete the WhatsApp account and register the same number again. If the number gets banned for spam, clean the PC first, then tap **Request a review** on the ban screen and explain the account was hijacked by malware. Another victim of this campaign found a data stealer (`888.exe`) that this tool does not detect yet. Full analysis: [docs/REPORT.md](docs/REPORT.md).
 
 </details>
 
