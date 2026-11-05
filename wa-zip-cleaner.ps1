@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.05.17'
+$Version = '2026.11.05.18'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -2025,7 +2025,7 @@ if ($infected.Count) {
   } elseif ($script:NeedRestart -and -not $script:SvcLeft) {
     Say 'Servis jahat dah dibuang, tapi masih nampak sampai PC di-restart. RESTART dulu sebelum imbas semula.' 'Bad services are removed but stay listed until the PC restarts. RESTART before scanning again.' Yellow
   }
-  if ($Findings | Where-Object { $_.Kind -eq 'Service' -and $_.Severity -eq 'HIGH' -and $_.Detail -ne 'ManageEngine service' -and $_.Detail -ne 'IP-guard service' -and $_.Detail -notmatch '^Ping32' }) {
+  if ($Findings | Where-Object { $_.Kind -eq 'Service' -and $_.Severity -eq 'HIGH' -and $_.Detail -ne 'ManageEngine service' -and $_.Detail -ne 'IP-guard service' -and $_.Detail -notmatch '^(Ping32|UltraViewer)' }) {
     Say 'Driver pembunuh antivirus dijumpai. Paling selamat: backup data & pasang semula Windows.' `
         'An antivirus-killer driver was found. Safest option: back up data and reinstall Windows.' Yellow
   }
