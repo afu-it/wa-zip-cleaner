@@ -27,11 +27,12 @@ param(
   [switch]$Restore,
   [string]$Manifest,
   [string]$QuarantineRoot = "$env:SystemDrive\WAZipQuarantine",
-  [string]$ReportPath
+  [string]$ReportPath,
+  [switch]$SafeAuto
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.05.5'
+$Version = '2026.11.05.6'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -1416,6 +1417,8 @@ if (-not (Test-Admin)) {
   Say 'Sila jalankan sebagai Administrator (klik kanan > Run as administrator).' 'Please run as Administrator.' Red
   exit 2
 }
+# Started by RunOnce inside Safe Mode: switch the next boot back to normal Windows first, so a crash cannot trap the PC in Safe Mode.
+if ($SafeAuto) { & bcdedit.exe /deletevalue '{current}' safeboot | Out-Null; $Fix = $true }
 
 if ($Restore) {
   if (-not $Manifest -or -not (Test-Path -LiteralPath $Manifest)) { Say 'Beri -Manifest <laluan manifest.json>.' 'Pass -Manifest <path to manifest.json>.' Red; exit 2 }
@@ -1608,6 +1611,58 @@ if ($me -and $meRemove -and $Fix -and $script:MeLeft) {
 } elseif ($me) {
   Say 'ManageEngine dijumpai. Kalau PC sendiri, jalankan tool ni semula dan jawab 2 (sendiri), tool akan buang dia. Atau buang sendiri: (1) pasang Bulk Crap Uninstaller (percuma, bcuninstaller.com), cari ManageEngine, klik kanan > Uninstall manually (uninstall biasa minta PIN hacker); (2) buka services.msc, set semua servis ManageEngine ke Disabled; (3) buka Task Scheduler, padam task ManageEngine; (4) restart dan imbas semula. Paling selamat: backup data & pasang semula Windows.' `
       'ManageEngine found. If this is your own PC, run this tool again and answer 2 (personal); it will remove it. Or remove it yourself: (1) install Bulk Crap Uninstaller (free, bcuninstaller.com), find ManageEngine, right-click > Uninstall manually (normal uninstall asks for the attacker''s PIN); (2) open services.msc and set every ManageEngine service to Disabled; (3) open Task Scheduler and delete ManageEngine tasks; (4) restart and scan again. Safest: back up data and reinstall Windows.' Yellow
+}
+# Blocked leftovers: offer to restart into Safe Mode (the tool runs itself there) or into the recovery screen (BUANG.bat).
+function Start-SafeAuto {
+  $rk = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce'
+  $copy = Join-Path $QuarantineRoot 'wa-zip-cleaner.ps1'
+  try {
+    if ($PSCommandPath -ne $copy) { Copy-Item -LiteralPath $PSCommandPath -Destination $copy -Force -ErrorAction Stop }
+    $cmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$copy`" -SafeAuto -Fix"
+    if ($meRemove) { $cmd += ' -RemoveManageEngine' }
+    if ($Owner) { $cmd += " -Owner $Owner" }
+    # A leading * makes RunOnce run in Safe Mode too.
+    Set-ItemProperty -LiteralPath $rk -Name '*WAZipSafeMode' -Value $cmd -ErrorAction Stop
+    & bcdedit.exe /set '{current}' safeboot minimal | Out-Null
+    if ($LASTEXITCODE) { throw 'bcdedit failed' }
+  } catch {
+    Remove-ItemProperty -LiteralPath $rk -Name '*WAZipSafeMode' -ErrorAction SilentlyContinue
+    Say 'Tak dapat sediakan Safe Mode auto. Guna pilihan 2 atau ikut arahan di atas.' 'Could not set up automatic Safe Mode. Use option 2 or follow the steps above.' Red
+    return
+  }
+  Say 'PC akan restart ke Safe Mode dalam 15 saat. Log masuk guna PASSWORD akaun Windows (bukan PIN). Tool akan jalan sendiri, kemudian restart ke Windows biasa. Kalau tersangkut dalam Safe Mode: skrin pemulihan > Troubleshoot > Advanced options > Command Prompt, taip bcdedit /deletevalue {default} safeboot dan Enter.' `
+      'The PC restarts into Safe Mode in 15 seconds. Sign in with your Windows account PASSWORD (not PIN). The tool runs by itself, then restarts into normal Windows. If stuck in Safe Mode: recovery screen > Troubleshoot > Advanced options > Command Prompt, type bcdedit /deletevalue {default} safeboot and press Enter.' Yellow
+  & shutdown.exe /r /f /t 15
+}
+$blocked = $Fix -and ($script:SvcLeft -or $script:MeLeft)
+if ($SafeAuto) {
+  Write-Host ''
+  if ($blocked -and $winreBat) {
+    Say "Safe Mode pun tak cukup. AMBIL GAMBAR SKRIN NI. Lepas restart: Troubleshoot > Advanced options > Command Prompt, taip $winreBat dan Enter (kalau tak jumpa, tukar C: kepada D:). Lepas siap, taip exit, pilih Continue, dan jalankan tool ni sekali lagi." `
+        "Safe Mode was not enough. TAKE A PHOTO OF THIS SCREEN. After the restart: Troubleshoot > Advanced options > Command Prompt, type $winreBat and press Enter (if not found, change C: to D:). When done, type exit, choose Continue, and run this tool again." Yellow
+    Read-Host 'Tekan Enter untuk restart ke skrin pemulihan (Press Enter to restart into the recovery screen)' | Out-Null
+    & shutdown.exe /r /o /f /t 0
+  } else {
+    Say 'Siap. PC akan restart ke Windows biasa dalam 60 saat. Lepas tu jalankan tool ni sekali lagi untuk semak.' 'Done. The PC restarts into normal Windows in 60 seconds. Then run this tool again to check.' Green
+    & shutdown.exe /r /t 60
+  }
+} elseif ($blocked -and -not $env:WAZIP_NO_PROMPT) {
+  Write-Host ''
+  Say 'Nak tool paksa buang? Pilih:' 'Want the tool to force the removal? Choose:' White
+  Say '  1 = Safe Mode auto: PC restart ke Safe Mode, tool jalan sendiri dan buang, kemudian restart ke Windows biasa. Safe Mode minta PASSWORD akaun Windows (bukan PIN), pastikan anda ingat.' `
+      '  1 = Automatic Safe Mode: the PC restarts into Safe Mode, the tool runs and removes by itself, then restarts into normal Windows. Safe Mode asks for your Windows PASSWORD (not PIN); make sure you know it.' White
+  if ($winreBat) {
+    Say '  2 = Mod paksa: PC restart terus ke skrin pemulihan, anda taip satu baris (arahan merah di atas; ambil gambar skrin dulu).' `
+        '  2 = Force mode: the PC restarts straight into the recovery screen and you type one line (red steps above; take a photo first).' White
+  }
+  Say '  Enter je = buat sendiri nanti.' '  Just Enter = do it yourself later.' White
+  $ans = ([string](Read-Host)).Trim()
+  if ($ans -eq '1') { Start-SafeAuto }
+  elseif ($ans -eq '2' -and $winreBat) {
+    & shutdown.exe /r /o /f /t 10
+    if ($LASTEXITCODE) { Say 'Tak dapat restart ke skrin pemulihan. Ikut arahan merah di atas.' 'Could not restart into the recovery screen. Follow the red steps above.' Red }
+    else { Say 'PC akan restart ke skrin pemulihan dalam 10 saat.' 'The PC restarts into the recovery screen in 10 seconds.' Yellow }
+  }
 }
 Stop-Transcript | Out-Null
 # Drop Enter presses typed during the scan so they do not answer the launcher's Y question.
