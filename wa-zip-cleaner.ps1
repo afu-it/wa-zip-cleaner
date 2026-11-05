@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.05.10'
+$Version = '2026.11.05.11'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -330,7 +330,8 @@ $C2Ips = @('103.59.101.28', '85.137.60.92', '103.97.131.121', '149.104.24.197', 
             '202.61.85.151', '202.61.85.179', '202.61.85.173', '202.61.85.47', '87.84.204.93', '156.251.11.79', '137.220.152.244', '154.213.180.91', '137.220.153.147',
             '202.146.222.95', '202.61.157.33', '202.61.160.183', '101.33.117.120', '143.109.37.187', '47.243.109.132', '204.194.50.231',
             '143.92.37.168', '103.45.66.18', '192.253.225.173', '154.201.87.124', '191.96.224.96',
-            '38.91.115.114', '8.210.25.225', '95.40.29.190', '16.163.105.153', '183.90.186.193', '52.128.226.74', '154.83.17.175', '45.204.2.166')
+            '38.91.115.114', '8.210.25.225', '95.40.29.190', '16.163.105.153', '183.90.186.193', '52.128.226.74', '154.83.17.175', '45.204.2.166',
+            '27.124.41.218', '27.124.41.182')  # last two: victim PC (Nov 2026), ManageEngine agent logs (DCServerIPAddress) and IP-guard OAgent.ini (SIP)
 # Added Oct 2026: Triage/ThreatFox ValleyRAT (Malaysian lures), Netresec Ping32 (143.92.37.168), Kaspersky QN Wallpaper,
 # Sekoia (Malaysia), Elastic TCLBANKER, and Chinese reports (ThreatBook, Huorong, QiAnXin).
 $C2Domains = '(?i)(^|\.)(fetish-friends\.com|3mkorealtd\.com|sudsmama\.com|woopami\.com|ilptour\.com|petitechanson\.com|doublemobile\.com|mcagov\.cc|roldco\.com|kcii2\.com|haijing88\.com|ggwk\.cc|yuxuanow\.top|itdd\.club|xzghjec\.com|gov-a\.(work|fit|club)|gvo-b\.club|gov-c\.club|govk\.club|swjc2025bjkb\.cn|2025swmm\.cn|zapgrande\.com|sorvetenopo(a)?te\.com|sorvetenoopote\.com|sorvetenopotel\.com|etenopote\.com|expa(h)?nsiveuser\.com|expansivebot\.com|imobiliariaricardoparanhos\.com|casadecampoamazonas\.com|bravexolutions\.com|adoblesecuryt\.com|saogeraldoshoping\.com|baskwms\.top|msopsa\.top|shoppes\.help|shaaslong\.one|baoxis\.cc|kammwv\.cc|azuheq\.s3\.ap-southeast-1\.amazonaws\.com|d156sk07toobyl\.cloudfront\.net|neescil\.top|velthora\.top|sinjiabo-1398259625\.cos\.ap-singapore\.myqcloud\.com|(bafauac|9ding)\.s3\.ap-southeast-1\.amazonaws\.com|(baolongwes|sdcwww)\.oss-ap-southeast-1\.aliyuncs\.com|(baoyuw2s|hksha3|sjdkjj23|xijkwm2|yifubafu)\.s3\.ap-southeast-1\.amazonaws\.com|(caiwuascw|facaia)\.s3\.us-east-005\.backblazeb2\.com|khltt1\.club|lsf168\.club|pxxjbh\.club|liyunee\.top|articio\.top|kyur7oz\.top|uykb10\.club|gntr30\.club|kufp16\.club|txpfproxy\.vip|jksdjkjs\.cc|shougong9\.com|thinnected\.com|tax(cerf|low|gg|zz|yy)\.top|fadaoxiao\.s3\.us-west-004\.backblazeb2\.com|xqwmwru\.top|360sdgg\.com|ef971a42\.workers\.dev|mxtestacionamentos\.com|uuuucome\.com|laosjdhd\.cn|xxxjjj250711\.com|twsww\.xin|cn-hk-oss-vip\.com|fafadownload\.com|haccrt\.top|mwkwnnn\.click|cakkaao\.com|tttkkkssww\.com|devin-us\.com|devin-hk\.shop|hasil-?gov-my\.shop|hasilgov-my\.my\.id|mida\.cam|midaoity\.my|mhftee\.my\.id|wwcvda\.my\.id|satgob-mx\.shop|mjdou\.vip)$'
@@ -430,6 +431,7 @@ $WarnHelp = @(
   ,@('Firewall blocks', 'Firewall disuruh sekat semua sambungan keluar. Malware buat ni supaya antivirus tak dapat update atau hantar amaran, tapi benarkan dirinya sendiri.', 'Kalau bukan anda atau IT yang tetapkan: Windows Security > Firewall & network protection > Restore firewalls to default > Restore.')
   ,@('VulcanRAT', 'Fail driver sementara dalam folder driver Windows. VulcanRAT guna fail macam ni untuk matikan antivirus.', 'Hantar screenshot kepada orang IT. Kalau ada juga merah [HIGH], taip Y untuk bersihkan, kemudian restart.')
   ,@('ManageEngine UEMS', 'Program kawalan jauh. Office kadang pasang untuk urus PC staf. Kalau PC sendiri, penggodam yang pasang untuk kawal PC anda.', 'Kalau bukan office yang pasang: jalankan tool sekali lagi, pilih "PC sendiri" bila ditanya, kemudian taip Y.')
+  ,@('IP-guard', 'Program pengintip IP-guard (OCular). Dia rakam skrin, apa yang ditaip, emel, browser dan internet.', 'Tanya IT office sama ada mereka yang pasang. Kalau bukan: cabut internet PC ni, backup dokumen, dan pasang semula Windows.')
   ,@('Remote-control program', 'Program kawalan jauh (contoh AnyDesk, UltraViewer). Sesiapa yang ada akses boleh guna PC anda dari jauh.', 'Kalau anda tak pasang sendiri: Settings > Apps > cari nama program tu > Uninstall.')
   ,@('Admin permission prompt', 'Tetingkap "Benarkan program ni buat perubahan?" dah dimatikan. Program boleh pasang diri tanpa tanya anda.', 'Taip UAC dalam carian Windows > Change User Account Control settings > naikkan slider satu tingkat > OK.')
   ,@('Attacker server looked up', 'PC ni pernah cuba hubungi server penggodam baru-baru ini.', 'Anggap PC dijangkiti. Tukar kata laluan guna telefon. Paling selamat: backup dokumen dan format.')
@@ -1070,6 +1072,7 @@ function Scan-ManageEngine {
     if ($cfg -and ($cfg | Select-String -SimpleMatch -Pattern $C2Ips -List -ErrorAction SilentlyContinue)) { $script:MeAttacker = $true }
   }
   Scan-Ping32
+  Scan-IpGuard
   # MyCERT MA-1491/1493: work folders the ManageEngine lures create.
   $drops = @("$env:SystemDrive\kouren", "$env:SystemDrive\cool")
   $drops += @(Get-ChildItem -LiteralPath $env:ProgramData -Directory -Force -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^Office[0-9a-f]{4,6}$' } | ForEach-Object { $_.FullName })
@@ -1090,6 +1093,34 @@ function Scan-ManageEngine {
     } }
     Add-Finding 'Info' 'WARN' 'ManageEngine UEMS Agent' $d
   }
+}
+
+# IP-guard / OCular (TEC Solutions) monitoring agent. On a Malaysian victim's PC (Nov 2026) the attacker's
+# ManageEngine pushed it three days after itself: screen, typing, mail, browser and network capture, plus
+# about 18 kernel drivers that protect it. The tool only reports it; it is never touched by -Fix.
+function Scan-IpGuard {
+  $sys = $env:SystemRoot
+  $hits = @(@("$sys\SysWOW64\Ocular", "$sys\System32\Ocular", "$env:ProgramData\Ocular") | Where-Object { Test-Path -LiteralPath $_ })
+  $hits += @('IPGuDll.dll', 'OAgentInfoEx.exe', 'SDGuarder.exe', 'wrdlv4.exe') | ForEach-Object { "$sys\SysWOW64\$_" } | Where-Object { Test-Path -LiteralPath $_ }
+  $hits += @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { [string]$_.ExecutablePath -match '(?i)\\wrdlv4\.exe$' } | ForEach-Object { "process $($_.Name) (PID $($_.ProcessId))" })
+  $drv = Get-ItemProperty -LiteralPath 'HKLM:\SYSTEM\CurrentControlSet\Services\THlpDrv' -ErrorAction SilentlyContinue
+  if ($drv -and [string]$drv.Group -match 'Ocular') { $hits += 'driver THlpDrv' }
+  if (-not $hits.Count) { return }
+  # OAgent.ini keeps the server address as SIP=<4 bytes hex, last byte first>.
+  $sip = $null
+  foreach ($ini in "$sys\SysWOW64\Ocular\OAgent.ini", "$sys\System32\Ocular\OAgent.ini") {
+    $line = @(Get-Content -LiteralPath $ini -ErrorAction SilentlyContinue | Where-Object { $_ -match '^\s*SIP\s*=\s*[0-9A-Fa-f]{8}\s*$' })[0]
+    if ($line) { $h = ($line -split '=')[1].Trim(); $sip = (6, 4, 2, 0 | ForEach-Object { [Convert]::ToInt32($h.Substring($_, 2), 16) }) -join '.'; break }
+  }
+  $bad = $sip -and ($C2Ips -contains $sip)
+  $found = " Found: $($hits -join ', ')."
+  if ($Owner -eq 'Office' -and -not $bad) {
+    $srv = if ($sip) { " Its server is $sip." } else { '' }
+    Add-Finding 'Info' 'WARN' 'IP-guard (OCular) monitoring agent' ("IP-guard (OCular) monitoring agent. Companies use it to watch staff PCs; ask your IT team if they installed it.$srv If they did not, an attacker installed it: disconnect the internet, back up your documents and reinstall Windows." + $found)
+    return
+  }
+  $srv = if ($bad) { "Its settings point at a known attacker server ($sip). " } elseif ($sip) { "Its server is $sip. " } else { '' }
+  Add-Finding 'Info' 'HIGH' 'IP-guard (OCular) monitoring agent' ("$srv" + 'IP-guard (OCular) spy program: records the screen, typing, email, browsers and network traffic. In the WhatsApp ManageEngine campaign the attacker installs it a few days after ManageEngine. It protects itself, so this tool cannot remove it while Windows runs. Disconnect the internet, back up your documents (check they open on another PC first), then reinstall Windows or ask an IT person to remove it.' + $found)
 }
 
 # Netresec (Jun 2026): a WhatsApp VBS variant installs the Ping32 monitoring agent (NSecRTS.exe) instead of ManageEngine.
@@ -1677,6 +1708,10 @@ if ($me -and $meRemove -and $Fix -and $script:MeLeft) {
 } elseif ($me) {
   Say 'ManageEngine dijumpai. Kalau PC sendiri, jalankan tool ni semula dan jawab 2 (sendiri), tool akan buang dia. Atau buang sendiri: (1) pasang Bulk Crap Uninstaller (percuma, bcuninstaller.com), cari ManageEngine, klik kanan > Uninstall manually (uninstall biasa minta PIN hacker); (2) buka services.msc, set semua servis ManageEngine ke Disabled; (3) buka Task Scheduler, padam task ManageEngine; (4) restart dan imbas semula. Paling selamat: backup data & pasang semula Windows.' `
       'ManageEngine found. If this is your own PC, run this tool again and answer 2 (personal); it will remove it. Or remove it yourself: (1) install Bulk Crap Uninstaller (free, bcuninstaller.com), find ManageEngine, right-click > Uninstall manually (normal uninstall asks for the attacker''s PIN); (2) open services.msc and set every ManageEngine service to Disabled; (3) open Task Scheduler and delete ManageEngine tasks; (4) restart and scan again. Safest: back up data and reinstall Windows.' Yellow
+}
+if ($Findings | Where-Object { $_.Target -match '^IP-guard' -and $_.Severity -eq 'HIGH' }) {
+  Say 'IP-guard (program pengintip) dijumpai. Dia rakam skrin, apa yang ditaip, emel dan internet, dan tool ni TAK boleh buang dia masa Windows hidup. Cabut internet PC ni sekarang, backup dokumen (pastikan boleh dibuka di PC lain dulu), kemudian pasang semula Windows atau minta orang IT buang dia.' `
+      'IP-guard (a spy program) was found. It records the screen, typing, email and internet traffic, and this tool CANNOT remove it while Windows runs. Disconnect this PC from the internet now, back up your documents (check they open on another PC first), then reinstall Windows or ask an IT person to remove it.' Red
 }
 # Blocked leftovers: offer to restart into Safe Mode (the tool runs itself there) or into the recovery screen (BUANG.bat).
 function Start-SafeAuto {

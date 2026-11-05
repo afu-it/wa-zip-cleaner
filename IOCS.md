@@ -199,6 +199,14 @@ Sources: amirulcyber.com (2 Nov 2026), NetbyteSEC (28 Oct 2026), @bomccss on X (
 - `dbghelp.dll` (1,869,312 bytes), SHA-256 `a490e729feafaee29873331fbaab9b653c7e1285a3e93b21653520559c210adc`, VirusTotal 2/75 (trojan.sideloader). The program loads it from its own folder instead of System32.
 - Name pattern: `TBK` plus 4 to 8 digits, sometimes with `-` or `_digits`.
 
+## ManageEngine + IP-guard chain (Malaysia victim, Nov 2026)
+From one victim's PC, collected with the owner's permission (agent logs, registry and folder listings; no samples).
+- 2026-10-09 ~16:40 (UTC+8): attacker's ManageEngine Endpoint Central (UEMS) agent installed. Server `27.124.41.218` (`DCServerIPAddress`), server name `WIN-NIK9N0SF4IH`, ports 8383 (HTTPS) and 8443 (remote-control WebSocket). Still answering on 2026-11-05.
+- The attacker pushed a ManageEngine "Prohibited Software" policy that ran `dcuninstallsw.exe` repeatedly (12 Oct to 4 Nov). `MEARWService` blocked stopping and removal even for an administrator; the tool's Safe Mode auto run removed it.
+- 2026-10-12 08:05-08:18: ManageEngine dropped the IP-guard / OCular agent (TEC Solutions): installer folder `C:\ProgramData\Ocular\IPGASKERNEL<timestamp>\AKernel3.exe`, work folder `C:\Windows\SysWOW64\Ocular` (`OAgent.ini`, `OPolicy.ini`, `Screen`, `Mails`, `BroHistory`, `Winscap` SSL/SSH capture, `TSafeDoc`), process `wrdlv4.exe` (System32 and SysWOW64), `IPGuDll.dll`, `OAgentInfoEx.exe`, `SDGuarder.exe`, `sdhelper2.exe`, `winoav3.dll`, `winscap64.dll`, about 200 more DLLs in System32/SysWOW64.
+- IP-guard server `27.124.41.182`, from `OAgent.ini` `SIP=B6297C1B` (4 bytes, last byte first). Same /24 as the ManageEngine server.
+- IP-guard kernel drivers (created 2026-10-12): `THlpDrv64.sys` (service `THlpDrv`, group `.OcularService`, LOLDrivers vulnerable `thelper.sys`), `TSDDrv64.sys`, `TsdEncrypt.sys`, `TsdEncryptMF.sys`, `TsdLogDrv.sys`, `TSecBxFltMF.sys`, `tfsfltdrv.sys`, `TFsdframe.sys`, `TIjtDrv64.sys`, `TPacket7.sys`, `tpacketv.sys`, `tnfcap.sys`, `TNullFilter.sys`, `TProbeDrv.sys`, `TWfpFrame.sys`, `tvdisk.sys`, `ipnpf.sys`; plus `bakdevctrl64.sys`, `bakrdgv3.sys`, `bakstec3.sys` in SysWOW64.
+
 ## References
 
 - CloudSEK, Silver Fox targeting India using tax-themed phishing lures (2025-12-24): https://www.cloudsek.com/blog/silver-fox-targeting-india-using-tax-themed-phishing-lures

@@ -490,6 +490,21 @@ Check (-not (Test-Path -LiteralPath $libExe)) 'Public\Libraries program quaranti
 Check (-not (Test-Path -LiteralPath (Join-Path $symDir 'host.exe'))) 'symbol folder program quarantined'
 Remove-Item -LiteralPath $libDir, $symDir -Recurse -Force -ErrorAction SilentlyContinue
 
+Write-Host '=== IP-guard (OCular) agent pushed by the attacker''s ManageEngine (victim report, Nov 2026) ===' -ForegroundColor Cyan
+$ocDir = Join-Path $env:SystemRoot 'SysWOW64\Ocular'
+New-Item -ItemType Directory -Force -Path $ocDir | Out-Null
+# SIP is the server address, last byte first: B6297C1B = 27.124.41.182 (on the C2 list).
+Set-Content -LiteralPath "$ocDir\OAgent.ini" -Value '[AgentConfig]', 'SIP=B6297C1B' -Encoding ASCII
+$r25 = Scan "$env:TEMP\x25.json" -Owner Office
+Check (Has $r25 'Info' 'HIGH' '^IP-guard' '27\.124\.41\.182') 'IP-guard pointing at an attacker server is HIGH even on an office PC'
+Set-Content -LiteralPath "$ocDir\OAgent.ini" -Value '[AgentConfig]', 'SIP=0A00000A' -Encoding ASCII
+$r26 = Scan "$env:TEMP\x26.json" -Owner Office
+Check (Has $r26 'Info' 'WARN' '^IP-guard' 'IT team') 'IP-guard with a company server is WARN on an office PC'
+$r27 = Scan "$env:TEMP\x27.json" -Owner Personal -Fix
+Check (Has $r27 'Info' 'HIGH' '^IP-guard') 'IP-guard is HIGH on a personal PC'
+Check (Test-Path -LiteralPath "$ocDir\OAgent.ini") 'IP-guard is reported, never removed by -Fix'
+Remove-Item -LiteralPath $ocDir -Recurse -Force -ErrorAction SilentlyContinue
+
 Write-Host '=== TankRAT / Overlord (LHDN and Penyata Akaun lures) ===' -ForegroundColor Cyan
 $tc = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Explorer\thumbcache_a1b2c3d4'
 New-Item -ItemType Directory -Force -Path $tc | Out-Null

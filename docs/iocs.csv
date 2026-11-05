@@ -20,3 +20,7 @@ filename,eneio64.dat,Payload run via rundll32 (Oct 2026 wave)
 filename,plcc3a.dat,Payload from lure VHD (Oct 2026 wave)
 defender_exclusion,QtsUpdater.exe,ExclusionProcess added by hidden ONLOGON task (Oct 2026 wave)
 defender_exclusion,svchost.exe,ExclusionProcess added by hidden ONLOGON task (Oct 2026 wave)
+ip,27.124.41.218,ManageEngine Endpoint Central attacker server ports 8383/8443 (victim agent logs Nov 2026)
+ip,27.124.41.182,IP-guard (OCular) attacker server from OAgent.ini SIP (victim PC Nov 2026)
+filename,wrdlv4.exe,IP-guard (OCular) agent process pushed by attacker ManageEngine (Nov 2026)
+filename,THlpDrv64.sys,IP-guard driver (thelper.sys LOLDrivers vulnerable) service THlpDrv group .OcularService
