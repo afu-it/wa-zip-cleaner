@@ -247,6 +247,13 @@ From an opt-in report sent by the tool (Windows Defender history on the PC; no f
 - Same PC, 2026-11-03: Defender flagged `D:\is.dll` as `Trojan:Win32/Wacatac.C!ml`. `D:` was most likely an earlier lure image opened as a drive.
 - The tool found nothing left running or set to start. The name pattern `Reconciliation Invoice*.zip|img|iso|vhd(x)` is HIGH since v2026.11.05.25. From that version, reports also carry the SHA-256 and size of every file found (never the file itself).
 
+## Notis Denda lure, MicroPoint chain renamed Virtual_Linux (opt-in report, Nov 2026)
+From an opt-in report sent by the tool (scan log, Windows event 7045, Program Compatibility records, Prefetch, `Get-FileHash`; no sample).
+- Lure `Notis Denda.zip` holding `Notis Denda.vhd` (12,583,424 bytes), SHA-256 `7173bd2d0f2f17b2fd1e71ba09a9bd03807b3af188dae725bb5c2606781bf620`. Not on VirusTotal (404 on 2026-11-05). Opened straight from the ZIP (Explorer unpack folder in Temp).
+- 2026-11-05 19:51:31: driver service `MSDRIVER1005` installed, image `C:\ProgramData\Virtual_Linux\Security_Module.dat`.
+- `C:\ProgramData\Virtual_Linux\WinCombo.exe` ran the same day; HKLM Run value `AutoStart` starts it. Winos4.0 module in `HKCU\Console\1`. Windows Update and the UAC prompt switched off.
+- Same file names as the MicroPoint chain (`WinCombo.exe`, `Security_Module.dat`) under a new folder name. Since v2026.11.05.29 the tool flags any ProgramData folder holding those files, any service loaded from a `.dat`-style file in ProgramData or a user folder, a VHD unpacked from a ZIP opened directly, and the `Notis Denda*` name.
+
 ## References
 
 - CloudSEK, Silver Fox targeting India using tax-themed phishing lures (2025-12-24): https://www.cloudsek.com/blog/silver-fox-targeting-india-using-tax-themed-phishing-lures

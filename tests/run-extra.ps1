@@ -69,6 +69,15 @@ Set-Content "$env:SystemRoot\System32\drivers\ardrv.sys" 'dummy'
 # D. Lure file held open by a running process (stands in for malware resisting removal)
 $locked = "$dl\Click here to view7.zip"
 Set-Content "$dl\Reconciliation Invoice.zip" 'dummy'
+# MicroPoint chain under another ProgramData name, with its driver loaded from a .dat file (opt-in report, Nov 2026).
+$vlDir = "$env:ProgramData\WazVirtualLinux"
+New-Item -ItemType Directory -Force -Path $vlDir | Out-Null
+Set-Content "$vlDir\WinCombo.exe" 'dummy'; Set-Content "$vlDir\Security_Module.dat" 'dummy'
+& sc.exe create WazMsDriver type= kernel start= demand binPath= "$vlDir\Security_Module.dat" | Out-Null
+# A VHD Explorer unpacked from a ZIP that was opened directly.
+$vhdUnzip = "$env:TEMP\3f2bdc19-2690-456d-b323-37b01a256dc4_Waz Test Lure.zip.dc4"
+New-Item -ItemType Directory -Force -Path $vhdUnzip | Out-Null
+Set-Content "$vhdUnzip\Waz Test Lure.vhd" 'dummy'
 # Developer files whose names contain a lure word must stay untouched (false positives from an opt-in report, Nov 2026).
 $devNpm = "$env:APPDATA\npm\node_modules\wazfake\lib"; $devDoc = "$env:USERPROFILE\Documents\WazDev"
 New-Item -ItemType Directory -Force -Path $devNpm, $devDoc | Out-Null
@@ -178,6 +187,9 @@ Check (-not ($r.All | Where-Object { $_.Target -eq 'OpswatLegitTest' })) 'ardrv 
 Check (Has $r 'Info' 'WARN' 'ManageEngine') 'ManageEngine agent warning'
 Check (Has $r 'File' 'HIGH' 'Click here to view7\.zip$') 'locked lure file detected'
 Check (Has $r 'File' 'HIGH' 'Reconciliation Invoice\.zip$') 'Reconciliation Invoice.zip lure name is HIGH'
+Check (Has $r 'File' 'HIGH' 'WazVirtualLinux$' 'MicroPoint') 'renamed MicroPoint folder (WinCombo.exe) is HIGH'
+Check (Has $r 'Service' 'HIGH' '^WazMsDriver$' 'data file') 'driver loaded from a .dat file in ProgramData is HIGH'
+Check (Has $r 'File' 'HIGH' 'Waz Test Lure\.vhd$' 'straight from a ZIP') 'VHD opened straight from a ZIP is HIGH'
 Check (-not ($r.All | Where-Object { $_.Target -match 'checkProjectBilling\.js$|build_salary_deck\.js$|WorkflowsStepFailedResponse\.js$' })) 'developer .js files with lure words are not flagged'
 Check (Has $r 'File' 'HIGH' 'Invoice Nov 2026\.js$' 'VBS campaign') 'document-named .js that uses Windows Script Host is HIGH'
 Check (Has $r 'File' 'HIGH' 'wa\\Account Summary 0411\.zip$' 'Defender flagged as Trojan:Win32/Malgent') 'lure ZIP found from the Defender detection path'

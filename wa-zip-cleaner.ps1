@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.05.28'
+$Version = '2026.11.05.29'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -99,6 +99,7 @@ $KnownBad = @(
   @{ Sha = '07806661d056305e832b509a1b517241420d8aa6bccadaff5e0768d5131406fd'; Size = 2009626; Name = 'Lure ZIP JK-18005144.zip (Notice from Tax Departmen.exe, Oct 2026)' }
   @{ Sha = '426bfd72b3143c76c83bfb3246f820e3cc17902ea04293a35764b67fc635ec3d'; Size = 655359; Name = 'ValleyRAT IRBM sample ZIP (Triage, Oct 2026)' }
   @{ Sha = 'e43c872558aeac504df57d7f292518086f61c8b5c4abf282576bcf6bd1cecbed'; Size = 1564951; Name = 'Lure ZIP TAX_*.img.zip (TaxFiling.exe, Oct 2026)' }
+  @{ Sha = '7173bd2d0f2f17b2fd1e71ba09a9bd03807b3af188dae725bb5c2606781bf620'; Size = 12583424; Name = 'Lure VHD Notis Denda.vhd (opt-in report, Nov 2026; not on VirusTotal)' }
   @{ Sha = '2c77d954eb79cc5b038b024d84848360d496b51c85ac8e97399d70d1bc3d0413'; Size = 1288192; Name = 'ValleyRAT dropper, becomes WinCombo.exe (MicroPoint chain, Oct 2026)' }
   @{ Sha = '9f326ede322930a7d5e149fa8720802b0623c1972dc54e41a2a73608fb6810dd'; Size = 17224; Name = 'Unknown file dropped with ZyArk.sys (crClient chain, Oct 2026)' }
   @{ Sha = '701d51b7be8b034c860bf97847bd59a87dca8481c4625328813746964995b626'; Size = 16603648; Name = 'TCLBANKER loader (Elastic, Oct 2026)' }
@@ -318,7 +319,7 @@ if ($env:WAZIP_TEST_IOCS -and (Test-Path -LiteralPath $env:WAZIP_TEST_IOCS)) {
   }
 }
 $PersistRegex ='\\Explorer\\thumbcache_[^\\]+\\|\\Microsoft\\DeviceSync\\[^\\]+\.exe|\\(Roaming|Local)\\Overlord\\|\bovd_[0-9a-f]{12}\.exe|\\Users\\Public\\Libraries\\.+\.(exe|dll)|\\AppData\\Local\\[0-9A-F]{16}\\|\\AppData\\Roaming\\Microsoft\\Windows\\System\\[^\\]+\.exe|rime\.dll|_vmclientcore@16|KafanInput|vcRuntimeMinimum_x86\.exe|\\H\d{8,}\.exe|ZyArk|\\ardrv\.sys|\\AppData\\Roaming\\Microsoft\\Update\\[^\\]+\.exe|active_desktop_(launcher|render)|Add-MpPreference|eneio64\.dat|plcc3a\.dat|-m\s+appclient|\\appclient\\python\\|HealthApp-[0-9a-f]{6}\.bat|\\ProgramData\\MicroPoint\\|WinCombo\.exe|CRClient\.dll|\\Toolkit\\winhttp\.dll|webview2_integration\.exe|encrashrep\.dll|\\ProgramData\\WindowsData\\|ExceptCatch\.dll|\\QNWallpaper\\|\\msvc-rt14\\|NtHandleCallback\.exe|\\(XiaoH|rwdriver|kabuto)\.sys'
-$LureRegex    = '^(Click here to view.*\.(zip|vhd|vhdx)|Notice.*\.vhdx?|(PDF|DOC)_[A-Z0-9-]{3,8}_20\d{12}\.(zip|img|iso|exe|vhd|vhdx)|20\d{6}[.-]MYS20\d{2}Y\d{4}[A-Z0-9]{4,6}\.(zip|img|iso|vhd|vhdx)|(RES-20\d{6}_\d{6}|ORCAMENTO_\d{6}|COMPROVANTE_20\d{6}_\d{6}|ComprovanteSantander-[\d.]+|NEW-20\d{6}_\d{6}-PED_[0-9A-F]+|DOC-\d{8}_[0-9A-F]{8})\.(zip|lnk)|20\d{12}-[0-9A-F]{14}\.zip|SENARAI ?DOKUMEN.*\.zip|.+\.(vhdx?|img|iso)\.zip|LHDN.*\.(iso|img|vhdx?)|Open_to_view.*\.(iso|img)|TAX_[A-Za-z0-9]{6,}\.img(\.zip)?|SSM-\d+\.img(\.zip)?|20\d{6}[0-9A-F]{8}\.(zip|exe|img|iso|vhd|vhdx)|20\d{6}_\d{6}_\d{4}\.(zip|img|iso|vhd|vhdx)|Financial_Report_20\d{6}_PDF\.\d+\.(zip|exe|img|iso|vhdx?)|\d{14}(\.[0-9A-F]{3})?\.(img|iso|vhdx?)|[A-Z.]{3,9}[.-]Number[.-]20\d{10,12}\.(img\d?|iso|vhdx?)|(IMPS|UTR|TWV)_\d{3,4}-\d{1,2}-20\d{2}\d*(\.[0-9A-F]{3})?\.(img|iso|vhdx?)|20\d{12}\.[0-9A-F]{12}\.zip|SOA\d*\.(img|iso|vhdx?)|Reconciliation[ _-]?Invoice.*\.(zip|img|iso|vhdx?)|E-statement\d*\.(img|iso|vhdx?)|RT\d{10}\.\d{3}\.img|.*_[CD]\d{10}(_.*)?\.(zip|exe|img|iso|vhdx?)|Notis_Penalti_\w+\.(zip|exe)|TBK[-_]?\d{4,8}(_\d+)?\.(zip|exe)|SENARAI DOKUMEN\d*\.(zip|exe)|MyInvois_e-Invoice_INV\d+\w*\.(zip|exe)|e-Invoice_INV\d+_.+_Validated[\w-]*\.(zip|exe)|(TDS_Penalty_S\d+\w*_PAN_|GST_Non_Filing_Notice_|ITR_Scrutiny_\d+_Notice_PAN_).*\.(zip|exe|img|iso|vhdx?)|Common_Offline_Utility_ITR-.*\.(img|iso|vhdx?)|\u6240\u5F97\u7A0E.*\u7D0D\u7A0E\u901A\u77E5\u66F8\d*\.(zip|exe))$'
+$LureRegex    = '^(Click here to view.*\.(zip|vhd|vhdx)|Notice.*\.vhdx?|(PDF|DOC)_[A-Z0-9-]{3,8}_20\d{12}\.(zip|img|iso|exe|vhd|vhdx)|20\d{6}[.-]MYS20\d{2}Y\d{4}[A-Z0-9]{4,6}\.(zip|img|iso|vhd|vhdx)|(RES-20\d{6}_\d{6}|ORCAMENTO_\d{6}|COMPROVANTE_20\d{6}_\d{6}|ComprovanteSantander-[\d.]+|NEW-20\d{6}_\d{6}-PED_[0-9A-F]+|DOC-\d{8}_[0-9A-F]{8})\.(zip|lnk)|20\d{12}-[0-9A-F]{14}\.zip|SENARAI ?DOKUMEN.*\.zip|.+\.(vhdx?|img|iso)\.zip|LHDN.*\.(iso|img|vhdx?)|Open_to_view.*\.(iso|img)|TAX_[A-Za-z0-9]{6,}\.img(\.zip)?|SSM-\d+\.img(\.zip)?|20\d{6}[0-9A-F]{8}\.(zip|exe|img|iso|vhd|vhdx)|20\d{6}_\d{6}_\d{4}\.(zip|img|iso|vhd|vhdx)|Financial_Report_20\d{6}_PDF\.\d+\.(zip|exe|img|iso|vhdx?)|\d{14}(\.[0-9A-F]{3})?\.(img|iso|vhdx?)|[A-Z.]{3,9}[.-]Number[.-]20\d{10,12}\.(img\d?|iso|vhdx?)|(IMPS|UTR|TWV)_\d{3,4}-\d{1,2}-20\d{2}\d*(\.[0-9A-F]{3})?\.(img|iso|vhdx?)|20\d{12}\.[0-9A-F]{12}\.zip|SOA\d*\.(img|iso|vhdx?)|Reconciliation[ _-]?Invoice.*\.(zip|img|iso|vhdx?)|E-statement\d*\.(img|iso|vhdx?)|RT\d{10}\.\d{3}\.img|.*_[CD]\d{10}(_.*)?\.(zip|exe|img|iso|vhdx?)|Notis_Penalti_\w+\.(zip|exe)|Notis[ _-]?Denda.*\.(zip|vhdx?|img|iso|exe)|TBK[-_]?\d{4,8}(_\d+)?\.(zip|exe)|SENARAI DOKUMEN\d*\.(zip|exe)|MyInvois_e-Invoice_INV\d+\w*\.(zip|exe)|e-Invoice_INV\d+_.+_Validated[\w-]*\.(zip|exe)|(TDS_Penalty_S\d+\w*_PAN_|GST_Non_Filing_Notice_|ITR_Scrutiny_\d+_Notice_PAN_).*\.(zip|exe|img|iso|vhdx?)|Common_Offline_Utility_ITR-.*\.(img|iso|vhdx?)|\u6240\u5F97\u7A0E.*\u7D0D\u7A0E\u901A\u77E5\u66F8\d*\.(zip|exe))$'
 # Overlord RAT (open source, used by TankRAT) and its TankRAT loader keep their files in these folders.
 $OverlordRegex = '(?i)\\Explorer\\thumbcache_[^\\]+\\|\\AppData\\Roaming\\Microsoft\\DeviceSync\\|\\AppData\\(Roaming|Local)\\Overlord\\|\\AppData\\Local\\Temp\\(Overlord(virtualDriver)?|ovld_[^\\]+)\\'
 # Programs the October 2026 wave tells Windows Defender to skip. No real program needs these excluded.
@@ -630,6 +631,8 @@ function Scan-Services {
     elseif ($img -match $PersistRegex -and $img -notmatch 'OPSWAT') { $hit = "Service points at malware path: $img" }
     # Triage (Oct 2026, SSM/SOA lures): a driver loaded straight out of a Temp folder is the antivirus killer.
     elseif ($name -eq 'EmbeddedDriverService' -or $img -match '(?i)\\Temp\\[^\\]+\.sys"?$') { $hit = "Driver loaded from a Temp folder (antivirus killer): $img" }
+    # Opt-in report (Nov 2026, MicroPoint chain renamed Virtual_Linux): service MSDRIVER1005 loads ProgramData\<folder>\Security_Module.dat.
+    elseif ($img -match '(?i)\\(ProgramData|Users|AppData)\\[^"]*\.(dat|bin|tmp|log|jpg|png|txt)"?$') { $hit = "Service or driver loaded from a data file (antivirus killer, ValleyRAT MicroPoint chain): $img" }
     elseif ($name -match '^(TCLService|Cndom6)$' -and $img -notmatch '(?i)\\Program Files') { $hit = "Silver Fox service (Chinese security reports): $img" }
     if ($hit) { Add-Finding 'Service' 'HIGH' $name $hit @{ RegPath = $svc.PSPath; Image = $img } }
     # A service that launches a script interpreter from a user-writable folder is a common persistence trick.
@@ -793,6 +796,12 @@ function Scan-Persistence {
     "$env:SystemDrive\WhatsAppBackup\WhatsAppData.zip" = 'Stolen WhatsApp data packed for upload (Sekoia, Malaysia).'
   }
   foreach ($p in $fixed.Keys) { if (Test-Path -LiteralPath $p) { Add-Finding 'File' 'HIGH' $p $fixed[$p] } }
+  # The MicroPoint chain also installs under other ProgramData names (Virtual_Linux, opt-in report Nov 2026): match its files instead.
+  foreach ($d in Get-ChildItem -LiteralPath $env:ProgramData -Directory -Force -ErrorAction SilentlyContinue) {
+    if ($d.FullName -eq "$env:ProgramData\MicroPoint") { continue }
+    $marks = @('WinCombo.exe', 'Security_Module.dat', 'EraseCode.dat', 'magic_xe_core.dll' | Where-Object { Test-Path -LiteralPath (Join-Path $d.FullName $_) })
+    if ($marks.Count) { Add-Finding 'File' 'HIGH' $d.FullName "ValleyRAT install folder (MicroPoint chain under another name): $($marks -join ', ')." }
+  }
   foreach ($u in Get-ChildItem "$env:SystemDrive\Users" -Directory -ErrorAction SilentlyContinue) {
     $ac = Join-Path $u.FullName 'AppData\Local\appclient'
     if ((Test-Path -LiteralPath "$ac\python\pythonw.exe") -or (Test-Path -LiteralPath "$ac\update.bat")) {
@@ -1048,6 +1057,8 @@ function Scan-Files {
             $f.FullName -match '(?i)^[a-z]:\\Users\\' -and
             $f.FullName -notmatch '(?i)\\AppData\\Local\\(Docker\\|Packages\\(?!5319275A\.WhatsAppDesktop))') {
           if (Test-WaOrigin $f) { Add-Finding 'File' 'HIGH' $f.FullName 'Virtual disk (VHD) downloaded from WhatsApp Web. The WhatsApp ZIP hides its payload in a VHD.'; return }
+          # Explorer unpacks a file opened straight from a ZIP to Temp\<guid>_<zip name>.zip.<n>\ (Notis Denda.zip report, Nov 2026).
+          if ($f.FullName -match '(?i)\\Temp\\[0-9a-f]{8}-[0-9a-f-]{27}_[^\\]+\.zip\.[0-9a-f]+\\') { Add-Finding 'File' 'HIGH' $f.FullName 'Virtual disk (VHD) opened straight from a ZIP. This is how the WhatsApp ZIP lure starts.'; return }
           Add-Finding 'File' 'WARN' $f.FullName 'Virtual disk (VHD) in a user folder. The WhatsApp ZIP hides its payload in a VHD; delete it unless you made it.'; return }
         # Victim sample (4 Nov 2026, TBK20261104_9635.zip): renamed Edge notification_helper.exe loads a fake dbghelp.dll from its own folder.
         if ($f.Name -ieq 'dbghelp.dll' -and $f.FullName -match '(?i)^[a-z]:\\Users\\' -and
@@ -1926,6 +1937,8 @@ function Hide-Pii([string]$s) {
     $s = $s -replace ('(?i)(?<![A-Za-z0-9])' + [regex]::Escape($n) + '(?![A-Za-z0-9])'), '<name>'
   }
   $s = $s -replace 'S-1-5-21-\d+-\d+-\d+(-\d+)?', '<sid>'
+  $s = $s -replace '(?i)(?<![A-Za-z0-9])(LAPTOP|DESKTOP|PC)-[A-Z0-9]{5,10}(?![A-Za-z0-9])', '<name>'
+  $s = $s -replace '(?<![\\A-Za-z0-9])[A-Za-z0-9-]{1,15}\\<name>', '<name>\<name>'
   $s = $s -replace '(?<![\d.])(?:10\.\d{1,3}|192\.168|172\.(?:1[6-9]|2\d|3[01]))\.\d{1,3}\.\d{1,3}(?![\d.])', '<lan-ip>'
   $s = $s -replace '[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+', '<email>'
   $s = $s -replace '(?<![\w.])\+?6?01\d[- ]?\d{3,4}[- ]?\d{4}(?![\w.])', '<phone>'
