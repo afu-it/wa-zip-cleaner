@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.05.9'
+$Version = '2026.11.05.10'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -1512,6 +1512,7 @@ if ($me) {
     Write-Host ''
     Say 'ManageEngine dijumpai. Kalau office/syarikat anda yang pasang, JANGAN buang. Kalau anda tak pernah pasang, taip BUANG dan Enter:' `
         'ManageEngine found. If your company installed it, do NOT remove it. If you never installed it, type BUANG and press Enter:' Yellow
+    try { $Host.UI.RawUI.FlushInputBuffer() } catch {}
     $meRemove = (Read-Host) -ceq 'BUANG'
   }
   if ($meRemove) {
@@ -1725,6 +1726,8 @@ if ($SafeAuto) {
   Say '  [Enter] Buat sendiri nanti.' '  [Enter] Do it yourself later.' White
   Write-Host $Rule -ForegroundColor DarkCyan
   Write-Host ''
+  # Enter presses typed during the scan would answer this at once and skip the choice (user report, Nov 2026).
+  try { $Host.UI.RawUI.FlushInputBuffer() } catch {}
   Write-Host '  Pilihan anda [1,2,Enter] : ' -ForegroundColor Green -NoNewline
   $ans = ([string](Read-Host)).Trim()
   if ($ans -eq '1') { Start-SafeAuto }
