@@ -194,8 +194,11 @@ $repDir = "$env:TEMP\waz-rep"
 New-Item -ItemType Directory -Force -Path $repDir | Out-Null
 $repJob = Start-Job {
   param($out)
+  # Never block for ever: a job stuck in GetContext() cannot be stopped and hangs the whole run (Windows 2025 runner, Nov 2026).
   $l = New-Object Net.HttpListener; $l.Prefixes.Add('http://127.0.0.1:8796/'); $l.Start()
-  $ctx = $l.GetContext()
+  $wait = $l.GetContextAsync()
+  if (-not $wait.Wait(180000)) { $l.Close(); 'stand-in inbox: no request within 3 minutes'; return }
+  $ctx = $wait.Result
   $ms = New-Object IO.MemoryStream; $ctx.Request.InputStream.CopyTo($ms); [IO.File]::WriteAllBytes($out, $ms.ToArray())
   $b = [Text.Encoding]::ASCII.GetBytes('{"id":"WAZ-TEST7"}')
   $ctx.Response.ContentType = 'application/json'; $ctx.Response.ContentLength64 = $b.Length; $ctx.Response.OutputStream.Write($b, 0, $b.Length); $ctx.Response.Close(); $l.Stop()
@@ -205,7 +208,8 @@ $env:WAZIP_TEST_REPORT_DIR = $repDir
 $env:WAZIP_TEST_REPORT_URL = 'http://127.0.0.1:8796/report'
 $r = Scan "$env:TEMP\x2.json" -Fix -Out "$env:TEMP\x2.out"
 $x2out = Get-Content -Raw "$env:TEMP\x2.out"
-Wait-Job $repJob -Timeout 20 | Out-Null; Receive-Job $repJob -ErrorAction SilentlyContinue | Out-Host; Remove-Job $repJob -Force
+Wait-Job $repJob -Timeout 200 | Out-Null; Receive-Job $repJob -ErrorAction SilentlyContinue | Out-Host
+if ($repJob.State -eq 'Running') { Write-Host 'stand-in inbox job still running; leaving it' } else { Remove-Job $repJob -Force }
 Check ($x2out -match 'WAZ-TEST7') 'opt-in report sent and the reference number shown'
 $repEntries = @{}
 if (Test-Path "$repDir\posted.zip") {
