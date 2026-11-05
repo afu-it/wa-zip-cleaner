@@ -31,7 +31,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.05.1'
+$Version = '2026.11.05.2'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -1543,8 +1543,8 @@ if ($infected.Count) {
         'This malware told Windows Defender to ignore it, which is why antivirus scans looked clean. After cleaning and restarting, run a Windows Defender full scan again.' Yellow
   }
   if ($script:SvcLeft) {
-    Say "Windows tak bagi buang servis ni: $($script:SvcLeft -join ', '). Masuk Safe Mode (Settings > System > Recovery > Advanced startup > Restart now > Troubleshoot > Advanced options > Startup Settings > Restart > tekan 5 untuk Safe Mode dengan internet), kemudian jalankan tool ni sekali lagi." `
-        "Windows would not let the tool remove these services: $($script:SvcLeft -join ', '). Start in Safe Mode (Settings > System > Recovery > Advanced startup > Restart now > Troubleshoot > Advanced options > Startup Settings > Restart > press 5 for Safe Mode with Networking), then run this tool again." Red
+    Say "Windows tak bagi buang servis ni: $($script:SvcLeft -join ', '). Masuk Safe Mode (Settings > System > Recovery > Advanced startup > Restart now > Troubleshoot > Advanced options > Startup Settings > Restart > tekan 5 untuk Safe Mode dengan internet), kemudian jalankan tool ni sekali lagi. Dalam Safe Mode, Terminal tak boleh buka: tekan Windows+R, taip powershell, kemudian tekan Ctrl+Shift+Enter." `
+        "Windows would not let the tool remove these services: $($script:SvcLeft -join ', '). Start in Safe Mode (Settings > System > Recovery > Advanced startup > Restart now > Troubleshoot > Advanced options > Startup Settings > Restart > press 5 for Safe Mode with Networking), then run this tool again. In Safe Mode, Terminal will not open: press Windows+R, type powershell, then press Ctrl+Shift+Enter." Red
   } elseif ($script:NeedRestart) {
     Say 'Servis jahat dah dibuang, tapi masih nampak sampai PC di-restart. RESTART dulu sebelum imbas semula.' 'Bad services are removed but stay listed until the PC restarts. RESTART before scanning again.' Yellow
   }
@@ -1554,8 +1554,8 @@ if ($infected.Count) {
   }
 }
 if ($me -and $meRemove -and $Fix -and $script:MeLeft) {
-  Say "ManageEngine BELUM habis dibuang. Windows halang: $($script:MeLeft -join ', '). Restart dan jalankan tool ni sekali lagi. Kalau masih gagal, masuk Safe Mode (Settings > System > Recovery > Advanced startup > Restart now > Troubleshoot > Advanced options > Startup Settings > Restart > tekan 5) dan jalankan semula. Paling selamat: backup data & pasang semula Windows, dan tukar semua password guna phone." `
-      "ManageEngine is NOT fully removed. Windows blocked: $($script:MeLeft -join ', '). Restart and run this tool again. If it still fails, start in Safe Mode (Settings > System > Recovery > Advanced startup > Restart now > Troubleshoot > Advanced options > Startup Settings > Restart > press 5) and run it again. Safest option: back up data and reinstall Windows, and change every password from your phone." Red
+  Say "ManageEngine BELUM habis dibuang. Windows halang: $($script:MeLeft -join ', '). Restart dan jalankan tool ni sekali lagi. Kalau masih gagal, masuk Safe Mode (Settings > System > Recovery > Advanced startup > Restart now > Troubleshoot > Advanced options > Startup Settings > Restart > tekan 5) dan jalankan semula. Dalam Safe Mode, Terminal tak boleh buka: tekan Windows+R, taip powershell, kemudian tekan Ctrl+Shift+Enter. Paling selamat: backup data & pasang semula Windows, dan tukar semua password guna phone." `
+      "ManageEngine is NOT fully removed. Windows blocked: $($script:MeLeft -join ', '). Restart and run this tool again. If it still fails, start in Safe Mode (Settings > System > Recovery > Advanced startup > Restart now > Troubleshoot > Advanced options > Startup Settings > Restart > press 5) and run it again. In Safe Mode, Terminal will not open: press Windows+R, type powershell, then press Ctrl+Shift+Enter. Safest option: back up data and reinstall Windows, and change every password from your phone." Red
 } elseif ($me -and $meRemove -and $Fix) {
   Say 'ManageEngine dah dibuang. Program ni bagi hacker control penuh PC ni, jadi paling selamat: backup data & pasang semula Windows, dan tukar semua password guna phone.' `
       'ManageEngine removed. It gave the attacker full control of this PC, so the safest option is to back up data and reinstall Windows, and change every password from your phone.' Yellow
