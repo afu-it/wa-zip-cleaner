@@ -502,8 +502,75 @@ $r26 = Scan "$env:TEMP\x26.json" -Owner Office
 Check (Has $r26 'Info' 'WARN' '^IP-guard' 'IT team') 'IP-guard with a company server is WARN on an office PC'
 $r27 = Scan "$env:TEMP\x27.json" -Owner Personal -Fix
 Check (Has $r27 'Info' 'HIGH' '^IP-guard') 'IP-guard is HIGH on a personal PC'
-Check (Test-Path -LiteralPath "$ocDir\OAgent.ini") 'IP-guard is reported, never removed by -Fix'
+Check (Test-Path -LiteralPath "$ocDir\OAgent.ini") 'online -Fix leaves IP-guard files for the Safe Mode pass'
 Remove-Item -LiteralPath $ocDir -Recurse -Force -ErrorAction SilentlyContinue
+
+Write-Host '=== IP-guard removal: server blocked and Safe Mode entry removed online, files and drivers in Safe Mode ===' -ForegroundColor Cyan
+# Harmless stand-ins with IP-guard names: text files and a demand-start driver service that is never started.
+$w64 = Join-Path $env:SystemRoot 'SysWOW64'; $drvDirI = Join-Path $env:SystemRoot 'System32\drivers'
+New-Item -ItemType Directory -Force -Path $ocDir | Out-Null
+Set-Content -LiteralPath "$ocDir\OAgent.ini" -Value '[AgentConfig]', 'SIP=B6297C1B' -Encoding ASCII
+Set-Content -LiteralPath "$w64\winoav3.dll" 'dummy'
+Set-Content -LiteralPath "$drvDirI\TNullFilter.sys" 'dummy'
+& sc.exe create TNullFilter type= kernel start= demand binPath= System32\drivers\TNullFilter.sys | Out-Null
+$sbk = 'HKLM:\SYSTEM\CurrentControlSet\Control\SafeBoot\Minimal\TNullFilter'
+New-Item -Path $sbk -Force | Out-Null; Set-Item -Path $sbk -Value 'Driver'
+$rI1 = Scan "$env:TEMP\xi1.json" -Owner Personal -Fix
+Check (Has $rI1 'Info' 'HIGH' '^IP-guard' 'Safe Mode') 'IP-guard finding says it is removed in Safe Mode'
+Check ([bool](Get-NetFirewallRule -DisplayName 'WAZip block IP-guard server (Outbound)' -ErrorAction SilentlyContinue)) 'online -Fix blocks the IP-guard server range'
+Check (-not (Test-Path -LiteralPath $sbk)) 'online -Fix removes IP-guard from the Safe Mode start list'
+Check ((Test-Path -LiteralPath "$w64\winoav3.dll") -and (Test-Path -LiteralPath 'HKLM:\SYSTEM\CurrentControlSet\Services\TNullFilter')) 'online -Fix leaves IP-guard files and services for Safe Mode'
+$env:WAZIP_TEST_IPG_SAFE = '1'
+$rI2 = Scan "$env:TEMP\xi2.json" -Owner Personal -Fix
+Check (Has $rI2 'Service' 'HIGH' '^TNullFilter$' 'IP-guard') 'Safe Mode pass lists the IP-guard driver service'
+Check (-not (Test-Path -LiteralPath "$w64\winoav3.dll") -and -not (Test-Path -LiteralPath "$drvDirI\TNullFilter.sys") -and -not (Test-Path -LiteralPath $ocDir)) 'Safe Mode pass quarantines IP-guard files and folders'
+$tn = Get-ItemProperty -LiteralPath 'HKLM:\SYSTEM\CurrentControlSet\Services\TNullFilter' -ErrorAction SilentlyContinue
+Check (-not $tn -or $tn.DeleteFlag -eq 1) 'Safe Mode pass deletes the IP-guard driver service'
+Remove-Item Env:\WAZIP_TEST_IPG_SAFE
+$rI3 = Scan "$env:TEMP\xi3.json" -Owner Personal
+Check (-not ($rI3.All | Where-Object { $_.Target -match '^IP-guard' })) 'no IP-guard left after the Safe Mode pass'
+# Office PC with a company server: a warning only, nothing removed even in Safe Mode.
+Get-NetFirewallRule -DisplayName 'WAZip block IP-guard server*' -ErrorAction SilentlyContinue | Remove-NetFirewallRule
+New-Item -ItemType Directory -Force -Path $ocDir | Out-Null
+Set-Content -LiteralPath "$ocDir\OAgent.ini" -Value '[AgentConfig]', 'SIP=0A00000A' -Encoding ASCII
+Set-Content -LiteralPath "$w64\winoav3.dll" 'dummy'
+$env:WAZIP_TEST_IPG_SAFE = '1'
+$rI4 = Scan "$env:TEMP\xi4.json" -Owner Office -Fix
+Remove-Item Env:\WAZIP_TEST_IPG_SAFE
+Check ((Has $rI4 'Info' 'WARN' '^IP-guard') -and (Test-Path -LiteralPath "$w64\winoav3.dll") -and (Test-Path -LiteralPath "$ocDir\OAgent.ini")) 'office IP-guard with a company server is never removed'
+Check (-not (Get-NetFirewallRule -DisplayName 'WAZip block IP-guard server*' -ErrorAction SilentlyContinue)) 'office IP-guard with a company server is not blocked'
+Get-NetFirewallRule -DisplayName 'WAZip block IP-guard server*' -ErrorAction SilentlyContinue | Remove-NetFirewallRule
+& sc.exe delete TNullFilter | Out-Null
+Remove-Item -LiteralPath $ocDir -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath "$w64\winoav3.dll", "$drvDirI\TNullFilter.sys", $sbk -Force -ErrorAction SilentlyContinue
+
+Write-Host '=== Second victim PC (Nov 2026): Toolkit.exe sideload, WindowsUpdateSync task, ManageEngine kit in Caches ===' -ForegroundColor Cyan
+$tkDir = Join-Path $env:LOCALAPPDATA 'Toolkit'
+New-Item -ItemType Directory -Force -Path $tkDir | Out-Null
+Copy-Item "$env:SystemRoot\System32\notepad.exe" "$tkDir\Toolkit.exe"
+Set-Content "$tkDir\unityplayer.dll" 'dummy'; Set-Content "$tkDir\UX64" 'dummy'
+Register-ScheduledTask -TaskName 'WindowsUpdateSync' -Action (New-ScheduledTaskAction -Execute "$tkDir\Toolkit.exe") -Force | Out-Null
+$kitDir = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Caches\wazkit'
+New-Item -ItemType Directory -Force -Path $kitDir | Out-Null
+Set-Content "$kitDir\DCAgentServerInfo.json" '{"ServerInfoProps":{"SERVERIPADDRESS":"156.234.7.51","SERVERPORT":"8383"}}' -Encoding ASCII
+# Hash known, size not: matched by file name (UX64 outside the Toolkit folder, so only the hash can flag it).
+$ux = Join-Path $dl 'UX64'
+$uxb = New-Object byte[] 4099; (New-Object Random 7).NextBytes($uxb); [IO.File]::WriteAllBytes($ux, $uxb)
+$iocOld = $env:WAZIP_TEST_IOCS
+@(@{ Sha = (Get-FileHash $ux).Hash; Size = 0; File = 'UX64'; Name = 'TEST-NAME-ONLY' }) | ConvertTo-Json | Out-File -Encoding UTF8 "$env:TEMP\test-iocs-name.json"
+$env:WAZIP_TEST_IOCS = "$env:TEMP\test-iocs-name.json"
+$rB1 = Scan "$env:TEMP\xb1.json"
+Check (Has $rB1 'File' 'HIGH' 'Toolkit\\unityplayer\.dll$') 'fake unityplayer.dll beside Toolkit.exe is HIGH'
+Check (Has $rB1 'File' 'HIGH' 'Toolkit\\UX64$') 'UX64 payload in the Toolkit folder is HIGH'
+Check (-not (Has $rB1 'File' 'HIGH' 'Toolkit\\Toolkit\.exe$')) 'the signed Toolkit.exe itself is not flagged'
+Check (Has $rB1 'Task' 'HIGH' '\\WindowsUpdateSync$') 'WindowsUpdateSync task running from AppData\Local is HIGH'
+Check (Has $rB1 'File' 'HIGH' 'Caches\\wazkit$' '156\.234\.7\.51') 'ManageEngine kit in the Caches folder is HIGH and names its server'
+Check (Has $rB1 'File' 'HIGH' 'Downloads\\UX64$' 'TEST-NAME-ONLY') 'hash with unknown size is matched by file name'
+$rB2 = Scan "$env:TEMP\xb2.json" -Fix
+Check (-not (Test-Path "$tkDir\unityplayer.dll") -and -not (Test-Path $kitDir) -and -not (Get-ScheduledTask -TaskName 'WindowsUpdateSync' -ErrorAction SilentlyContinue)) 'Toolkit sideload, kit and task removed by -Fix'
+$env:WAZIP_TEST_IOCS = $iocOld
+Unregister-ScheduledTask -TaskName 'WindowsUpdateSync' -Confirm:$false -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $tkDir, $kitDir, $ux -Recurse -Force -ErrorAction SilentlyContinue
 
 Write-Host '=== -Fix turns the admin prompt (UAC) back on ===' -ForegroundColor Cyan
 $uacKey = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'

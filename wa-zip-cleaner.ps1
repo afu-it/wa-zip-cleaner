@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.05.13'
+$Version = '2026.11.05.14'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -292,6 +292,9 @@ $KnownBad += @(
   @{ Sha = 'e2883329bbfc82612181b883f30298992cbfbe22cf17041940e51227a92f4a31'; Size = 19432960; Name = 'Overlord RAT agent devin-update.exe' }
   @{ Sha = '8c4b1f299600584aecfec60750ac461e20d58a5dee207c40a8a9258b0e3a5595'; Size = 2175525; Name = 'WhatsApp lure TBK20261104_9635.zip (Edge helper + fake dbghelp.dll)' }
   @{ Sha = 'a490e729feafaee29873331fbaab9b653c7e1285a3e93b21653520559c210adc'; Size = 1869312; Name = 'Fake dbghelp.dll sideloaded by a renamed Edge notification_helper.exe (TBK lure)' }
+  # Victim PC (Nov 2026), Get-FileHash only (size not known): matched by file name instead of size.
+  @{ Sha = '67731346556f1e8921d0be0f346315298c5d683160a5d7cd906e02cc276e108e'; Size = 0; File = 'unityplayer.dll'; Name = 'Fake unityplayer.dll sideloaded by a signed Toolkit.exe (victim PC, Nov 2026)' }
+  @{ Sha = '9af5d2aa96fae12f4e374523c02f0579002c63964b0114d2cc79782e9412b33f'; Size = 0; File = 'UX64'; Name = 'UX64 payload beside the fake unityplayer.dll (victim PC, Nov 2026)' }
 )
 $AbusedLegit = @(
   @{ Sha = '1c5129b4d63f2d5252b5b02a0a7d655dac3b6eac23dd4ed92b4dd55f243387ff'; Size = 18248;   Name = 'ardrv.sys (OPSWAT, abused as AV killer)'; Vendor = 'OPSWAT' }
@@ -310,7 +313,7 @@ $AbusedLegit = @(
 if ($env:WAZIP_TEST_IOCS -and (Test-Path -LiteralPath $env:WAZIP_TEST_IOCS)) {
   $extra = Get-Content -Raw -LiteralPath $env:WAZIP_TEST_IOCS | ConvertFrom-Json
   foreach ($e in @($extra | ForEach-Object { $_ })) {
-    $entry = @{ Sha = $e.Sha.ToLower(); Size = [long]$e.Size; Name = $e.Name }
+    $entry = @{ Sha = $e.Sha.ToLower(); Size = [long]$e.Size; Name = $e.Name; File = $e.File }
     if ($e.Vendor) { $entry.Vendor = $e.Vendor; $AbusedLegit += $entry } else { $KnownBad += $entry }
   }
 }
@@ -331,7 +334,8 @@ $C2Ips = @('103.59.101.28', '85.137.60.92', '103.97.131.121', '149.104.24.197', 
             '202.146.222.95', '202.61.157.33', '202.61.160.183', '101.33.117.120', '143.109.37.187', '47.243.109.132', '204.194.50.231',
             '143.92.37.168', '103.45.66.18', '192.253.225.173', '154.201.87.124', '191.96.224.96',
             '38.91.115.114', '8.210.25.225', '95.40.29.190', '16.163.105.153', '183.90.186.193', '52.128.226.74', '154.83.17.175', '45.204.2.166',
-            '27.124.41.218', '27.124.41.182')  # last two: victim PC (Nov 2026), ManageEngine agent logs (DCServerIPAddress) and IP-guard OAgent.ini (SIP)
+            '27.124.41.218', '27.124.41.182',  # victim PC (Nov 2026): ManageEngine agent logs (DCServerIPAddress) and IP-guard OAgent.ini (SIP)
+            '156.234.7.51')  # second victim PC (Nov 2026): ManageEngine server in a dropped DCAgentServerInfo.json (port 8383)
 # Added Oct 2026: Triage/ThreatFox ValleyRAT (Malaysian lures), Netresec Ping32 (143.92.37.168), Kaspersky QN Wallpaper,
 # Sekoia (Malaysia), Elastic TCLBANKER, and Chinese reports (ThreatBook, Huorong, QiAnXin).
 $C2Domains = '(?i)(^|\.)(fetish-friends\.com|3mkorealtd\.com|sudsmama\.com|woopami\.com|ilptour\.com|petitechanson\.com|doublemobile\.com|mcagov\.cc|roldco\.com|kcii2\.com|haijing88\.com|ggwk\.cc|yuxuanow\.top|itdd\.club|xzghjec\.com|gov-a\.(work|fit|club)|gvo-b\.club|gov-c\.club|govk\.club|swjc2025bjkb\.cn|2025swmm\.cn|zapgrande\.com|sorvetenopo(a)?te\.com|sorvetenoopote\.com|sorvetenopotel\.com|etenopote\.com|expa(h)?nsiveuser\.com|expansivebot\.com|imobiliariaricardoparanhos\.com|casadecampoamazonas\.com|bravexolutions\.com|adoblesecuryt\.com|saogeraldoshoping\.com|baskwms\.top|msopsa\.top|shoppes\.help|shaaslong\.one|baoxis\.cc|kammwv\.cc|azuheq\.s3\.ap-southeast-1\.amazonaws\.com|d156sk07toobyl\.cloudfront\.net|neescil\.top|velthora\.top|sinjiabo-1398259625\.cos\.ap-singapore\.myqcloud\.com|(bafauac|9ding)\.s3\.ap-southeast-1\.amazonaws\.com|(baolongwes|sdcwww)\.oss-ap-southeast-1\.aliyuncs\.com|(baoyuw2s|hksha3|sjdkjj23|xijkwm2|yifubafu)\.s3\.ap-southeast-1\.amazonaws\.com|(caiwuascw|facaia)\.s3\.us-east-005\.backblazeb2\.com|khltt1\.club|lsf168\.club|pxxjbh\.club|liyunee\.top|articio\.top|kyur7oz\.top|uykb10\.club|gntr30\.club|kufp16\.club|txpfproxy\.vip|jksdjkjs\.cc|shougong9\.com|thinnected\.com|tax(cerf|low|gg|zz|yy)\.top|fadaoxiao\.s3\.us-west-004\.backblazeb2\.com|xqwmwru\.top|360sdgg\.com|ef971a42\.workers\.dev|mxtestacionamentos\.com|uuuucome\.com|laosjdhd\.cn|xxxjjj250711\.com|twsww\.xin|cn-hk-oss-vip\.com|fafadownload\.com|haccrt\.top|mwkwnnn\.click|cakkaao\.com|tttkkkssww\.com|devin-us\.com|devin-hk\.shop|hasil-?gov-my\.shop|hasilgov-my\.my\.id|mida\.cam|midaoity\.my|mhftee\.my\.id|wwcvda\.my\.id|satgob-mx\.shop|mjdou\.vip)$'
@@ -469,7 +473,9 @@ function Test-Admin {
 }
 
 $SizeIndex = @{}
-foreach ($k in $KnownBad + $AbusedLegit) { $SizeIndex[[long]$k.Size] = $true }
+$NameIndex = @{}
+# Size 0 means only the hash is known (Get-FileHash on a victim PC): match those by file name instead.
+foreach ($k in $KnownBad + $AbusedLegit) { if ([long]$k.Size) { $SizeIndex[[long]$k.Size] = $true } elseif ($k.File) { $NameIndex[$k.File.ToLower()] = $true } }
 
 # Every file under a folder, walked with a loop instead of Get-ChildItem -Recurse. Windows PowerShell 5.1
 # follows folder links (junctions, symlinks), so a link that points back up the tree made it recurse until
@@ -488,7 +494,7 @@ function Get-TreeFiles([string]$Root) {
 }
 
 function Get-Ioc([System.IO.FileInfo]$f) {
-  if (-not $SizeIndex.ContainsKey([long]$f.Length)) { return $null }
+  if (-not $SizeIndex.ContainsKey([long]$f.Length) -and -not $NameIndex.ContainsKey($f.Name.ToLower())) { return $null }
   $h = (Get-FileHash -LiteralPath $f.FullName -Algorithm SHA256 -ErrorAction SilentlyContinue).Hash
   if (-not $h) { return $null }
   $h = $h.ToLower()
@@ -691,6 +697,9 @@ function Scan-Persistence {
   }
   foreach ($t in Get-ScheduledTask -ErrorAction SilentlyContinue) {
     $txt = ($t.Actions | ForEach-Object { "$($_.Execute) $($_.Arguments)" }) -join ' ; '
+    # Victim PC (Nov 2026): a root task named like Windows Update starts the Toolkit.exe sideload from AppData\Local.
+    if ($t.TaskName -ieq 'WindowsUpdateSync' -and $t.TaskPath -eq '\' -and $txt -match '(?i)\\AppData\\Local\\|%LOCALAPPDATA%') {
+      Add-Finding 'Task' 'HIGH' "$($t.TaskPath)$($t.TaskName)" "Fake Windows Update task that starts malware from AppData\Local: $txt" @{ Path = $t.TaskPath; Name = $t.TaskName } }
     if ($t.TaskName -match '^ovd_[0-9a-f]{8}$' -and $txt -notmatch $PersistRegex) { Add-Finding 'Task' 'HIGH' "$($t.TaskPath)$($t.TaskName)" "Overlord RAT task: $txt" @{ Path = $t.TaskPath; Name = $t.TaskName } }
     if ($txt -match $PersistRegex) { Add-Finding 'Task' 'HIGH' "$($t.TaskPath)$($t.TaskName)" "Scheduled task: $txt" @{ Path = $t.TaskPath; Name = $t.TaskName } }
     # VulcanRAT (Morphisec via 2-Spyware, Oct 2026) hides as a fake Windows update task that runs vulkaninfo.
@@ -762,6 +771,16 @@ function Scan-Persistence {
     if (Test-Path -LiteralPath $el) { Add-Finding 'File' 'HIGH' $el 'ABCDoor error log.' }
     $wh = Join-Path $u.FullName 'AppData\Local\Toolkit\winhttp.dll'
     if (Test-Path -LiteralPath $wh) { Add-Finding 'File' 'HIGH' $wh 'Fake winhttp.dll (ValleyRAT, LHDN/Open_to_view ISO lures).' }
+    # Victim PC (Nov 2026): the attacker's ManageEngine installer kit hidden in Windows' own Caches folder,
+    # which normally holds only cversions*.db files. DCAgentServerInfo.json names the attacker's server.
+    $cache = Join-Path $u.FullName 'AppData\Local\Microsoft\Windows\Caches'
+    foreach ($kit in @(Get-ChildItem -LiteralPath $cache -Recurse -Depth 1 -File -Force -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '(?i)^(UEMSAgent\.msi|DCAgentServerInfo\.json)$' })) {
+      $tgt = if ($kit.DirectoryName -ieq $cache) { $kit.FullName } else { $kit.DirectoryName }
+      $srv = ''
+      $js = Join-Path $kit.DirectoryName 'DCAgentServerInfo.json'
+      try { $ip = [string](Get-Content -Raw -LiteralPath $js -ErrorAction Stop | ConvertFrom-Json).ServerInfoProps.SERVERIPADDRESS; if ($ip) { $srv = " Its server: $ip." } } catch {}
+      Add-Finding 'File' 'HIGH' $tgt "ManageEngine installer kit hidden in the Windows Caches folder (WhatsApp ManageEngine campaign).$srv"
+    }
     $wl = Join-Path $u.FullName 'AppData\Local\Temp\whatsapp_backup.lock'
     if (Test-Path -LiteralPath $wl) { Add-Finding 'File' 'HIGH' $wl 'Marker left while stealing WhatsApp data (Sekoia, Malaysia).' }
   }
@@ -921,7 +940,7 @@ function Scan-Files {
     $roots += @(Get-ChildItem -LiteralPath (Join-Path $u.FullName 'AppData\Local') -Directory -Force -ErrorAction SilentlyContinue |
       Where-Object { $_.Name -cmatch '^[0-9A-F]{16}$' } | ForEach-Object { $_.FullName })
   }
-  $exts = '\.(zip|rar|7z|vhd|vhdx|img|iso|dll|exe|scr|dat|cnf|sys|tar|vbs|vbe|js|wsf|lnk|msi|mst|key)$|^DCAgentServerInfo\.json$'
+  $exts = '\.(zip|rar|7z|vhd|vhdx|img|iso|dll|exe|scr|dat|cnf|sys|tar|vbs|vbe|js|wsf|lnk|msi|mst|key)$|^DCAgentServerInfo\.json$|^UX64$'
   $wsh = New-Object -ComObject WScript.Shell
   # WAZIP_TIMING=1 prints how long each folder takes (used to find slow folders on CI and real PCs).
   foreach ($r in $roots | Where-Object { Test-Path -LiteralPath $_ }) {
@@ -946,6 +965,11 @@ function Scan-Files {
           return
         }
         if ($f.Name -match $LureRegex) { Add-Finding 'File' 'HIGH' $f.FullName 'WhatsApp lure file name.'; return }
+        # Victim PC (Nov 2026): a signed game program renamed Toolkit.exe loads a fake unityplayer.dll from its own
+        # folder, with the payload in UX64. A task named WindowsUpdateSync starts it at every logon.
+        if ($f.DirectoryName -match '(?i)\\AppData\\Local\\Toolkit$' -and $f.Name -match '(?i)^(unityplayer\.dll|UX64)$' -and
+            (Test-Path -LiteralPath (Join-Path $f.DirectoryName 'Toolkit.exe')) -and (Test-Path -LiteralPath (Join-Path $f.DirectoryName 'unityplayer.dll'))) {
+          Add-Finding 'File' 'HIGH' $f.FullName 'Fake unityplayer.dll / UX64 payload loaded by a signed program renamed Toolkit.exe (DLL sideloading, victim PC Nov 2026).'; return }
         if ($f.FullName -match $OverlordRegex) {
           Add-Finding 'File' 'HIGH' $f.FullName 'Overlord / TankRAT remote-control trojan file (hidden thumbcache_, DeviceSync or Overlord folder).'; return }
         if ($f.Name -match '(?i)^(tedutil|badata_x64)\.dll$' -and $f.DirectoryName -notmatch '(?i)\\(Program Files( \(x86\))?|Windows)(\\|$)') {
@@ -1129,14 +1153,114 @@ function Scan-ManageEngine {
 
 # IP-guard / OCular (TEC Solutions) monitoring agent. On a Malaysian victim's PC (Nov 2026) the attacker's
 # ManageEngine pushed it three days after itself: screen, typing, mail, browser and network capture, plus
-# about 18 kernel drivers that protect it. The tool only reports it; it is never touched by -Fix.
+# about 18 kernel drivers that protect it. While Windows runs it undoes every change within seconds and adds
+# itself to the Safe Mode start list, so -Fix only blocks its server and unhooks it from Safe Mode; the files
+# and drivers go in the automatic Safe Mode pass. That order cleaned the victim PC without a reinstall.
+# Product files, taken from that PC. They are only touched when IP-guard is found, and never when signed by
+# Microsoft (the kit also carries Windows Update Agent installers).
+$IpgFileNames = @{
+  S32 = ('DocTraverser64.dll DtActionFrame64.dll DtComFrame64.dll dtframe64.dll dtsframe64.dll enumiacc264.dll Fm_GzipDLL64.dll' +
+          ' funcextv64.dll ifocmsdll64.dll ippcap.dll OBtEmulator64.dll ocpframe64.dll OnacAgent.exe orcshk364.dll outlka23.dll' +
+          ' PathCvrt64.dll SaveAsFileCheck64.dll SD7z64.dll SD7zArchive64.dll sdagent64.dll sdcontext64.dll SDEncryptionAPI64.dll' +
+          ' sdfattr64.dll sdfileicon64.dll SDGuarder64.exe sdiskcontext64.dll sdviewer64.exe snapb2p64.dll SoftwareIdentify64.dll' +
+          ' TAuxMod64.dll TFloatTip64.dll TFollowWnd64.dll thooksv364.dll TIjtDrvd64.dll TMailHook64.dll TnfcapInst64.dll' +
+          ' tpdfium64.dll TPDFViewer.exe TPLRFrame64.dll trmenushl64.dll tsafedoc64.dll TSafeETAddin64.dll TSafeExcelAddin64.dll' +
+          ' TSafeFileFollow64.dll TSafePPTAddin64.dll TSafeVisioAddin64.dll TSafeWordAddin64.dll TSafeWPPAddin64.dll' +
+          ' TSafeWPSAddin64.dll TSecBxCore64.dll TSecBxHk64.dll TSecBxMain64.dll TSenceMod64.dll TWaterMask64.dll winahdcore64.dll' +
+          ' winahframe64.dll winbrohca64.dll winbrosqlite3_64.dll windlgctl64.dll winencyx64.dll winhelpv364.dll winimhc364.dll' +
+          ' winimhca64.dll winimhcd64.dll winimhs364.dll winncap364.dll winoauv364.dll winoauve364.dll winronce64.exe winscap64.dll' +
+          ' winusrmd64.dll winwdgv364.dll wrdlv4.exe')
+  W64 = ('Agt3Tool.exe bakdevctrl64.sys bakrdgv3.sys bakstec3.sys cpuidsdk.dll DocTraverser32.dll DtActionFrame32.dll' +
+          ' DtComFrame32.dll dtframe32.dll dtsframe32.dll DtSSLFrame32.dll enumiacc2.dll EnumProcessModule.exe FileUpDownArchive.dll' +
+          ' Fm_GzipDLL.dll funcextv.dll ifocmsdll.dll ipddraw.dll IPGFlashSDK.dll IPGuDll.dll ippacket.dll ippcap.dll IPWPacket.dll' +
+          ' ITEuDllvMgr.dll LBXWebService.dll msowcnv3.dll notesoa.dll notice.wav NWHelper.dll OAgentInfoEx.exe OAgentTray.dll' +
+          ' OBtEmulator32.dll ocpframe32.dll orcs3dll.dll orcshk3.dll OsdexPacket.exe OsdexViewer.exe outlka23.dll outlka2k.dll' +
+          ' PathCvrt32.dll PerformanceTool.exe SanyWSProxy.dll SaveAsFileCheck2.dll ScreenCaptureDX32.dll SD7z.dll SD7zArchive.dll' +
+          ' sdagent.dll sdcenter.dll sdconsole.exe sdcontext2.dll SDEncryptionAPI.dll sdfattr.dll sdfileicon2.dll SDGuarder.exe' +
+          ' sdhelper2.exe sdiskcontext2.dll SDPicViewer.exe SDTransformer.dll SDTransformReader.dll sdviewer.exe SMIuDll.dll' +
+          ' snapb2p.dll snapdos.dll SoftwareIdentify.dll SSLServer.dll TAppAccess.dll TAuxMod32.dll TFloatTip.dll TFollowWnd32.dll' +
+          ' TFsdFrameCore32.dll THlpDrvd32.dll thooksv3.dll THttpServer.exe TIjtDrvd32.dll TMailGateway.dll TMailHook.dll' +
+          ' TnfcapInst.dll ToaChk32.dll tpacket.vxd tpacketd.dll tpdfium32.dll TPDFViewer.exe TPLRFrame32.dll trmenushl.dll' +
+          ' tsafedoc2.dll TSafeETAddin.dll TSafeExcelAddin.dll TSafeFileFollow32.dll tsafenet.dll tsafenetx.dll TSafePPTAddin.dll' +
+          ' tsaferar.exe tsafetszc.dll TSafeVisioAddin.dll TSafeWordAddin.dll TSafeWPPAddin.dll TSafeWPSAddin.dll TSDFmt32.dll' +
+          ' TSDMnt32.dll TSecBxCore32.dll TSecBxHk32.dll TSecBxMain32.dll TSecuDesktopReceiver.exe TSenceMod32.dll' +
+          ' TTPAntivirusExt.dll TUserSystem32.dll tvdmount.dll TWaterMask32.dll TWfpFrame.dll TydExt.dll UDiskIDDLL.dll' +
+          ' uihelper32.exe WFirewallV.dll winahdcore32.dll winahframe32.dll winbrohca.dll winbrosqlite3.dll windlgctl32.dll' +
+          ' windlgctrl32.exe WindowsUpdateAgent20-x86.exe WindowsUpdateAgent30-x64.exe winencyx.dll winhad9k.dll winhad9u.dll' +
+          ' winhaf9k.dll winhaf9u.dll winhelpv3.dll winimhc3.dll winimhca.dll winimhcd.dll winimhs3.dll winncap3.dll winncap332.dll' +
+          ' winncap3x.dll winoacnac.dll winoacsgw.dll winoactasc.dll winoaEDI32.dll winoaIEWndhlp32.dll winoatmm.dll winoatmm2.dll' +
+          ' winoauv3.dll winoauve3.dll winoav3.dll winronce.exe winscap32.dll winsciter32.dll WinTransfer.exe winusrmd.dll' +
+          ' winwdgv3.dll wlfunc.dll wrdlv4.exe')
+  DRV = ('ipnpf.sys TFsdframe.sys tfsfltdrv.sys THlpDrv64.sys TIjtDrv64.sys tnfcap.cat tnfcap.sys TNullFilter.sys TPacket7.sys' +
+          ' tpacketv.sys TProbeDrv.sys TSDDrv64.sys TsdEncrypt.sys TsdEncryptMF.sys TsdLogDrv.sys TSecBxFltMF.sys tvdisk.sys' +
+          ' TWfpFrame.sys')
+  CFS = ('Agt3Tool.exe PolicyImportTool.exe systecv3.exe windevctrl64.exe winrdgv3.exe winwdgsvr.exe')
+}
+$IpgSvcNames = '.Winhlpsvr', 'TFsdframe', 'TFsfltdrv', 'THlpDrv', 'TIjtdrv', 'tnfcap', 'TNullFilter', 'TPacket7', 'TSafeDisk', 'TsdEncrypt', 'TsdEncryptMF', 'TVDisk'
+# Network filters: removing the driver while it is still bound would cut the network, so netcfg unbinds them
+# first (in normal Windows). One that is still installed in Safe Mode is left alone.
+$IpgNetSvc = @{ 'tnfcap' = 'tnfcap.sys tnfcap.cat'; 'TPacket7' = 'TPacket7.sys' }
+$IpgNetComp = @{ 'tnfcap' = 'TNFCAP'; 'TPacket7' = 'tpacket7' }
+$IpgHigh = $false
+$IpgNoAuto = $false
+$IpgPending = $false
+$IpgParts = $null
+$IpgSip = $null
+$IpgNetLeft = @()
+
+function Test-MicrosoftSigned([string]$p) {
+  $s = Get-AuthenticodeSignature -LiteralPath $p -ErrorAction SilentlyContinue
+  [bool]($s -and $s.Status -eq 'Valid' -and [string]$s.SignerCertificate.Subject -match 'O=Microsoft Corporation')
+}
+function Get-IpgSafeBootKeys($names) {
+  foreach ($m in 'Minimal', 'Network') {
+    foreach ($k in Get-ChildItem "HKLM:\SYSTEM\CurrentControlSet\Control\SafeBoot\$m" -ErrorAction SilentlyContinue) {
+      if ($IpgSvcNames -contains $k.PSChildName -or $names -contains $k.PSChildName) { "HKLM:\SYSTEM\CurrentControlSet\Control\SafeBoot\$m\$($k.PSChildName)" }
+    }
+  }
+}
+# What IP-guard left on this PC: listed files that exist, its services, its Safe Mode entries, and any of its
+# drivers that sit in a device's filter list (removing one of those can stop a disk or keyboard from working).
+function Get-IpGuardParts {
+  $sys = $env:SystemRoot
+  $cfs = if (${env:CommonProgramFiles(x86)}) { "${env:CommonProgramFiles(x86)}\System" } else { "$env:CommonProgramFiles\System" }
+  $dirs = @{ S32 = "$sys\System32"; W64 = "$sys\SysWOW64"; DRV = "$sys\System32\drivers"; CFS = $cfs }
+  $leaf = @{}
+  $files = New-Object System.Collections.Generic.List[string]
+  foreach ($k in $IpgFileNames.Keys) {
+    foreach ($n in $IpgFileNames[$k] -split ' ' | Where-Object { $_ }) {
+      $leaf[$n.ToLower()] = $true
+      $p = Join-Path $dirs[$k] $n
+      if ((Test-Path -LiteralPath $p -PathType Leaf) -and -not (Test-MicrosoftSigned $p)) { $files.Add($p) }
+    }
+  }
+  foreach ($d in "$sys\SysWOW64\Ocular", "$sys\System32\Ocular", "$env:ProgramData\Ocular") { if (Test-Path -LiteralPath $d) { $files.Add($d) } }
+  $svcs = @()
+  foreach ($s in Get-ChildItem 'HKLM:\SYSTEM\CurrentControlSet\Services' -ErrorAction SilentlyContinue) {
+    $pr = Get-ItemProperty -LiteralPath $s.PSPath -ErrorAction SilentlyContinue
+    if ($pr.DeleteFlag -eq 1) { continue }
+    $img = if ($pr.ImagePath) { Resolve-ImagePath ([string]$pr.ImagePath) } else { '' }
+    $byImg = $img -and $leaf.ContainsKey(([string]($img -split '\\')[-1]).ToLower())
+    if (-not ($IpgSvcNames -contains $s.PSChildName -or $byImg)) { continue }
+    if ($img -and (Test-Path -LiteralPath $img -PathType Leaf) -and (Test-MicrosoftSigned $img)) { continue }
+    $svcs += @{ Name = $s.PSChildName; RegPath = $s.PSPath }
+  }
+  $names = @($svcs | ForEach-Object { $_.Name })
+  $filt = @()
+  foreach ($c in Get-ChildItem 'HKLM:\SYSTEM\CurrentControlSet\Control\Class' -ErrorAction SilentlyContinue) {
+    $cp = Get-ItemProperty -LiteralPath $c.PSPath -ErrorAction SilentlyContinue
+    $filt += @(@($cp.UpperFilters) + @($cp.LowerFilters) | Where-Object { $_ -and $names -contains $_ })
+  }
+  @{ Files = @($files); Services = $svcs; Filters = @($filt | Select-Object -Unique); SafeBoot = @(Get-IpgSafeBootKeys $names) }
+}
+
 function Scan-IpGuard {
   $sys = $env:SystemRoot
   $hits = @(@("$sys\SysWOW64\Ocular", "$sys\System32\Ocular", "$env:ProgramData\Ocular") | Where-Object { Test-Path -LiteralPath $_ })
   $hits += @('IPGuDll.dll', 'OAgentInfoEx.exe', 'SDGuarder.exe', 'wrdlv4.exe') | ForEach-Object { "$sys\SysWOW64\$_" } | Where-Object { Test-Path -LiteralPath $_ }
   $hits += @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { [string]$_.ExecutablePath -match '(?i)\\wrdlv4\.exe$' } | ForEach-Object { "process $($_.Name) (PID $($_.ProcessId))" })
   $drv = Get-ItemProperty -LiteralPath 'HKLM:\SYSTEM\CurrentControlSet\Services\THlpDrv' -ErrorAction SilentlyContinue
-  if ($drv -and [string]$drv.Group -match 'Ocular') { $hits += 'driver THlpDrv' }
+  if ($drv -and [string]$drv.Group -match 'Ocular' -and $drv.DeleteFlag -ne 1) { $hits += 'driver THlpDrv' }
   if (-not $hits.Count) { return }
   # OAgent.ini keeps the server address as SIP=<4 bytes hex, last byte first>.
   $sip = $null
@@ -1151,8 +1275,39 @@ function Scan-IpGuard {
     Add-Finding 'Info' 'WARN' 'IP-guard (OCular) monitoring agent' ("IP-guard (OCular) monitoring agent. Companies use it to watch staff PCs; ask your IT team if they installed it.$srv If they did not, an attacker installed it: disconnect the internet, back up your documents and reinstall Windows." + $found)
     return
   }
+  $script:IpgHigh = $true
+  if ($bad) { $script:IpgSip = $sip }
+  $script:IpgParts = Get-IpGuardParts
+  $script:IpgNoAuto = [bool]$script:IpgParts.Filters.Count
   $srv = if ($bad) { "Its settings point at a known attacker server ($sip). " } elseif ($sip) { "Its server is $sip. " } else { '' }
-  Add-Finding 'Info' 'HIGH' 'IP-guard (OCular) monitoring agent' ("$srv" + 'IP-guard (OCular) spy program: records the screen, typing, email, browsers and network traffic. In the WhatsApp ManageEngine campaign the attacker installs it a few days after ManageEngine. It protects itself, so this tool cannot remove it while Windows runs. Disconnect the internet, back up your documents (check they open on another PC first), then reinstall Windows or ask an IT person to remove it.' + $found)
+  $what = 'IP-guard (OCular) spy program: records the screen, typing, email, browsers and network traffic. In the WhatsApp ManageEngine campaign the attacker installs it a few days after ManageEngine.'
+  if ($script:IpgNoAuto) {
+    $how = " One of its drivers is attached to a device ($($script:IpgParts.Filters -join ', ')), so the tool does not remove it automatically. Disconnect the internet, back up your documents (check they open on another PC first), then reinstall Windows or ask an IT person to remove it."
+  } else {
+    $how = ' It fights back while Windows runs, so when you type Y the tool blocks its server, then restarts the PC into Safe Mode (sign in with your Windows PASSWORD, not PIN) and removes it there. Afterwards open a few old documents to check they still read fine.'
+  }
+  Add-Finding 'Info' 'HIGH' 'IP-guard (OCular) monitoring agent' ("$srv$what$how" + $found)
+}
+
+# Called after the scan when IP-guard is HIGH. In normal Windows: only unhook it from Safe Mode (the rest waits
+# for the Safe Mode pass). In Safe Mode it is not running, so its services and files are removed.
+function Add-IpGuardRemoval {
+  $parts = $script:IpgParts
+  if (-not $parts -or $script:IpgNoAuto) { return }
+  foreach ($k in $parts.SafeBoot) { Add-Finding 'RegKey' 'HIGH' $k 'IP-guard added itself to the Safe Mode start list.' }
+  if (-not ($SafeAuto -or $env:WAZIP_TEST_IPG_SAFE)) { $script:IpgPending = $true; return }
+  $keep = @()
+  foreach ($s in $parts.Services) {
+    if ($IpgNetSvc.ContainsKey($s.Name)) { $keep += $IpgNetSvc[$s.Name] -split ' '; $script:IpgNetLeft += $s.Name; continue }
+    Add-Finding 'Service' 'HIGH' $s.Name 'IP-guard service' @{ RegPath = $s.RegPath; Image = ''; Disable = $true }
+  }
+  foreach ($p in $parts.Files) {
+    if ($keep -contains (Split-Path $p -Leaf)) { continue }
+    Add-Finding 'File' 'HIGH' $p 'IP-guard file'
+  }
+}
+function Remove-IpgSafeBoot {
+  foreach ($k in @(Get-IpgSafeBootKeys @($script:IpgParts.Services | ForEach-Object { $_.Name }))) { Remove-Item -LiteralPath $k -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
 # Netresec (Jun 2026): a WhatsApp VBS variant installs the Ping32 monitoring agent (NSecRTS.exe) instead of ManageEngine.
@@ -1346,7 +1501,10 @@ function Invoke-Fix($qdir) {
       switch ($f.Kind) {
         'Process' {
           # Overlord can mark itself critical: killing it blue-screens the PC. Remove its auto-start instead; it dies on restart.
-          if (Test-CriticalProcess $f.Extra.Pid) {
+          if ($script:IpgPending -and [string]$f.Extra.Path -match '(?i)\\wrdlv4\.exe$') {
+            Say "  LANGKAU $($f.Target): IP-guard, akan dibuang dalam Safe Mode." "  SKIP $($f.Target): IP-guard, removed in the Safe Mode pass." Yellow
+            $done = $false
+          } elseif (Test-CriticalProcess $f.Extra.Pid) {
             $script:NeedRestart = $true
             Say "  LANGKAU $($f.Target): program ni dikunci (kalau dimatikan PC akan skrin biru). Dia akan mati bila PC restart." "  SKIP $($f.Target): critical process (killing it would blue-screen the PC). It stops after a restart." Yellow
             $done = $false
@@ -1440,6 +1598,8 @@ function Invoke-Fix($qdir) {
         'Service' {
           $reg = Join-Path $qdir "reg-$i.reg"
           & reg.exe export (ConvertTo-RegExePath $f.Extra.RegPath) $reg /y | Out-Null
+          # IP-guard: switch it off first, so it stays off even if the delete is refused.
+          if ($f.Extra.Disable) { Set-ItemProperty -LiteralPath $f.Extra.RegPath -Name Start -Value 4 -Type DWord -ErrorAction SilentlyContinue }
           & sc.exe stop $f.Target | Out-Null
           & sc.exe delete $f.Target | Out-Null
           # 1072 = already marked for deletion. Anything else: drop the registry entry so it is gone after a restart.
@@ -1501,6 +1661,28 @@ function Invoke-Fix($qdir) {
       if ($lua -eq 0) { Say '  UAC tadi dimatikan sepenuhnya, jadi WAJIB restart PC.' '  UAC was fully off, so a restart is required.' Yellow }
     } catch { Say "  GAGAL hidupkan semula UAC: $($_.Exception.Message)" '  FAILED to turn UAC back on.' Red }
   }
+  # IP-guard: block its server range at once (in and out), so nothing more leaves the PC before it is removed.
+  if ($script:IpgHigh) {
+    $addr = @('27.124.41.0/24') + @($script:IpgSip | Where-Object { $_ -and $_ -notlike '27.124.41.*' })
+    foreach ($dir in 'Outbound', 'Inbound') {
+      $rn = "WAZip block IP-guard server ($dir)"
+      if (Get-NetFirewallRule -DisplayName $rn -ErrorAction SilentlyContinue) { continue }
+      try {
+        New-NetFirewallRule -DisplayName $rn -Direction $dir -RemoteAddress $addr -Action Block -ErrorAction Stop | Out-Null
+        $log.Add(@{ Kind = 'Firewall'; Target = $rn })
+        Say "  OK  Server IP-guard disekat ($dir): $($addr -join ', ')" "  OK  IP-guard server blocked ($dir): $($addr -join ', ')" Green
+      } catch { Say "  GAGAL sekat server IP-guard: $($_.Exception.Message)" '  FAILED to block the IP-guard server.' Red }
+    }
+  }
+  # IP-guard network filters must be unbound before their drivers go; netcfg works in normal Windows only.
+  if ($script:IpgPending) {
+    foreach ($n in $IpgNetSvc.Keys) {
+      if (-not (Test-Path -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\$n")) { continue }
+      $out = & netcfg.exe -u $IpgNetComp[$n] 2>&1 | Out-String
+      if ($LASTEXITCODE) { Say "  GAGAL lepaskan penapis rangkaian IP-guard $n ($($out.Trim()))" "  FAILED to unbind the IP-guard network filter $n" Yellow }
+      else { Say "  OK  Penapis rangkaian IP-guard dilepaskan: $n" "  OK  IP-guard network filter unbound: $n" Green }
+    }
+  }
   Set-Content -LiteralPath (Join-Path $QuarantineRoot 'last-fix.txt') -Value (Get-Date -Format o)
   $mf = Join-Path $qdir 'manifest.json'
   $log | ConvertTo-Json -Depth 4 | Out-File -Encoding UTF8 $mf
@@ -1522,6 +1704,7 @@ function Invoke-Restore($mf) {
       }
       'Cert' { Import-Certificate -FilePath $it.Backup -CertStoreLocation Cert:\LocalMachine\Root | Out-Null; Say "  Sijil dipulih: $($it.Target)" "  Certificate restored: $($it.Target)" Green }
       'Wmi'  { Say "  WMI tak dipulih (salinan ada di $($it.Backup)): $($it.Target)" "  WMI entry not restored (copy in $($it.Backup)): $($it.Target)" Yellow }
+      'Firewall' { Remove-NetFirewallRule -DisplayName $it.Target -ErrorAction SilentlyContinue; Say "  Sekatan firewall dibuang: $($it.Target)" "  Firewall block removed: $($it.Target)" Green }
       'Task' { Register-ScheduledTask -TaskPath $it.Path -TaskName $it.Name -Xml (Get-Content -Raw $it.Backup) | Out-Null; Say "  Task dipulih: $($it.Target)" "  Task restored: $($it.Target)" Green }
     }
   }
@@ -1620,6 +1803,8 @@ if ($meRemove -or -not $me) {
   }
 }
 
+if ($IpgHigh) { Add-IpGuardRemoval }
+
 # A WhatsApp Web zip alone is tidied away, but it is not a sign of infection.
 if ($Findings | Where-Object { $_.Severity -eq 'HIGH' -and -not $_.Extra.Tidy }) { Add-WhatsAppWebSessions }
 
@@ -1679,7 +1864,15 @@ if (-not $infected.Count -and ($Findings | Where-Object { $_.Kind -eq 'Info' -an
 # Windows recovery Command Prompt: there the infected Windows is not running, so nothing can block it.
 # It backs up and disables the blocked services in the offline registry and moves the blocked folders.
 $winreBat = $null
-if ($Fix -and ($script:SvcLeft -or $script:MeLeft)) {
+# IP-guard waiting for Safe Mode: offline its services and files too (network filters only once netcfg unbound them).
+$ipgSvcOff = @(); $ipgFileOff = @()
+if ($Fix -and $IpgPending) {
+  $netLeft = @($IpgNetSvc.Keys | Where-Object { Test-Path -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\$_" })
+  $ipgSvcOff = @($IpgParts.Services | ForEach-Object { $_.Name } | Where-Object { $netLeft -notcontains $_ })
+  $skip = @($netLeft | ForEach-Object { $IpgNetSvc[$_] -split ' ' })
+  $ipgFileOff = @($IpgParts.Files | Where-Object { $skip -notcontains (Split-Path $_ -Leaf) })
+}
+if ($Fix -and ($script:SvcLeft -or $script:MeLeft -or $ipgSvcOff -or $ipgFileOff)) {
   try {
     $b = New-Object System.Collections.Generic.List[string]
     foreach ($l in '@echo off', 'set D=%~d0', 'set CS=',
@@ -1688,7 +1881,7 @@ if ($Fix -and ($script:SvcLeft -or $script:MeLeft)) {
       'for /f "tokens=3" %%a in (''reg query HKLM\WAZOFF\Select /v Current'') do set /a CS=%%a',
       'if not defined CS set CS=1',
       'set S=HKLM\WAZOFF\ControlSet00%CS%\Services') { $b.Add($l) }
-    foreach ($n in @($script:SvcLeft) | Select-Object -Unique) { $b.Add("call :off `"$n`"") }
+    foreach ($n in @($script:SvcLeft) + $ipgSvcOff | Select-Object -Unique) { $b.Add("call :off `"$n`"") }
     if ($script:MeLeft) {
       # Every ManageEngine service and driver, including the self-protection driver whatever its name.
       foreach ($w in 'ManageEngine', 'UEMS', 'AdventNet', 'DesktopCentral', 'Zoho') { $b.Add("for /f `"tokens=5 delims=\`" %%a in ('reg query %S% /s /f $w /d ^| find `"HKEY_`"') do call :off `"%%a`"") }
@@ -1696,7 +1889,7 @@ if ($Fix -and ($script:SvcLeft -or $script:MeLeft)) {
     }
     $b.Add('reg unload HKLM\WAZOFF'); $b.Add('mkdir "%D%\WAZipQuarantine\winre" 2>nul')
     $k = 0
-    foreach ($t in @($script:FileLeft) | Where-Object { $_ -match '^[A-Za-z]:\\' -and $_.Substring(0, 2) -ieq $env:SystemDrive } | Select-Object -Unique) {
+    foreach ($t in @($script:FileLeft) + $ipgFileOff | Where-Object { $_ -match '^[A-Za-z]:\\' -and $_.Substring(0, 2) -ieq $env:SystemDrive } | Select-Object -Unique) {
       $k++; $rel = $t.Substring(2) -replace '%', '%%'
       $b.Add("move `"%D%$rel`" `"%D%\WAZipQuarantine\winre\$k-$((Split-Path $t -Leaf) -replace '%', '%%')`" && echo Dialih: $rel")
     }
@@ -1749,7 +1942,7 @@ if ($infected.Count) {
   } elseif ($script:NeedRestart -and -not $script:SvcLeft) {
     Say 'Servis jahat dah dibuang, tapi masih nampak sampai PC di-restart. RESTART dulu sebelum imbas semula.' 'Bad services are removed but stay listed until the PC restarts. RESTART before scanning again.' Yellow
   }
-  if ($Findings | Where-Object { $_.Kind -eq 'Service' -and $_.Severity -eq 'HIGH' -and $_.Detail -ne 'ManageEngine service' -and $_.Detail -notmatch '^Ping32' }) {
+  if ($Findings | Where-Object { $_.Kind -eq 'Service' -and $_.Severity -eq 'HIGH' -and $_.Detail -ne 'ManageEngine service' -and $_.Detail -ne 'IP-guard service' -and $_.Detail -notmatch '^Ping32' }) {
     Say 'Driver pembunuh antivirus dijumpai. Paling selamat: backup data & pasang semula Windows.' `
         'An antivirus-killer driver was found. Safest option: back up data and reinstall Windows.' Yellow
   }
@@ -1770,8 +1963,22 @@ if ($me -and $meRemove -and $Fix -and $script:MeLeft) {
       'ManageEngine found. If this is your own PC, run this tool again and answer 2 (personal); it will remove it. Or remove it yourself: (1) install Bulk Crap Uninstaller (free, bcuninstaller.com), find ManageEngine, right-click > Uninstall manually (normal uninstall asks for the attacker''s PIN); (2) open services.msc and set every ManageEngine service to Disabled; (3) open Task Scheduler and delete ManageEngine tasks; (4) restart and scan again. Safest: back up data and reinstall Windows.' Yellow
 }
 if ($Findings | Where-Object { $_.Target -match '^IP-guard' -and $_.Severity -eq 'HIGH' }) {
-  Say 'IP-guard (program pengintip) dijumpai. Dia rakam skrin, apa yang ditaip, emel dan internet, dan tool ni TAK boleh buang dia masa Windows hidup. Cabut internet PC ni sekarang, backup dokumen (pastikan boleh dibuka di PC lain dulu), kemudian pasang semula Windows atau minta orang IT buang dia.' `
-      'IP-guard (a spy program) was found. It records the screen, typing, email and internet traffic, and this tool CANNOT remove it while Windows runs. Disconnect this PC from the internet now, back up your documents (check they open on another PC first), then reinstall Windows or ask an IT person to remove it.' Red
+  if ($IpgNoAuto) {
+    Say 'IP-guard (program pengintip) dijumpai. Dia rakam skrin, apa yang ditaip, emel dan internet, dan salah satu driver dia melekat pada peranti PC, jadi tool ni TAK buang dia sendiri. Cabut internet PC ni sekarang, backup dokumen (pastikan boleh dibuka di PC lain dulu), kemudian pasang semula Windows atau minta orang IT buang dia.' `
+        'IP-guard (a spy program) was found. It records the screen, typing, email and internet traffic, and one of its drivers is attached to a device, so this tool does NOT remove it by itself. Disconnect this PC from the internet now, back up your documents (check they open on another PC first), then reinstall Windows or ask an IT person to remove it.' Red
+  } elseif ($SafeAuto -or $env:WAZIP_TEST_IPG_SAFE) {
+    if ($Fix) {
+      Say 'IP-guard (program pengintip) dah dibuang. Lepas PC buka semula, buka 3 atau 4 dokumen lama (Word, Excel, PDF) untuk pastikan isinya normal. Kalau isinya bercelaru, jalankan 3-RESTORE-PULIH.bat dengan manifest di atas dan hubungi orang IT.' `
+          'IP-guard (spy program) removed. When the PC is back, open 3 or 4 old documents (Word, Excel, PDF) to check they read fine. If they look scrambled, run 3-RESTORE-PULIH.bat with the manifest above and contact an IT person.' Yellow
+      if ($IpgNetLeft) { Say "Penapis rangkaian IP-guard masih ada: $($IpgNetLeft -join ', '). Jalankan tool ni sekali lagi dalam Windows biasa dan taip Y." "IP-guard network filter still installed: $($IpgNetLeft -join ', '). Run this tool again in normal Windows and type Y." Yellow }
+    }
+  } elseif ($Fix) {
+    Say 'Server IP-guard dah disekat. Dia melawan bila Windows hidup, jadi pilih 1 di bawah: PC restart ke Safe Mode dan tool buang dia di situ. Log masuk guna PASSWORD akaun Windows (bukan PIN).' `
+        'The IP-guard server is blocked. It fights back while Windows runs, so choose 1 below: the PC restarts into Safe Mode and the tool removes it there. Sign in with your Windows account PASSWORD (not PIN).' Yellow
+  } else {
+    Say 'IP-guard (program pengintip) dijumpai. Dia rakam skrin, apa yang ditaip, emel dan internet. Taip Y: tool sekat server dia, kemudian pilih 1 untuk restart ke Safe Mode dan buang dia. Pastikan anda ingat PASSWORD akaun Windows (bukan PIN).' `
+        'IP-guard (a spy program) was found. It records the screen, typing, email and internet traffic. Type Y: the tool blocks its server, then choose 1 to restart into Safe Mode and remove it. Make sure you know your Windows account PASSWORD (not PIN).' Red
+  }
 }
 # Blocked leftovers: offer to restart into Safe Mode (the tool runs itself there) or into the recovery screen (BUANG.bat).
 function Start-SafeAuto {
@@ -1782,6 +1989,8 @@ function Start-SafeAuto {
     $cmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$copy`" -SafeAuto -Fix"
     if ($meRemove) { $cmd += ' -RemoveManageEngine' }
     if ($Owner) { $cmd += " -Owner $Owner" }
+    # IP-guard puts itself back in the Safe Mode list within seconds; take it out again just before the restart.
+    if ($IpgPending) { Remove-IpgSafeBoot }
     # A leading * makes RunOnce run in Safe Mode too.
     Set-ItemProperty -LiteralPath $rk -Name '*WAZipSafeMode' -Value $cmd -ErrorAction Stop
     & bcdedit.exe /set '{current}' safeboot minimal | Out-Null
@@ -1791,11 +2000,12 @@ function Start-SafeAuto {
     Say 'Tak dapat sediakan Safe Mode auto. Guna pilihan 2 atau ikut arahan di atas.' 'Could not set up automatic Safe Mode. Use option 2 or follow the steps above.' Red
     return
   }
-  Say 'PC akan restart ke Safe Mode dalam 15 saat. Log masuk guna PASSWORD akaun Windows (bukan PIN). Tool akan jalan sendiri, kemudian restart ke Windows biasa. Kalau tersangkut dalam Safe Mode: skrin pemulihan > Troubleshoot > Advanced options > Command Prompt, taip bcdedit /deletevalue {default} safeboot dan Enter.' `
-      'The PC restarts into Safe Mode in 15 seconds. Sign in with your Windows account PASSWORD (not PIN). The tool runs by itself, then restarts into normal Windows. If stuck in Safe Mode: recovery screen > Troubleshoot > Advanced options > Command Prompt, type bcdedit /deletevalue {default} safeboot and press Enter.' Yellow
-  & shutdown.exe /r /f /t 15
+  $wait = if ($IpgPending) { 3 } else { 15 }
+  Say "PC akan restart ke Safe Mode dalam $wait saat. Log masuk guna PASSWORD akaun Windows (bukan PIN). Tool akan jalan sendiri, kemudian restart ke Windows biasa. Kalau tersangkut dalam Safe Mode: skrin pemulihan > Troubleshoot > Advanced options > Command Prompt, taip bcdedit /deletevalue {default} safeboot dan Enter." `
+      "The PC restarts into Safe Mode in $wait seconds. Sign in with your Windows account PASSWORD (not PIN). The tool runs by itself, then restarts into normal Windows. If stuck in Safe Mode: recovery screen > Troubleshoot > Advanced options > Command Prompt, type bcdedit /deletevalue {default} safeboot and press Enter." Yellow
+  & shutdown.exe /r /f /t $wait
 }
-$blocked = $Fix -and ($script:SvcLeft -or $script:MeLeft)
+$blocked = $Fix -and ($script:SvcLeft -or $script:MeLeft -or $IpgPending)
 if ($SafeAuto) {
   Write-Host ''
   if ($blocked -and $winreBat) {
