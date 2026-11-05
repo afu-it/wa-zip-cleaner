@@ -572,6 +572,8 @@ $rI6 = Scan "$env:TEMP\xi6.json" -Owner Personal -Fix -Out "$env:TEMP\xi6.txt"
 Remove-Item Env:\WAZIP_TEST_IPG_SAFE
 $bat = Join-Path $q 'BUANG.bat'
 Check ((Test-Path -LiteralPath $bat) -and (Select-String -LiteralPath $bat -Pattern 'winoav3\.dll' -Quiet) -and -not (Select-String -LiteralPath "$env:TEMP\xi6.txt" -Pattern 'SEKALI LAGI' -Quiet)) 'after 2 Safe Mode rounds IP-guard goes to the recovery screen (BUANG.bat), no third round'
+Get-ChildItem -LiteralPath $q -File | ForEach-Object { Write-Host "  q: $($_.Name)" }
+if (Test-Path -LiteralPath $bat) { Get-Content -LiteralPath $bat | Select-Object -Last 25 | ForEach-Object { Write-Host "  bat: $_" } }
 $lk1.Close(); $lk2.Close()
 Remove-Item -LiteralPath $ocDir -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath "$w64\winoav3.dll", $bat, $roundFile -Force -ErrorAction SilentlyContinue

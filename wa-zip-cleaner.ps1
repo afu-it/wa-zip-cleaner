@@ -2054,7 +2054,7 @@ if ($Fix -and ($script:SvcLeft -or $script:MeLeft -or $ipgSvcOff -or $ipgFileOff
     $winreBat = Join-Path $QuarantineRoot 'BUANG.bat'
     New-Item -ItemType Directory -Force -Path (Join-Path $QuarantineRoot 'winre') | Out-Null
     Set-Content -LiteralPath $winreBat -Encoding ASCII -Value $b -ErrorAction Stop
-  } catch { $winreBat = $null }
+  } catch { $winreBat = $null; Say "  GAGAL tulis BUANG.bat: $($_.Exception.Message)" "  FAILED to write BUANG.bat: $($_.Exception.Message) (line $($_.InvocationInfo.ScriptLineNumber))" Red }
 }
 $recPath = 'Settings > System > Recovery > Advanced startup > Restart now > Troubleshoot > Advanced options'
 if ($winreBat) {
