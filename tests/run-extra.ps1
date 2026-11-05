@@ -8,16 +8,38 @@ $fail = 0
 $env:WAZIP_NO_PROMPT = '1'
 $env:WAZIP_TIMING = '1'
 Get-MpComputerStatus -ErrorAction SilentlyContinue | Format-List RealTimeProtectionEnabled, AMRunningMode, OnAccessProtectionEnabled
+$progress = "$env:TEMP\waz-progress.txt"
+function Note($m) { Add-Content -LiteralPath $progress -Value ('{0} {1}' -f (Get-Date -Format 'HH:mm:ss'), $m) -ErrorAction SilentlyContinue }
+if ($env:WAZIP_CI_PROGRESS) {
+  $pushJob = Start-Job {
+    param($repo, $file, $branch)
+    Set-Location $repo
+    $env:GIT_AUTHOR_NAME = 'ci'; $env:GIT_AUTHOR_EMAIL = 'ci@users.noreply.github.com'
+    $env:GIT_COMMITTER_NAME = 'ci'; $env:GIT_COMMITTER_EMAIL = 'ci@users.noreply.github.com'
+    $env:GIT_INDEX_FILE = "$env:TEMP\waz-progress.idx"
+    while ($true) {
+      Start-Sleep 60
+      if (-not (Test-Path $file)) { continue }
+      $blob = ([string](git hash-object -w $file)).Trim()
+      git update-index --add --cacheinfo "100644,$blob,progress.txt" 2>&1 | Out-Null
+      $tree = ([string](git write-tree)).Trim()
+      $commit = ([string](git commit-tree $tree -m 'CI progress')).Trim()
+      git push -f -q origin "$($commit):refs/heads/$branch" 2>&1 | Out-Null
+    }
+  } -ArgumentList $root, $progress, $env:WAZIP_CI_PROGRESS
+}
 function Check($ok, $msg) {
-  if ($ok) { Write-Host "PASS $msg" -ForegroundColor Green } else { Write-Host "FAIL $msg" -ForegroundColor Red; $script:fail++ }
+  if ($ok) { Write-Host "PASS $msg" -ForegroundColor Green; Note "PASS $msg" } else { Write-Host "FAIL $msg" -ForegroundColor Red; $script:fail++; Note "FAIL $msg" }
 }
 function Scan($report, [switch]$Fix, [switch]$RemoveME, [string]$Owner, [string]$Out) {
   $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $tool, '-QuarantineRoot', $q, '-ReportPath', $report)
   if ($Fix) { $a += '-Fix' }
   if ($RemoveME) { $a += '-RemoveManageEngine' }
   if ($Owner) { $a += '-Owner', $Owner }
+  Note "scan start $(Split-Path $report -Leaf) $(if ($Fix) { '-Fix' })"
   $t0 = Get-Date; Write-Host "--- scan start $($t0.ToString('HH:mm:ss')) $(Split-Path $report -Leaf) $($a[6..($a.Count-1)] -join ' ')" -ForegroundColor DarkCyan
   if ($Out) { & powershell @a 2>&1 | Tee-Object -FilePath $Out | Out-Host } else { & powershell @a | Out-Host }
+  Note "scan end $([int]((Get-Date) - $t0).TotalSeconds) s"
   Write-Host "--- scan end after $([int]((Get-Date) - $t0).TotalSeconds) s" -ForegroundColor DarkCyan
   $code = $LASTEXITCODE
   $items = @()
