@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.05.6'
+$Version = '2026.11.05.7'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -1546,16 +1546,28 @@ if ($Fix -and ($script:SvcLeft -or $script:MeLeft)) {
       'if not defined CS set CS=1',
       'set S=HKLM\WAZOFF\ControlSet00%CS%\Services') { $b.Add($l) }
     foreach ($n in @($script:SvcLeft) | Select-Object -Unique) { $b.Add("call :off `"$n`"") }
-    if ($script:MeLeft) { $b.Add('for /f "tokens=5 delims=\" %%a in (''reg query %S% /s /f ManageEngine /d ^| find "HKEY_"'') do call :off "%%a"') }
+    if ($script:MeLeft) {
+      # Every ManageEngine service and driver, including the self-protection driver whatever its name.
+      foreach ($w in 'ManageEngine', 'UEMS', 'AdventNet', 'DesktopCentral', 'Zoho') { $b.Add("for /f `"tokens=5 delims=\`" %%a in ('reg query %S% /s /f $w /d ^| find `"HKEY_`"') do call :off `"%%a`"") }
+      foreach ($w in 'MEARW', 'MEEDR') { $b.Add("for /f `"tokens=5 delims=\`" %%a in ('reg query %S% /f $w /k ^| find `"HKEY_`"') do call :off `"%%a`"") }
+    }
     $b.Add('reg unload HKLM\WAZOFF'); $b.Add('mkdir "%D%\WAZipQuarantine\winre" 2>nul')
     $k = 0
     foreach ($t in @($script:FileLeft) | Where-Object { $_ -match '^[A-Za-z]:\\' -and $_.Substring(0, 2) -ieq $env:SystemDrive } | Select-Object -Unique) {
       $k++; $rel = $t.Substring(2) -replace '%', '%%'
       $b.Add("move `"%D%$rel`" `"%D%\WAZipQuarantine\winre\$k-$((Split-Path $t -Leaf) -replace '%', '%%')`" && echo Dialih: $rel")
     }
+    if ($script:MeLeft) {
+      $b.Add('if exist "%D%\Program Files (x86)\ManageEngine" move "%D%\Program Files (x86)\ManageEngine" "%D%\WAZipQuarantine\winre\ManageEngine-x86" && echo Dialih: Program Files (x86)\ManageEngine')
+      $b.Add('if exist "%D%\Program Files\ManageEngine" move "%D%\Program Files\ManageEngine" "%D%\WAZipQuarantine\winre\ManageEngine-x64" && echo Dialih: Program Files\ManageEngine')
+      $b.Add('reg load HKLM\WAZSW "%D%\Windows\System32\config\SOFTWARE" >nul && (call :delsw AdventNet & call :delsw ManageEngine & call :delsw WOW6432Node\AdventNet & call :delsw WOW6432Node\ManageEngine & reg unload HKLM\WAZSW)')
+    }
     foreach ($l in 'echo.', 'echo SIAP. Taip exit, pilih Continue, kemudian jalankan tool ni sekali lagi dalam Windows dan taip Y.', 'pause', 'exit /b',
       ':off', 'reg export "%S%\%~1" "%D%\WAZipQuarantine\winre\svc-%~1.reg" /y >nul 2>&1',
-      'reg add "%S%\%~1" /v Start /t REG_DWORD /d 4 /f >nul && echo Dimatikan: %~1', 'exit /b') { $b.Add($l) }
+      'reg add "%S%\%~1" /v Start /t REG_DWORD /d 4 /f >nul && echo Dimatikan: %~1', 'exit /b',
+      ':delsw', 'reg query "HKLM\WAZSW\%~1" >nul 2>&1 || exit /b', 'set "N=%~1"', 'set "N=%N:\=-%"',
+      'reg export "HKLM\WAZSW\%~1" "%D%\WAZipQuarantine\winre\sw-%N%.reg" /y >nul 2>&1',
+      'reg delete "HKLM\WAZSW\%~1" /f >nul && echo Dibuang: %~1', 'exit /b') { $b.Add($l) }
     $winreBat = Join-Path $QuarantineRoot 'BUANG.bat'
     New-Item -ItemType Directory -Force -Path (Join-Path $QuarantineRoot 'winre') | Out-Null
     Set-Content -LiteralPath $winreBat -Encoding ASCII -Value $b -ErrorAction Stop
