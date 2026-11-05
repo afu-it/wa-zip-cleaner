@@ -77,6 +77,7 @@ irm waz.afuit.dev | iex
     - **AMARAN** sahaja (kuning): tool tak buang apa-apa. Baca ayat kuning tu dan ikut nasihat dia. Kalau dia sebut **ManageEngine** dan ni PC office, tunjuk skrin tu kat orang IT office anda. Kalau dia sebut **Remote-control program** (contoh AnyDesk, TeamViewer) dan anda tak pernah pasang, buang program tu (cara kat bawah, bahagian *Program yang tak boleh di-uninstall*).
     - **BAHAYA** (merah): kat bawah sekali keluar *Taip Y dan Enter untuk bersihkan*. Taip `Y`, tekan **Enter**, pergi langkah 11. Chrome, Edge atau browser lain akan tertutup sendiri, sebab tool log keluar WhatsApp Web kat PC ni. Buka balik lepas siap (kalau anda baca panduan ni dalam browser, buka semula page ni).
 11. Tunggu sampai keluar **Kuarantin siap**. Fail jahat tu tak delete terus. Tool pindahkan dia ke folder `C:\WAZipQuarantine`, jadi kalau tersalah buang, boleh pulihkan balik.
+    Lepas tu tool tanya *Nak hantar laporan?* Pilihan anda. Taip `Y` untuk hantar senarai benda yang dijumpai dan log imbasan kepada kami, supaya kami boleh kaji penggodam dan baiki tool ni. Nama akaun, nama PC, emel, nombor telefon dan alamat rangkaian dibuang dulu, dan dokumen anda tak dihantar. Tekan **Enter** je kalau tak nak hantar. Kalau internet tak dapat, laporan disimpan di Desktop dan anda boleh hantar ke Telegram [@afwazan](https://t.me/afwazan).
 12. **Restart PC** (Start > Power > Restart).
 13. Lepas PC hidup balik, buat Langkah 2 sekali lagi dari mula, sampai keluar **BERSIH**.
 

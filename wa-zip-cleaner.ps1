@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.05.21'
+$Version = '2026.11.05.22'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -1857,6 +1857,127 @@ if ($Restore) {
   Invoke-Restore $Manifest; exit 0
 }
 
+# ---------------------------------------------------------- report ---
+# Opt-in report to the maker's inbox (report.afuit.dev, AFU, Nov 2026): what was found, the scan log and
+# the quarantine list, with account names, PC name, SIDs, emails, phone numbers and home-network IPs taken
+# out first. Nothing leaves the PC unless the user types Y. Safe Mode runs keep it for the next normal run.
+$ReportUrl = if ($env:WAZIP_TEST_REPORT_URL) { $env:WAZIP_TEST_REPORT_URL } else { 'https://report.afuit.dev/report' }
+$script:SafeQueued = $false
+$script:PiiNames = $null
+function Hide-Pii([string]$s) {
+  if (-not $s) { return $s }
+  if ($null -eq $script:PiiNames) {
+    $script:PiiNames = @(@($env:USERNAME, $env:COMPUTERNAME) + @(Get-ChildItem "$env:SystemDrive\Users" -Directory -Force -ErrorAction SilentlyContinue |
+      Where-Object { $_.Name -notin 'Public', 'Default', 'Default User', 'All Users' } | ForEach-Object { $_.Name }) |
+      Where-Object { $_ -and $_.Length -ge 3 } | Select-Object -Unique)
+  }
+  $s = $s -replace '(?i)(Users(?:\\\\|\\|/))(?!(?:Public|Default|All Users)(?:\\|/|"|$))[^\\/"|:*?<>\r\n]+', '$1<user>'
+  foreach ($n in $script:PiiNames) {
+    $s = $s -replace ('(?i)(?<![A-Za-z0-9])' + [regex]::Escape($n) + '(?![A-Za-z0-9])'), '<name>'
+  }
+  $s = $s -replace 'S-1-5-21-\d+-\d+-\d+(-\d+)?', '<sid>'
+  $s = $s -replace '(?<![\d.])(?:10\.\d{1,3}|192\.168|172\.(?:1[6-9]|2\d|3[01]))\.\d{1,3}\.\d{1,3}(?![\d.])', '<lan-ip>'
+  $s = $s -replace '[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+', '<email>'
+  $s = $s -replace '(?<![\w.])\+?6?01\d[- ]?\d{3,4}[- ]?\d{4}(?![\w.])', '<phone>'
+  $s
+}
+function Read-Shared([string]$path, [int]$max) {
+  # The scan log is still open while the transcript runs.
+  try {
+    $fs = [IO.File]::Open($path, 'Open', 'Read', 'ReadWrite')
+    $sr = New-Object IO.StreamReader($fs)
+    $t = $sr.ReadToEnd(); $sr.Close()
+    if ($t.Length -gt $max) { $t = '...(cut)...' + $t.Substring($t.Length - $max) }
+    $t
+  } catch { $null }
+}
+function New-WazReport([string]$dest) {
+  $tmp = Join-Path $env:TEMP ('waz-report-' + [guid]::NewGuid().ToString('N'))
+  try {
+    New-Item -ItemType Directory -Force -Path $tmp | Out-Null
+    $utf8 = New-Object Text.UTF8Encoding $false
+    $os = Get-CimInstance Win32_OperatingSystem -ErrorAction SilentlyContinue
+    $c2 = @()
+    foreach ($f in $Findings) {
+      $t = "$($f.Target) $($f.Detail)"
+      foreach ($ip in $C2Ips) { if ($t -match ('(?<![\d.])' + [regex]::Escape($ip) + '(?![\d.])')) { $c2 += $ip } }
+      if ($f.Target -match '^Attacker server looked up: (\S+)') { $c2 += $Matches[1] }
+    }
+    $sum = [ordered]@{
+      version  = $Version
+      os       = "$($os.Caption) $($os.Version)".Trim()
+      pcType   = if ($Owner) { $Owner } else { 'Unknown' }
+      mode     = if ($SafeAuto) { 'SafeMode' } elseif ($Fix) { 'Fix' } else { 'Scan' }
+      counts   = [ordered]@{ high = @($Findings | Where-Object Severity -eq 'HIGH').Count; warn = @($Findings | Where-Object Severity -eq 'WARN').Count }
+      findings = @($Findings | ForEach-Object { [ordered]@{ severity = $_.Severity; type = $_.Kind; title = (Hide-Pii "$($_.Target)"); detail = (Hide-Pii "$($_.Detail)") } })
+      c2       = @($c2 | Select-Object -Unique)
+    }
+    [IO.File]::WriteAllText((Join-Path $tmp 'summary.json'), ($sum | ConvertTo-Json -Depth 5), $utf8)
+    $mf = Join-Path $QuarantineRoot "$stamp\manifest.json"
+    if (Test-Path -LiteralPath $mf) { $m = Read-Shared $mf 1000000; if ($m) { [IO.File]::WriteAllText((Join-Path $tmp 'manifest.json'), (Hide-Pii $m), $utf8) } }
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    foreach ($cap in 3000000, 300000) {
+      $log = Read-Shared (Join-Path $QuarantineRoot "scan-$stamp.log") $cap
+      if ($log) { [IO.File]::WriteAllText((Join-Path $tmp 'scan.log'), (Hide-Pii $log), $utf8) }
+      Remove-Item -LiteralPath $dest -Force -ErrorAction SilentlyContinue
+      [IO.Compression.ZipFile]::CreateFromDirectory($tmp, $dest)
+      if ((Get-Item -LiteralPath $dest).Length -le 5MB) { return $dest }
+    }
+    Remove-Item -LiteralPath (Join-Path $tmp 'scan.log') -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $dest -Force -ErrorAction SilentlyContinue
+    [IO.Compression.ZipFile]::CreateFromDirectory($tmp, $dest)
+    return $dest
+  } catch { return $null }
+  finally { Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue }
+}
+function Send-WazReport([string]$zip) {
+  try {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+    $r = Invoke-WebRequest -Uri $ReportUrl -Method Post -InFile $zip -ContentType 'application/zip' -UseBasicParsing -TimeoutSec 60 -ErrorAction Stop
+    $id = [string]($r.Content | ConvertFrom-Json).id
+    if ($id -match '^WAZ-[A-Z0-9]{3,12}$') { return $id }
+  } catch {}
+  $null
+}
+function Invoke-ReportOffer {
+  $pending = Join-Path $QuarantineRoot 'report-safemode.zip'
+  $test = $env:WAZIP_TEST_REPORT_DIR
+  # Safe Mode has no internet and the user was told not to touch anything: keep the report for later.
+  if ($SafeAuto) { if ($Findings.Count) { New-WazReport $pending | Out-Null }; return }
+  $havePending = Test-Path -LiteralPath $pending
+  if (-not $Findings.Count -and -not $havePending) { return }
+  if ($env:WAZIP_NO_PROMPT -and -not $test) { return }
+  Show-Head 'LAPORAN' 'REPORT'
+  Write-Host ''
+  Say 'Nak hantar laporan kepada pembuat tool ni? Ia bantu kami kenal pasti penggodam dan baiki tool ni untuk mangsa lain.' `
+      'Send a report to the maker of this tool? It helps us track the attackers and improve the tool for other victims.' White
+  Say 'Laporan ada senarai benda yang dijumpai dan log imbasan. Nama akaun, nama PC dan alamat rangkaian rumah/office dibuang dulu. Dokumen anda TIDAK dihantar.' `
+      'The report holds the list of what was found and the scan log. Account names, PC name and home/office network addresses are removed first. Your documents are NOT sent.' Gray
+  try { $Host.UI.RawUI.FlushInputBuffer() } catch {}
+  Write-Host '  Taip Y dan Enter untuk hantar, atau Enter je untuk tak hantar : ' -ForegroundColor Green -NoNewline
+  if ($test) { $ans = 'Y'; Write-Host 'Y' } else { $ans = ([string](Read-Host)).Trim() }
+  if ($ans -ne 'Y') { Say 'OK, tiada laporan dihantar.' 'OK, no report sent.' DarkGray; return }
+  $zips = @()
+  if ($Findings.Count) { $z = New-WazReport (Join-Path $env:TEMP "waz-report-$stamp.zip"); if ($z) { $zips += $z } }
+  if ($havePending) { $zips += $pending }
+  if (-not $zips) { Say 'Laporan tak dapat disediakan.' 'Could not prepare the report.' Yellow; return }
+  $desk = if ($test) { $test } else { [Environment]::GetFolderPath('Desktop') }
+  $i = 0
+  foreach ($z in $zips) {
+    $i++
+    $id = Send-WazReport $z
+    if ($id) {
+      Say "Laporan dihantar. Terima kasih! Nombor rujukan: $id" "Report sent. Thank you! Reference: $id" Green
+    } else {
+      $copy = Join-Path $desk ("Laporan-WAZIP-$stamp-$i.zip")
+      Copy-Item -LiteralPath $z -Destination $copy -Force -ErrorAction SilentlyContinue
+      Say "Tak dapat hantar (internet?). Laporan disimpan: $copy. Hantar fail ni melalui Telegram kepada @afwazan." `
+          "Could not send (internet?). Report saved: $copy. Send this file on Telegram to @afwazan." Yellow
+    }
+    Remove-Item -LiteralPath $z -Force -ErrorAction SilentlyContinue
+  }
+}
+
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 New-Item -ItemType Directory -Force -Path $QuarantineRoot | Out-Null
 
@@ -1946,7 +2067,7 @@ if (-not $Findings.Count) {
   Write-Host '      ' -NoNewline; Show-Tag 'PC BERSIH' Black DarkGreen
   Write-Host ''
   Say 'BERSIH: tiada tanda malware ZIP WhatsApp dijumpai.' 'CLEAN: no signs of the WhatsApp ZIP malware found.' Green
-  Stop-Transcript | Out-Null; exit 0
+  Stop-Transcript | Out-Null; Invoke-ReportOffer; exit 0
 }
 foreach ($f in $Findings) {
   if ($f.Severity -eq 'HIGH') { $c = 'Red'; $fg = 'White'; $bg = 'DarkRed'; $t = 'BAHAYA' } else { $c = 'Yellow'; $fg = 'Black'; $bg = 'DarkYellow'; $t = 'AMARAN' }
@@ -2141,6 +2262,7 @@ function Start-SafeAuto {
     Set-ItemProperty -LiteralPath $rk -Name '*WAZipSafeMode' -Value $cmd -ErrorAction Stop
     & bcdedit.exe /set '{current}' safeboot minimal | Out-Null
     if ($LASTEXITCODE) { throw 'bcdedit failed' }
+    $script:SafeQueued = $true
   } catch {
     Remove-ItemProperty -LiteralPath $rk -Name '*WAZipSafeMode' -ErrorAction SilentlyContinue
     Say 'Tak dapat sediakan Safe Mode auto. Ikut arahan merah di atas (skrin biru pemulihan).' 'Could not set up automatic Safe Mode. Follow the red steps above (blue recovery screen).' Red
@@ -2158,6 +2280,7 @@ function Start-SafeAuto {
   $end = (Get-Date).AddSeconds(10)
   while ((Get-Date) -lt $end) { Remove-IpgSafeBoot; Start-Sleep -Milliseconds 100 }
 }
+if ($SafeAuto) { Invoke-ReportOffer }
 $blocked = $Fix -and ($script:SvcLeft -or $script:MeLeft -or $IpgPending -or $IpgBlocked)
 if ($SafeAuto -and $IpgAgain) {
   Start-SafeAuto
@@ -2191,6 +2314,8 @@ if ($SafeAuto -and $IpgAgain) {
   if ($ans -eq '1') { Start-SafeAuto }
 }
 Stop-Transcript | Out-Null
+# Report offer after the clean-up run, or after a scan the launcher will not follow with Y (warnings only).
+if (-not $SafeAuto -and -not $script:SafeQueued -and ($Fix -or -not $high.Count)) { Invoke-ReportOffer }
 # Drop Enter presses typed during the scan so they do not answer the launcher's Y question.
 if (-not $Fix) { try { $Host.UI.RawUI.FlushInputBuffer() } catch {} }
 if ($high.Count) { exit 1 }

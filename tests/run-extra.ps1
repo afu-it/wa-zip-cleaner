@@ -182,8 +182,38 @@ Check (Has $r 'RegValue' 'WARN' 'ExtensionInstallForcelist\|1$') 'forced Chrome 
 Check (Has $r 'File' 'HIGH' 'Google Chrome WAZip\.lnk$' 'load-extension') 'Chrome shortcut loading a hidden extension is HIGH'
 Check (Has $r 'Info' 'WARN' 'Chrome extension ponmlkjihgfedcba' 'from a folder') 'extension loaded from a folder is WARN'
 
-Write-Host '=== Fix while file is locked ===' -ForegroundColor Cyan
-$r = Scan "$env:TEMP\x2.json" -Fix
+Write-Host '=== Fix while file is locked (and send the opt-in report to a local stand-in inbox) ===' -ForegroundColor Cyan
+$repDir = "$env:TEMP\waz-rep"
+New-Item -ItemType Directory -Force -Path $repDir | Out-Null
+$repJob = Start-Job {
+  param($out)
+  $l = New-Object Net.HttpListener; $l.Prefixes.Add('http://127.0.0.1:8796/'); $l.Start()
+  $ctx = $l.GetContext()
+  $ms = New-Object IO.MemoryStream; $ctx.Request.InputStream.CopyTo($ms); [IO.File]::WriteAllBytes($out, $ms.ToArray())
+  $b = [Text.Encoding]::ASCII.GetBytes('{"id":"WAZ-TEST7"}')
+  $ctx.Response.ContentType = 'application/json'; $ctx.Response.OutputStream.Write($b, 0, $b.Length); $ctx.Response.Close(); $l.Stop()
+} -ArgumentList "$repDir\posted.zip"
+Start-Sleep 5
+$env:WAZIP_TEST_REPORT_DIR = $repDir
+$env:WAZIP_TEST_REPORT_URL = 'http://127.0.0.1:8796/report'
+$r = Scan "$env:TEMP\x2.json" -Fix -Out "$env:TEMP\x2.out"
+$x2out = Get-Content -Raw "$env:TEMP\x2.out"
+Wait-Job $repJob -Timeout 20 | Out-Null; Receive-Job $repJob -ErrorAction SilentlyContinue | Out-Host; Remove-Job $repJob -Force
+Check ($x2out -match 'WAZ-TEST7') 'opt-in report sent and the reference number shown'
+$repEntries = @{}
+if (Test-Path "$repDir\posted.zip") {
+  Add-Type -AssemblyName System.IO.Compression.FileSystem
+  $zr = [IO.Compression.ZipFile]::OpenRead("$repDir\posted.zip")
+  foreach ($e in $zr.Entries) { $sr = New-Object IO.StreamReader($e.Open()); $repEntries[$e.FullName] = $sr.ReadToEnd(); $sr.Close() }
+  $zr.Dispose()
+}
+Check ($repEntries.ContainsKey('summary.json') -and $repEntries.ContainsKey('scan.log')) "report zip holds summary.json and scan.log ($($repEntries.Keys -join ', '))"
+$repSum = $null; try { $repSum = $repEntries['summary.json'] | ConvertFrom-Json } catch {}
+Check ($repSum -and $repSum.version -and $repSum.counts.high -gt 0 -and @($repSum.findings).Count -gt 0) 'report summary has version, counts and findings'
+Check ($repSum -and @($repSum.c2) -contains '127.77.0.1') 'report summary lists the attacker server'
+$repAll = ($repEntries.Values | Out-String)
+Check ($repAll -and $repAll -notmatch [regex]::Escape($env:USERNAME) -and $repAll -notmatch [regex]::Escape($env:COMPUTERNAME)) 'report has no account name or PC name'
+Check ($repAll -match 'Users\\{1,2}<user>') 'report shows user folders as <user>'
 Check ($r.Code -eq 1) "fix does not crash on locked file (exit $($r.Code))"
 Check (Test-Path $locked) 'locked file left in place (reported, not lost)'
 Check (-not (Test-Path "$hd\invoice-copy.dat")) 'hash-matched file quarantined'
@@ -212,8 +242,11 @@ Remove-Item Env:\WAZIP_TEST_C2
 
 Write-Host '=== Release lock, fix again ===' -ForegroundColor Cyan
 Stop-Process -Id $locker.Id -Force; Start-Sleep 2
-$r = Scan "$env:TEMP\x3.json" -Fix
+$env:WAZIP_TEST_REPORT_URL = 'http://127.0.0.1:8797/report'
+$r = Scan "$env:TEMP\x3.json" -Fix -Out "$env:TEMP\x3.out"
 Check (-not (Test-Path $locked)) 'previously locked file quarantined on second run'
+Check ((Get-Content -Raw "$env:TEMP\x3.out") -match '@afwazan' -and (Get-ChildItem $repDir -Filter 'Laporan-WAZIP-*.zip')) 'report kept as a file with Telegram steps when the inbox is unreachable'
+Remove-Item Env:\WAZIP_TEST_REPORT_DIR, Env:\WAZIP_TEST_REPORT_URL
 
 Write-Host '=== Force-remove ManageEngine ===' -ForegroundColor Cyan
 # Look-alike agent: folder, service, scheduled task and Apps entry (nothing real is installed).
