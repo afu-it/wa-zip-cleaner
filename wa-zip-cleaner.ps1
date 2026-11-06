@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.06.36'
+$Version = '2026.11.06.37'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -975,6 +975,15 @@ function Scan-Persistence {
     # Victim PC (Nov 2026): a root task named like Windows Update starts the Toolkit.exe sideload from AppData\Local.
     if ($t.TaskName -ieq 'WindowsUpdateSync' -and $t.TaskPath -eq '\' -and $txt -match '(?i)\\AppData\\Local\\|%LOCALAPPDATA%') {
       Add-Finding 'Task' 'HIGH' "$($t.TaskPath)$($t.TaskName)" "Fake Windows Update task that starts malware from AppData\Local: $txt" @{ Path = $t.TaskPath; Name = $t.TaskName } }
+    # rundll32 / regsvr32 loading a DLL from a user or data folder (WAZ-EU5BG, Nov 2026: task \MicrosoftTokenBroker ran
+    # rundll32 <AppData\Local\{GUID}>\QtsVFS.dll,VFS_Initialize and brought the loader back after every clean-up).
+    if ($txt -notmatch $PersistRegex -and $txt -notmatch '(?i)ManageEngine|IP-guard' -and $txt -match '(?i)\b(rundll32|regsvr32)(\.exe)?\b') {
+      $dlls = @(Get-CmdPaths $txt | Where-Object { $_ -match '(?i)\.(dll|ocx|cpl|dat|tmp)$' -and $_ -match '(?i)\\(AppData|Temp|ProgramData|Users\\Public)\\' })
+      $bad = @($dlls | Where-Object { -not (Test-Path -LiteralPath $_ -PathType Leaf) -or -not (Test-MicrosoftSigned $_) })
+      if ($bad.Count) {
+        Add-Finding 'Task' 'HIGH' "$($t.TaskPath)$($t.TaskName)" "Scheduled task loads a DLL from a user or data folder with rundll32/regsvr32 (ValleyRAT loader that comes back after clean-up): $txt" @{ Path = $t.TaskPath; Name = $t.TaskName }
+      }
+    }
     if ($t.TaskName -match '^ovd_[0-9a-f]{8}$' -and $txt -notmatch $PersistRegex) { Add-Finding 'Task' 'HIGH' "$($t.TaskPath)$($t.TaskName)" "Overlord RAT task: $txt" @{ Path = $t.TaskPath; Name = $t.TaskName } }
     if ($txt -match $PersistRegex) { Add-Finding 'Task' 'HIGH' "$($t.TaskPath)$($t.TaskName)" "Scheduled task: $txt" @{ Path = $t.TaskPath; Name = $t.TaskName } }
     # VulcanRAT (Morphisec via 2-Spyware, Oct 2026) hides as a fake Windows update task that runs vulkaninfo.

@@ -1131,6 +1131,29 @@ Stop-Process -Id $gP.Id -Force -ErrorAction SilentlyContinue
 Remove-ItemProperty -Path $runG -Name WazTokenBrokerTest -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $gDir, $hsDir -Recurse -Force -ErrorAction SilentlyContinue
 
+Write-Host '=== Task MicrosoftTokenBroker: rundll32 loads QtsVFS.dll from a {GUID} folder (WAZ-EU5BG, Nov 2026) ===' -ForegroundColor Cyan
+$tDir = Join-Path $env:LOCALAPPDATA '{437711d0-7b49-7cbc-e129-df32973225cc}'
+New-Item -ItemType Directory -Force -Path $tDir | Out-Null
+$tDll = "$tDir\QtsVFS.dll"; Set-Content $tDll 'dummy'
+$tbXml = @"
+<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <Triggers><LogonTrigger><Enabled>true</Enabled></LogonTrigger></Triggers>
+  <Settings><Enabled>false</Enabled></Settings>
+  <Actions Context="Author"><Exec><Command>C:\Windows\System32\rundll32.exe</Command><Arguments>$([Security.SecurityElement]::Escape($tDll)),VFS_Initialize</Arguments></Exec></Actions>
+</Task>
+"@
+Register-ScheduledTask -TaskName 'MicrosoftTokenBroker' -Xml $tbXml -Force | Out-Null
+$r50 = Scan "$env:TEMP\x50.json"
+Check (Has $r50 'Task' 'HIGH' '\\MicrosoftTokenBroker$' 'rundll32') 'task running rundll32 on a DLL in a {GUID} folder is HIGH'
+Check (Has $r50 'File' 'HIGH' '\{437711d0-7b49-7cbc-e129-df32973225cc\}$' 'Random-named folder') 'the {GUID} folder of that DLL is one HIGH finding'
+$r51 = Scan "$env:TEMP\x51.json" -Fix
+Check (-not (Get-ScheduledTask -TaskName 'MicrosoftTokenBroker' -ErrorAction SilentlyContinue)) 'MicrosoftTokenBroker task removed'
+Check (-not (Test-Path -LiteralPath $tDir)) '{GUID} folder with QtsVFS.dll quarantined'
+Unregister-ScheduledTask -TaskName 'MicrosoftTokenBroker' -Confirm:$false -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $tDir -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $safeDry -Force -ErrorAction SilentlyContinue
+
 Write-Host '=== Infection that comes back goes straight to Safe Mode (6S85A report, Nov 2026) ===' -ForegroundColor Cyan
 $qR = 'C:\WAZipQuarantineRecur'
 Remove-Item -LiteralPath $qR -Recurse -Force -ErrorAction SilentlyContinue

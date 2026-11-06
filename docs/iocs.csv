@@ -43,3 +43,4 @@ filename,AppData\Local\{<guid>}\RuntimeBroker.exe,Hidden+System loader started b
 filename,AppData\Local\{<guid>}\QtsVFS.dll,Hidden+System DLL next to the fake RuntimeBroker.exe (victim screenshots Nov 2026)
 filename,Temp\KV<hex>.sys,BootRepair.sys copies re-dropped by the loader as service BOOTREPAIR (victim screenshots Nov 2026)
 filename,Temp\pex<nnnn>.tmp,ardrv.sys re-dropped by the loader as service PEx<nnnn> (victim screenshots Nov 2026)
+taskname,\MicrosoftTokenBroker,Task running rundll32 <AppData\Local\{<guid>}>\QtsVFS.dll,VFS_Initialize (opt-in report WAZ-EU5BG Nov 2026)
