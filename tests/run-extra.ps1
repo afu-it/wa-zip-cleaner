@@ -1097,6 +1097,36 @@ Unregister-ScheduledTask -TaskName 'WazPrivacyPolicyTest' -Confirm:$false -Error
 Remove-Item -LiteralPath $libU, $pdU -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $drv1, $drv2, $zDoc, $zVhd, $zRar, $locked9 -Force -ErrorAction SilentlyContinue
 
+Write-Host '=== Loader in a {GUID} folder under AppData\Local re-drops everything (6S85A report, Nov 2026) ===' -ForegroundColor Cyan
+$gDir = Join-Path $env:LOCALAPPDATA '{437711d0-7b49-7cbc-e129-df32973225aa}'
+New-Item -ItemType Directory -Force -Path $gDir | Out-Null
+$gExe = "$gDir\RuntimeBroker.exe"; $gDll = "$gDir\QtsVFS.dll"
+Copy-Item -LiteralPath "$env:SystemRoot\System32\PING.EXE" -Destination $gExe
+Set-Content $gDll 'dummy'
+foreach ($x in $gExe, $gDll) { (Get-Item -LiteralPath $x -Force).Attributes = 'Hidden, System' }
+$gP = [Diagnostics.Process]::Start($gExe, '-n 900 127.0.0.1')
+$runG = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+if (-not (Test-Path $runG)) { New-Item -Path $runG -Force | Out-Null }
+# Unquoted rundll32 line: the Hidden+System DLL comes after the Windows program.
+Set-ItemProperty -Path $runG -Name WazTokenBrokerTest -Value "$env:SystemRoot\System32\rundll32.exe $gDll,Start"
+$hsDir = "$env:TEMP\hs5b46aa00"; New-Item -ItemType Directory -Force -Path $hsDir | Out-Null
+Set-Content "$hsDir\eneio64.dat" 'dummy'; Set-Content "$hsDir\other.bin" 'dummy'
+Start-Sleep 2
+$r45 = Scan "$env:TEMP\x45.json"
+Check (Has $r45 'Process' 'HIGH' '^RuntimeBroker\.exe') 'RuntimeBroker.exe running from a {GUID} folder is HIGH'
+Check (Has $r45 'RegValue' 'HIGH' '\|WazTokenBrokerTest$' 'Hidden\+System') 'unquoted rundll32 Run value pointing at a Hidden+System DLL is HIGH'
+Check (Has $r45 'File' 'HIGH' ('^' + [regex]::Escape($gDir) + '$') 'Random-named folder') '{GUID} loader folder is one HIGH finding'
+Check (Has $r45 'File' 'HIGH' 'QtsVFS\.dll$' 'Hidden\+System') 'Hidden+System DLL in an AppData\Local {GUID} folder is HIGH'
+Check (Has $r45 'File' 'HIGH' ('^' + [regex]::Escape($hsDir) + '$') 'Random-named folder') 'Temp\hs<hex> drop folder is one HIGH finding'
+$r46 = Scan "$env:TEMP\x46.json" -Fix
+Check (-not (Get-Process -Id $gP.Id -ErrorAction SilentlyContinue)) 'loader process stopped'
+Check (-not (Test-Path -LiteralPath $gDir)) '{GUID} loader folder quarantined (RuntimeBroker.exe and QtsVFS.dll gone)'
+Check (-not (Get-ItemProperty -Path $runG -Name WazTokenBrokerTest -ErrorAction SilentlyContinue)) 'rundll32 Run value removed'
+Check (-not (Test-Path -LiteralPath $hsDir)) 'Temp\hs<hex> drop folder quarantined whole'
+Stop-Process -Id $gP.Id -Force -ErrorAction SilentlyContinue
+Remove-ItemProperty -Path $runG -Name WazTokenBrokerTest -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $gDir, $hsDir -Recurse -Force -ErrorAction SilentlyContinue
+
 Write-Host '=== ManageEngine leftovers and task files in Safe Mode (VVF5Z/2F44T reports, Nov 2026) ===' -ForegroundColor Cyan
 New-MePlant 'MEUemsTest5'
 & sc.exe create DCFAFilter type= kernel start= demand binPath= 'System32\DRIVERS\DCFAFilter.sys' | Out-Null

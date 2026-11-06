@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.06.34'
+$Version = '2026.11.06.35'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -619,13 +619,28 @@ function Get-HideUnit([string]$p) {
   }
   $null
 }
+# A random-named loader folder straight under AppData, Temp or ProgramData: {GUID}, a long hex name, or hs<hex>
+# (6S85A victim, Nov 2026: RuntimeBroker.exe and Hidden+System QtsVFS.dll in AppData\Local\{GUID}\ re-dropped
+# the drivers after every clean-up because only the process and the Run value were removed).
+$RandDirRegex = '(?i)^(\{?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\}?|[0-9a-f]{12,20}|hs[0-9a-f]{6,10})$'
+function Get-RandUnit([string]$p) {
+  if (-not $p) { return $null }
+  $m = [regex]::Match($p, '(?i)^([a-z]:\\(?:Users\\[^\\]+\\AppData\\(?:Local\\Temp|Local|Roaming|LocalLow)|ProgramData|Windows\\Temp))\\([^\\]+)\\')
+  if (-not $m.Success) { return $null }
+  $name = $m.Groups[2].Value
+  if ($name -notmatch $RandDirRegex) { return $null }
+  $dir = Join-Path $m.Groups[1].Value $name
+  # A real program folder is large; a loader folder holds a handful of files.
+  if (@(Get-TreeFiles $dir | Select-Object -First 51).Count -gt 50) { return $null }
+  $dir
+}
 function Get-ProcCache {
   if ($null -eq $script:ProcCache) { $script:ProcCache = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue) }
   $script:ProcCache
 }
 # One finding for the whole hiding folder: every file in it goes, whatever its extension (YXP2B kept loading "3#.8"),
 # and so do programs running from it.
-function Add-HideUnit([string]$dir, [string]$why) {
+function Add-HideUnit([string]$dir, [string]$why, [switch]$Rand) {
   if (-not $dir -or -not (Test-Path -LiteralPath $dir -PathType Container)) { return }
   if ($script:HideUnits -contains $dir) { return }
   $top = try { (New-Object IO.DirectoryInfo $dir).GetFileSystemInfos() } catch { $null }
@@ -636,7 +651,8 @@ function Add-HideUnit([string]$dir, [string]$why) {
   }
   $script:HideUnits += $dir
   $names = if ($null -eq $top) { 'could not look inside (access blocked)' } else { (@($files | Select-Object -First 3 | ForEach-Object { $_.Name }) -join ', ') + $(if ($files.Count -gt 3) { ", ... ($($files.Count)$(if ($files.Count -ge 50) { '+' }) files)" }) }
-  $det = "Hidden folder in Public\Libraries or a ProgramData folder named with symbols (Winos/ValleyRAT hiding place). The whole folder goes to quarantine: $names."
+  $det = if ($Rand) { "Random-named folder that malware runs from (ValleyRAT loader folder, re-installs the antivirus killer after every clean-up). The whole folder goes to quarantine: $names." }
+         else { "Hidden folder in Public\Libraries or a ProgramData folder named with symbols (Winos/ValleyRAT hiding place). The whole folder goes to quarantine: $names." }
   if ($why) { $det += " Seen: $why." }
   Add-Finding 'File' 'HIGH' $dir $det @{ Unit = $true }
   foreach ($pr in Get-ProcCache) {
@@ -944,12 +960,12 @@ function Scan-Persistence {
         Add-Finding 'RegValue' 'HIGH' "$k|$n" "Auto-start of the Overlord / TankRAT remote-control trojan: $v"; continue }
       if ($v -match $PersistRegex) { Add-Finding 'RegValue' 'HIGH' "$k|$n" "Auto-start: $v"; continue }
       # A Run entry whose target file is Hidden+System is a strong sign, even with an unknown name.
-      $target = if ($v -match '"([^"]+\.(exe|dll|bat|cmd|scr))"') { $Matches[1] }
-                elseif ($v -match '([A-Za-z]:\\[^"]+?\.(exe|dll|bat|cmd|scr))') { $Matches[1] } else { $null }
-      if ($target -and (Test-Path -LiteralPath $target)) {
+      # rundll32 / regsvr32 lines name the real file after the Windows program, so check every path in the line.
+      foreach ($target in @(Get-CmdPaths $v)) {
+        if (-not (Test-Path -LiteralPath $target -PathType Leaf)) { continue }
         $a = (Get-Item -LiteralPath $target -Force -ErrorAction SilentlyContinue).Attributes
         if (($a -band [IO.FileAttributes]::Hidden) -and ($a -band [IO.FileAttributes]::System)) {
-          Add-Finding 'RegValue' 'HIGH' "$k|$n" "Auto-start points at a Hidden+System file: $target"
+          Add-Finding 'RegValue' 'HIGH' "$k|$n" "Auto-start points at a Hidden+System file: $target"; break
         }
       }
     }
@@ -1367,7 +1383,8 @@ function Scan-Files {
             ($f.Attributes -band [IO.FileAttributes]::Hidden) -and ($f.Attributes -band [IO.FileAttributes]::System)) {
           # Opt-in report (Nov 2026): hs_rt32_<hex>.dll stayed in Temp through two clean-ups while it was only a warning.
           # Real programs do not hide themselves as system files in Temp.
-          if ($f.Name -match '(?i)^hs_rt(32|64)_' -or $f.FullName -match '(?i)\\AppData\\Local\\Temp\\') {
+          if ($f.Name -match '(?i)^hs_rt(32|64)_' -or $f.FullName -match '(?i)\\AppData\\Local\\Temp\\' -or
+              $f.FullName -match '(?i)\\AppData\\(Local|Roaming|LocalLow)\\\{?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\}?\\') {
             Add-Finding 'File' 'HIGH' $f.FullName 'Hidden+System program in the Temp folder (Winos4.0 / ValleyRAT payload left by the WhatsApp ZIP).'; return }
           Add-Finding 'File' 'WARN' $f.FullName 'Hidden+System program in a user folder (common Winos4.0 hiding trick).'; return }
         if ($f.Extension -match '(?i)^\.(exe|scr|vbs|vbe|js|wsf|msi|img|iso)$' -and (Test-WaOrigin $f)) {
@@ -1881,27 +1898,47 @@ function Get-CmdPath([string]$cmd) {
   if ($cmd -match '^[A-Za-z]:\\') { return $cmd }
   $null
 }
+# Every file path in a command line: the program itself and, for rundll32 / regsvr32 / script hosts, the file they load.
+function Get-CmdPaths([string]$cmd) {
+  $cmd = [Environment]::ExpandEnvironmentVariables("$cmd".Trim())
+  $out = @()
+  $first = Get-CmdPath $cmd
+  if ($first) { $out += $first }
+  foreach ($m in [regex]::Matches($cmd, '(?i)([a-z]:\\[^",]+?\.(exe|dll|scr|bat|cmd|vbs|js|ps1|com|cpl|ocx|dat|tmp))(?=[",\s]|$)')) { $out += $m.Groups[1].Value }
+  @($out | Select-Object -Unique)
+}
 function Add-LinkedFindings {
   $skip = '(?i)ManageEngine|IP-guard|UltraViewer|Ping32'
   $tasks = $null
-  foreach ($f in @($Findings | Where-Object { $_.Severity -eq 'HIGH' -and $_.Kind -in 'Task', 'RegValue' -and "$($_.Detail)" -notmatch $skip })) {
+  foreach ($f in @($Findings | Where-Object { $_.Severity -eq 'HIGH' -and $_.Kind -in 'Task', 'RegValue', 'Process' -and "$($_.Detail)" -notmatch $skip })) {
     $paths = @()
     if ($f.Kind -eq 'Task') {
       if ($null -eq $tasks) { $tasks = @(Get-WazTasks) }
       $t = $tasks | Where-Object { "$($_.TaskPath)$($_.TaskName)" -eq $f.Target } | Select-Object -First 1
-      if ($t) { $paths = @($t.Exec) }
+      if ($t) { $paths = @($t.Exec) + @(Get-CmdPaths $t.Txt) }
+    } elseif ($f.Kind -eq 'Process') {
+      # The process is killed; its program file and loader folder must go too, or it starts again (6S85A, Nov 2026).
+      if ($f.Extra -is [hashtable] -and $f.Extra.Path) { $paths = @([string]$f.Extra.Path) }
     } else {
       $key, $val = $f.Target -split '\|', 2
       $v = [string](Get-ItemProperty -LiteralPath $key -Name $val -ErrorAction SilentlyContinue).$val
-      if ($v) { $paths = @(Get-CmdPath $v) }
+      if ($v) { $paths = @(Get-CmdPaths $v) }
     }
-    foreach ($p in $paths | Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Leaf) }) {
+    foreach ($p in $paths | Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Leaf) } | Select-Object -Unique) {
       $u = Get-HideUnit $p
       if ($u) { Add-HideUnit $u "started by $($f.Kind) $($f.Target)"; if ($script:HideUnits -contains $u) { continue } }
-      if ($p -match '(?i)\\(Users|ProgramData|AppData|Temp)\\' -and $p -notmatch '(?i)\\(Program Files( \(x86\))?|Windows)\\' -and -not (Test-MicrosoftSigned $p)) {
-        Add-Finding 'File' 'HIGH' $p "Program started by a malware auto-start ($($f.Kind) $($f.Target))."
+      $r = Get-RandUnit $p
+      if ($r) { Add-HideUnit $r "started by $($f.Kind) $($f.Target)" -Rand; if ($script:HideUnits -contains $r) { continue } }
+      if ($p -match '(?i)\\(Users|ProgramData|AppData|Temp)\\' -and $p -notmatch '(?i)\\(Program Files( \(x86\))?|Windows)\\' -and
+          ($f.Kind -eq 'Process' -or -not (Test-MicrosoftSigned $p))) {
+        Add-Finding 'File' 'HIGH' $p "Program started by a malware auto-start or running as malware ($($f.Kind) $($f.Target))."
       }
     }
+  }
+  # A bad file inside a {GUID} loader folder or a Temp\hs<hex> drop folder takes the whole folder with it.
+  foreach ($f in @($Findings | Where-Object { $_.Kind -eq 'File' -and $_.Severity -eq 'HIGH' -and -not ($_.Extra -is [hashtable] -and ($_.Extra.Tidy -or $_.Extra.Unit)) -and "$($_.Detail)" -notmatch $skip })) {
+    $r = Get-RandUnit ([string]$f.Target)
+    if ($r -and (Split-Path $r -Leaf) -match '(?i)^(\{?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\}?|hs[0-9a-f]{6,10})$') { Add-HideUnit $r "holds $(Split-Path ([string]$f.Target) -Leaf)" -Rand }
   }
   $targets = @($Findings | Where-Object { $_.Kind -eq 'File' -and $_.Severity -eq 'HIGH' -and -not ($_.Extra -is [hashtable] -and $_.Extra.Tidy) -and
     "$($_.Detail)" -notmatch $skip -and "$($_.Target)" -match '^[A-Za-z]:\\' -and "$($_.Target)" -notmatch '(?i)\.(zip|rar|7z)$' } | ForEach-Object {
