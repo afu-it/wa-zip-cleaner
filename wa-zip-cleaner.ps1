@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.06.37'
+$Version = '2026.11.06.38'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -2528,9 +2528,15 @@ function Invoke-ReportOfferCore {
   $test = $env:WAZIP_TEST_REPORT_DIR
   # Safe Mode has no internet and the user was told not to touch anything: keep the report for later.
   if ($SafeAuto) { if ($Findings.Count) { New-WazReport $pending | Out-Null }; return }
-  $havePending = Test-Path -LiteralPath $pending
+  # Reports kept for later: the Safe Mode pass and any online pass that went straight into Safe Mode.
+  $pendList = @(Get-ChildItem -LiteralPath $QuarantineRoot -File -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -eq 'report-safemode.zip' -or $_.Name -like 'report-pending-*.zip' } | Sort-Object LastWriteTime | ForEach-Object { $_.FullName })
+  $havePending = [bool]$pendList.Count
   if (-not $Findings.Count -and -not $havePending) { return }
   if ($env:WAZIP_NO_PROMPT -and -not $test) { return }
+  # A Y given in an earlier run (within a day) also covers the reports it left pending.
+  $consent = Join-Path $QuarantineRoot 'report-consent.txt'
+  $agreed = (Test-Path -LiteralPath $consent) -and ((Get-Item -LiteralPath $consent).LastWriteTime -gt (Get-Date).AddDays(-1))
   Show-Head 'LAPORAN' 'REPORT'
   Write-Host ''
   Say 'Nak hantar laporan kepada pembuat tool ni? Ia bantu kami kenal pasti penggodam dan baiki tool ni untuk mangsa lain.' `
@@ -2538,12 +2544,18 @@ function Invoke-ReportOfferCore {
   Say 'Laporan ada senarai benda yang dijumpai dan log imbasan. Nama akaun, nama PC dan alamat rangkaian rumah/office dibuang dulu. Dokumen anda TIDAK dihantar.' `
       'The report holds the list of what was found and the scan log. Account names, PC name and home/office network addresses are removed first. Your documents are NOT sent.' Gray
   try { $Host.UI.RawUI.FlushInputBuffer() } catch {}
-  Write-Host '  Taip Y dan Enter untuk hantar, atau Enter je untuk tak hantar : ' -ForegroundColor Green -NoNewline
-  if ($test) { $ans = 'Y'; Write-Host 'Y' } else { $ans = ([string](Read-Host)).Trim() }
+  if ($agreed -and -not $Findings.Count) {
+    Say 'Anda dah setuju hantar laporan tadi; laporan yang tertangguh dihantar sekarang.' 'You agreed to send a report earlier; the waiting report is sent now.' Gray
+    $ans = 'Y'
+  } else {
+    Write-Host '  Taip Y dan Enter untuk hantar, atau Enter je untuk tak hantar : ' -ForegroundColor Green -NoNewline
+    if ($test) { $ans = 'Y'; Write-Host 'Y' } else { $ans = ([string](Read-Host)).Trim() }
+  }
   if ($ans -ne 'Y') { Say 'OK, tiada laporan dihantar.' 'OK, no report sent.' DarkGray; return }
+  Set-Content -LiteralPath $consent -Value (Get-Date -Format o) -ErrorAction SilentlyContinue
   $zips = @()
   if ($Findings.Count) { $z = New-WazReport (Join-Path $env:TEMP "waz-report-$stamp.zip"); if ($z) { $zips += $z } }
-  if ($havePending) { $zips += $pending }
+  if ($havePending) { $zips += $pendList }
   if (-not $zips) { Say 'Laporan tak dapat disediakan.' 'Could not prepare the report.' Yellow; return }
   $desk = if ($test) { $test } else { [Environment]::GetFolderPath('Desktop') }
   $i = 0
@@ -2983,6 +2995,9 @@ if ($Findings | Where-Object { $_.Target -match '^IP-guard' -and $_.Severity -eq
 }
 # Blocked leftovers: offer to restart into Safe Mode (the tool runs itself there) or into the recovery screen (BUANG.bat).
 function Start-SafeAuto {
+  # The online pass holds the evidence (running loader, its folder and task). The final report offer is skipped once
+  # the reboot is queued, so keep this pass's report now; the next normal run sends it (GMK9P/ED88Q reports, Nov 2026).
+  if (-not $SafeAuto -and $Findings.Count) { New-WazReport (Join-Path $QuarantineRoot "report-pending-$stamp.zip") | Out-Null }
   # Tests: record the decision instead of rebooting the machine.
   if ($env:WAZIP_TEST_SAFEAUTO_DRY) { Add-Content -LiteralPath $env:WAZIP_TEST_SAFEAUTO_DRY -Value "safeauto $stamp $($script:Recur)"; return }
   $rk = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce'

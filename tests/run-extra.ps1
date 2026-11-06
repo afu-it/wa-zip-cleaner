@@ -1174,20 +1174,20 @@ $sJob = Start-SampleInbox $sGot 8798
 Start-Sleep 5
 $env:WAZIP_TEST_SAMPLE_URL = 'http://127.0.0.1:8798/sample'
 $env:WAZIP_TEST_SAMPLE_ANSWER = 'Y'
-$r47 = Scan "$env:TEMP\x47.json" -Fix -Root $sq -Out "$env:TEMP\x47.out"
-$x47 = Get-Content -Raw "$env:TEMP\x47.out"
+$r52 = Scan "$env:TEMP\x52.json" -Fix -Root $sq -Out "$env:TEMP\x52.out"
+$x52 = Get-Content -Raw "$env:TEMP\x52.out"
 Wait-Job $sJob -Timeout 60 | Out-Null; Stop-Job $sJob -ErrorAction SilentlyContinue; Remove-Job $sJob -Force -ErrorAction SilentlyContinue
 $got = @(if (Test-Path $sGot) { Get-Content -LiteralPath $sGot })
 $gotExt = @($got | ForEach-Object { ($_ -split '\|')[2] })
 Write-Host "samples received: $($got -join '; ')"
 Check (-not (Test-Path -LiteralPath $sKit)) 'sample kit folder quarantined by -Fix'
 Check (-not (Test-Path -LiteralPath $sLure)) 'Downloads lure program quarantined by -Fix'
-Check ($x47 -match 'SAMPEL VIRUS' -and $x47 -match 'BUKAN dokumen') 'sample question asked, saying documents are not sent'
+Check ($x52 -match 'SAMPEL VIRUS' -and $x52 -match 'BUKAN dokumen') 'sample question asked, saying documents are not sent'
 Check (($gotExt -contains '.dll') -and ($gotExt -contains '.sys') -and ($gotExt -contains '.dat') -and ($gotExt -contains '.exe')) "quarantined .exe/.dll/.sys/.dat sent ($($gotExt -join ','))"
 Check (-not ($gotExt | Where-Object { $_ -match '^\.(docx|zip)$' })) 'no document or zip sent'
 Check (-not ($got | Where-Object { ($_ -split '\|')[1] -eq $lureSha })) 'quarantined program from Downloads not sent'
 Check (@($got | Where-Object { ($_ -split '\|')[0] -ne '/sample' }).Count -eq 0 -and @($got | Where-Object { [int](($_ -split '\|')[3]) -le 0 }).Count -eq 0) 'every sample posted to /sample with its bytes'
-Check ($x47 -match 'OK  sampel [0-9a-f]{12}') 'each sent sample shown with its sha256 start'
+Check ($x52 -match 'OK  sampel [0-9a-f]{12}') 'each sent sample shown with its sha256 start'
 Check (-not (Test-Path -LiteralPath "$sq\samples-pending.txt")) 'pending sample list cleared after sending'
 # Second run: the victim answers no, so nothing is sent.
 $sKit2 = New-SampleKit 'aa0002'
@@ -1196,11 +1196,11 @@ $sJob = Start-SampleInbox $sGot 8799
 Start-Sleep 5
 $env:WAZIP_TEST_SAMPLE_URL = 'http://127.0.0.1:8799/sample'
 $env:WAZIP_TEST_SAMPLE_ANSWER = 'N'
-$r48 = Scan "$env:TEMP\x48.json" -Fix -Root $sq -Out "$env:TEMP\x48.out"
-$x48 = Get-Content -Raw "$env:TEMP\x48.out"
+$r53 = Scan "$env:TEMP\x53.json" -Fix -Root $sq -Out "$env:TEMP\x53.out"
+$x53 = Get-Content -Raw "$env:TEMP\x53.out"
 Stop-Job $sJob -ErrorAction SilentlyContinue; Remove-Job $sJob -Force -ErrorAction SilentlyContinue
 Check (-not (Test-Path -LiteralPath $sKit2)) 'second kit quarantined'
-Check ($x48 -match 'tiada sampel dihantar' -and -not (Test-Path $sGot)) 'answer other than Y sends no sample'
+Check ($x53 -match 'tiada sampel dihantar' -and -not (Test-Path $sGot)) 'answer other than Y sends no sample'
 Check (-not (Test-Path -LiteralPath "$sq\samples-pending.txt")) 'pending sample list cleared after a no'
 Remove-Item Env:\WAZIP_TEST_SAMPLE_URL, Env:\WAZIP_TEST_SAMPLE_ANSWER
 Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$env:LOCALAPPDATA\{437711d0-7b49-7cbc-e129-df3297aa000*" } | Stop-Process -Force -ErrorAction SilentlyContinue
@@ -1249,6 +1249,23 @@ Start-Sleep 2
 $r48 = Scan "$env:TEMP\x48.json" -Fix -Root $qR
 $sd = if (Test-Path $safeDry) { Get-Content -Raw $safeDry } else { '' }
 Check ($sd -match 'safeauto .*came back') "malware back after an earlier clean-up goes to Safe Mode ($("$sd".Trim()))"
+# The online pass holds the evidence (loader, folder, task): its report must be kept before the reboot (GMK9P/ED88Q, Nov 2026).
+$pend = @(Get-ChildItem -LiteralPath $qR -Filter 'report-pending-*.zip' -ErrorAction SilentlyContinue)
+$pendSum = $null
+if ($pend.Count) {
+  $zr = [IO.Compression.ZipFile]::OpenRead($pend[0].FullName)
+  $e = $zr.GetEntry('summary.json'); if ($e) { $sr = New-Object IO.StreamReader($e.Open()); $pendSum = $sr.ReadToEnd(); $sr.Close() }
+  $zr.Dispose()
+}
+Check ($pend.Count -eq 1 -and $pendSum -match 'RuntimeBroker') "online report kept as pending before the Safe Mode reboot ($($pend.Count) file(s))"
+# Next normal run: the pending report goes out with the offer (stand-in inbox unreachable, so it lands as a file).
+$repDirR = "$env:TEMP\waz-rep-recur"; Remove-Item -LiteralPath $repDirR -Recurse -Force -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Force -Path $repDirR | Out-Null
+$env:WAZIP_TEST_REPORT_DIR = $repDirR; $env:WAZIP_TEST_REPORT_URL = 'http://127.0.0.1:8795/report'
+$r54 = Scan "$env:TEMP\x54.json" -Fix -Root $qR -Out "$env:TEMP\x54.out"
+Remove-Item Env:\WAZIP_TEST_REPORT_DIR, Env:\WAZIP_TEST_REPORT_URL
+Check (@(Get-ChildItem -LiteralPath $repDirR -Filter 'Laporan-WAZIP-*.zip').Count -ge 1 -and -not (Get-ChildItem -LiteralPath $qR -Filter 'report-pending-*.zip')) 'pending online report offered and handed on at the next run'
+Remove-Item -LiteralPath $repDirR -Recurse -Force -ErrorAction SilentlyContinue
 Check (-not (Test-Path -LiteralPath $rDir)) 'online pass still quarantines the loader folder before Safe Mode'
 Stop-Process -Id $rP.Id -Force -ErrorAction SilentlyContinue
 # Loader running together with an antivirus-killer driver, on a PC never cleaned before.
