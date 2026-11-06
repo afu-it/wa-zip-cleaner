@@ -906,6 +906,7 @@ $ksDir = Join-Path $env:APPDATA 'Microsoft\Windows\System'
 New-Item -ItemType Directory -Force -Path $ksDir | Out-Null
 Set-Content "$ksDir\client.exe" 'dummy'; Set-Content "$ksDir\keylogger.exe" 'dummy'
 $runK = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+if (-not (Test-Path $runK)) { New-Item -Path $runK -Force | Out-Null }
 Set-ItemProperty -Path $runK -Name WindowsUpdate -Value "`"$ksDir\client.exe`""
 $r13 = Scan "$env:TEMP\x13.json"
 Check (Has $r13 'File' 'HIGH' 'Microsoft\\Windows\\System\\client\.exe$') 'client.exe in fake Windows\System folder is HIGH'
