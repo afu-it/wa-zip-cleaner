@@ -44,3 +44,10 @@ filename,AppData\Local\{<guid>}\QtsVFS.dll,Hidden+System DLL next to the fake Ru
 filename,Temp\KV<hex>.sys,BootRepair.sys copies re-dropped by the loader as service BOOTREPAIR (victim screenshots Nov 2026)
 filename,Temp\pex<nnnn>.tmp,ardrv.sys re-dropped by the loader as service PEx<nnnn> (victim screenshots Nov 2026)
 taskname,\MicrosoftTokenBroker,"Task running rundll32 <AppData\Local\{<guid>}>\QtsVFS.dll,VFS_Initialize (opt-in report WAZ-EU5BG Nov 2026)"
+sha256,0030eb685d66a1624681cb307320c91644390f6f7b2701c79e46762b78508c2a,Fake RuntimeBroker.exe loader in AppData\Local\{<guid>} (victim quarantine copy Nov 2026; VT 45/75)
+sha256,f7444fa5e949408e2bfb328a17acf0ea3316570a33e0bbca27b934e551af5b8b,QtsUpdater.exe in the loader folder (likely clean sideload host; VT 0/75)
+sha256,26c6313b7cb49d8150dab9274642ce39fc1a7124915371f1529adbc6c4ffa6fd,crypt_base.dll in the loader folder (VT 1/75)
+sha256,14ad6848e63ac6673b6afd7aedcf979aa0b30daa7c1addf19a988a2b33e1adfd,_plcache.dll stealer in the loader folder (VT 29/75; hash differs per folder)
+sha256,0341bd8a576f97e519a6b6b44dfd65d172257d1811a25131adf6c343ea2faa6b,QtsVFS.dll in the loader folder (not on VT; hash differs per folder)
+cert,7F611B3116BA141088B08687E329C40AE55ECDF0,Attacker root CN=ManageEngineCA (valid from 2026-08-18)
+cert,360DC5F5B39655F5774C01CF5D96DB8B849EFDF6,Attacker root CN=ManageEngineCA-DS-CA (valid from 2026-08-18)
