@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.06.33'
+$Version = '2026.11.06.34'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -102,6 +102,9 @@ $KnownBad = @(
   @{ Sha = '97ca10750526e7026bc65cb77d71afd47312834080ad991f385e883506198cc3'; Size = 3913007; Name = 'Lure ZIP Rekonsiliasi Akun.zip (opt-in report, Nov 2026; not on VirusTotal)' }
   @{ Sha = 'cf8ee9652aa18d5f2326669c7e392a137966ef3200e11847b4752900c241148b'; Size = 32506368; Name = 'Lure VHD from Rekonsiliasi Akun.zip (opt-in report, Nov 2026; not on VirusTotal)' }
   @{ Sha = '7173bd2d0f2f17b2fd1e71ba09a9bd03807b3af188dae725bb5c2606781bf620'; Size = 12583424; Name = 'Lure VHD Notis Denda.vhd (opt-in report, Nov 2026; not on VirusTotal)' }
+  @{ Sha = '5a08a4196574ef2ff72c103104a23a0f5c27475d678fc847d80f0e2ebae5ae93'; Size = 14716928; Name = 'Lure VHD MYS2026C*.vhd opened from a WhatsApp ZIP (opt-in report, Nov 2026; not on VirusTotal)' }
+  @{ Sha = 'c163f979d5dec3a40b7f14ef03b4ca9af62d785c615568f1e08de5af321f4386'; Size = 638313;   Name = 'Hidden+System hs_rt32_*.dll in Temp (opt-in report, Nov 2026; not on VirusTotal)' }
+  @{ Sha = '18db96354a00c1be908e4f3faebe7ab51e83d7e3342124bb7cacc5dbf7856d1a'; Size = 18713;    Name = 'Encrypted payload eneio64.dat (opt-in report, Nov 2026; not on VirusTotal)' }
   @{ Sha = '2c77d954eb79cc5b038b024d84848360d496b51c85ac8e97399d70d1bc3d0413'; Size = 1288192; Name = 'ValleyRAT dropper, becomes WinCombo.exe (MicroPoint chain, Oct 2026)' }
   @{ Sha = '9f326ede322930a7d5e149fa8720802b0623c1972dc54e41a2a73608fb6810dd'; Size = 17224; Name = 'Unknown file dropped with ZyArk.sys (crClient chain, Oct 2026)' }
   @{ Sha = '701d51b7be8b034c860bf97847bd59a87dca8481c4625328813746964995b626'; Size = 16603648; Name = 'TCLBANKER loader (Elastic, Oct 2026)' }
@@ -301,6 +304,9 @@ $KnownBad += @(
 )
 $AbusedLegit = @(
   @{ Sha = '1c5129b4d63f2d5252b5b02a0a7d655dac3b6eac23dd4ed92b4dd55f243387ff'; Size = 18248;   Name = 'ardrv.sys (OPSWAT, abused as AV killer)'; Vendor = 'OPSWAT' }
+  # Opt-in report (Nov 2026): dropped in Temp as pex7772.tmp and KV37F60000.sys and loaded as services PEx7772 / BOOTREPAIR.
+  @{ Sha = 'f130c20c0e4f1bf184514efc658c4bdcccba4816204426ef0eead0ff77acc516'; Size = 17744;   Name = 'ardrv.sys build 2 (OPSWAT, abused as AV killer; VirusTotal 7/75)'; Vendor = 'OPSWAT' }
+  @{ Sha = 'eb57b6db9b6876a51c7bc05ef011adcf0909a7351da8a329d6a1aee52a286459'; Size = 30320;   Name = 'BootRepair.sys (vulnerable Lenovo driver abused as AV killer; VirusTotal 9/75)'; Vendor = 'Lenovo' }
   @{ Sha = 'c74f55247aa2c72001024bd977c869cb5adce6f8604a4d32329f015b73ae2a49'; Size = 1994600; Name = 'KafanInputService.exe (sideload host)';      Vendor = 'Kafan' }
   @{ Sha = 'f712c2a8b4abf2e299a2b480020333deb0f43364e9686cda78b1243c62e4830d'; Size = 102536;  Name = 'KuGou active_desktop_launcher.exe (sideload host)'; Vendor = 'KuGou' }
   @{ Sha = '3e82ef738e1b91bb99e4fb30948cbc4c2ae3b2e60e4b3f783ba6dd7da4b3ee08'; Size = 562960;  Name = 'OBS obs-browser-page.exe (libcef.dll sideload host)'; Vendor = 'obs-studio' }
@@ -321,7 +327,7 @@ if ($env:WAZIP_TEST_IOCS -and (Test-Path -LiteralPath $env:WAZIP_TEST_IOCS)) {
   }
 }
 $PersistRegex ='\\Explorer\\thumbcache_[^\\]+\\|\\Microsoft\\DeviceSync\\[^\\]+\.exe|\\(Roaming|Local)\\Overlord\\|\bovd_[0-9a-f]{12}\.exe|\\Users\\Public\\Libraries\\.+\.(exe|dll)|\\AppData\\Local\\[0-9A-F]{16}\\|\\AppData\\Roaming\\Microsoft\\Windows\\System\\[^\\]+\.exe|rime\.dll|_vmclientcore@16|KafanInput|vcRuntimeMinimum_x86\.exe|\\H\d{8,}\.exe|ZyArk|\\ardrv\.sys|\\AppData\\Roaming\\Microsoft\\Update\\[^\\]+\.exe|active_desktop_(launcher|render)|Add-MpPreference|eneio64\.dat|plcc3a\.dat|-m\s+appclient|\\appclient\\python\\|HealthApp-[0-9a-f]{6}\.bat|\\ProgramData\\MicroPoint\\|WinCombo\.exe|CRClient\.dll|\\Toolkit\\winhttp\.dll|webview2_integration\.exe|encrashrep\.dll|\\ProgramData\\WindowsData\\|ExceptCatch\.dll|\\QNWallpaper\\|\\msvc-rt14\\|NtHandleCallback\.exe|\\(XiaoH|rwdriver|kabuto)\.sys'
-$LureRegex    = '^(Click here to view.*\.(zip|vhd|vhdx)|Notice.*\.vhdx?|(PDF|DOC)_[A-Z0-9-]{3,8}_20\d{12}\.(zip|img|iso|exe|vhd|vhdx)|20\d{6}[.-]MYS20\d{2}Y\d{4}[A-Z0-9]{4,6}\.(zip|img|iso|vhd|vhdx)|(RES-20\d{6}_\d{6}|ORCAMENTO_\d{6}|COMPROVANTE_20\d{6}_\d{6}|ComprovanteSantander-[\d.]+|NEW-20\d{6}_\d{6}-PED_[0-9A-F]+|DOC-\d{8}_[0-9A-F]{8})\.(zip|lnk)|20\d{12}-[0-9A-F]{14}\.zip|SENARAI ?DOKUMEN.*\.zip|.+\.(vhdx?|img|iso)\.zip|LHDN.*\.(iso|img|vhdx?)|Open_to_view.*\.(iso|img)|TAX_[A-Za-z0-9]{6,}\.img(\.zip)?|SSM-\d+\.img(\.zip)?|20\d{6}[0-9A-F]{8}\.(zip|exe|img|iso|vhd|vhdx)|20\d{6}_\d{6}_\d{4}\.(zip|img|iso|vhd|vhdx)|Financial_Report_20\d{6}_PDF\.\d+\.(zip|exe|img|iso|vhdx?)|\d{14}(\.[0-9A-F]{3})?\.(img|iso|vhdx?)|[A-Z.]{3,9}[.-]Number[.-]20\d{10,12}\.(img\d?|iso|vhdx?)|(IMPS|UTR|TWV)_\d{3,4}-\d{1,2}-20\d{2}\d*(\.[0-9A-F]{3})?\.(img|iso|vhdx?)|20\d{12}\.[0-9A-F]{12}\.zip|SOA\d*\.(img|iso|vhdx?)|Reconciliation[ _-]?Invoice.*\.(zip|img|iso|vhdx?)|Rekonsiliasi[ _-]?Akun.*\.(zip|img|iso|vhdx?)|E-statement\d*\.(img|iso|vhdx?)|RT\d{10}\.\d{3}\.img|.*_[CD]\d{10}(_.*)?\.(zip|exe|img|iso|vhdx?)|Notis_Penalti_\w+\.(zip|exe)|Notis[ _-]?Denda.*\.(zip|vhdx?|img|iso|exe)|TBK[-_]?\d{4,8}(_\d+)?\.(zip|exe)|SENARAI DOKUMEN\d*\.(zip|exe)|MyInvois_e-Invoice_INV\d+\w*\.(zip|exe)|e-Invoice_INV\d+_.+_Validated[\w-]*\.(zip|exe)|(TDS_Penalty_S\d+\w*_PAN_|GST_Non_Filing_Notice_|ITR_Scrutiny_\d+_Notice_PAN_).*\.(zip|exe|img|iso|vhdx?)|Common_Offline_Utility_ITR-.*\.(img|iso|vhdx?)|\u6240\u5F97\u7A0E.*\u7D0D\u7A0E\u901A\u77E5\u66F8\d*\.(zip|exe))$'
+$LureRegex    = '^(Click here to view.*\.(zip|vhd|vhdx)|Notice.*\.vhdx?|(PDF|DOC)_[A-Z0-9-]{3,8}_20\d{12}\.(zip|img|iso|exe|vhd|vhdx)|20\d{6}[.-]MYS20\d{2}Y\d{4}[A-Z0-9]{4,6}\.(zip|img|iso|vhd|vhdx)|(RES-20\d{6}_\d{6}|ORCAMENTO_\d{6}|COMPROVANTE_20\d{6}_\d{6}|ComprovanteSantander-[\d.]+|NEW-20\d{6}_\d{6}-PED_[0-9A-F]+|DOC-\d{8}_[0-9A-F]{8})\.(zip|lnk)|20\d{12}-[0-9A-F]{14}\.zip|SENARAI ?DOKUMEN.*\.zip|.+\.(vhdx?|img|iso)\.zip|LHDN.*\.(iso|img|vhdx?)|Open_to_view.*\.(iso|img)|TAX_[A-Za-z0-9]{6,}\.img(\.zip)?|SSM-\d+\.img(\.zip)?|20\d{6}[0-9A-F]{8}\.(zip|exe|img|iso|vhd|vhdx)|20\d{6}_\d{6}_\d{4}\.(zip|img|iso|vhd|vhdx)|Financial_Report_20\d{6}_PDF\.\d+\.(zip|exe|img|iso|vhdx?)|\d{14}(\.[0-9A-F]{3})?\.(img|iso|vhdx?)|[A-Z.]{3,9}[.-]Number[.-]20\d{10,12}\.(img\d?|iso|vhdx?)|(IMPS|UTR|TWV)_\d{3,4}-\d{1,2}-20\d{2}\d*(\.[0-9A-F]{3})?\.(img|iso|vhdx?)|20\d{12}\.[0-9A-F]{12}\.zip|SOA\d*\.(img|iso|vhdx?)|MYS20\d{2}C\d{3}V[A-Z0-9]{3}\.(zip|img|iso|vhdx?)|Reconciliation[ _-]?Invoice.*\.(zip|img|iso|vhdx?)|Rekonsiliasi[ _-]?Akun.*\.(zip|img|iso|vhdx?)|E-statement\d*\.(img|iso|vhdx?)|RT\d{10}\.\d{3}\.img|.*_[CD]\d{10}(_.*)?\.(zip|exe|img|iso|vhdx?)|Notis_Penalti_\w+\.(zip|exe)|Notis[ _-]?Denda.*\.(zip|vhdx?|img|iso|exe)|TBK[-_]?\d{4,8}(_\d+)?\.(zip|exe)|SENARAI DOKUMEN\d*\.(zip|exe)|MyInvois_e-Invoice_INV\d+\w*\.(zip|exe)|e-Invoice_INV\d+_.+_Validated[\w-]*\.(zip|exe)|(TDS_Penalty_S\d+\w*_PAN_|GST_Non_Filing_Notice_|ITR_Scrutiny_\d+_Notice_PAN_).*\.(zip|exe|img|iso|vhdx?)|Common_Offline_Utility_ITR-.*\.(img|iso|vhdx?)|\u6240\u5F97\u7A0E.*\u7D0D\u7A0E\u901A\u77E5\u66F8\d*\.(zip|exe))$'
 # Overlord RAT (open source, used by TankRAT) and its TankRAT loader keep their files in these folders.
 $OverlordRegex = '(?i)\\Explorer\\thumbcache_[^\\]+\\|\\AppData\\Roaming\\Microsoft\\DeviceSync\\|\\AppData\\(Roaming|Local)\\Overlord\\|\\AppData\\Local\\Temp\\(Overlord(virtualDriver)?|ovld_[^\\]+)\\'
 # Programs the October 2026 wave tells Windows Defender to skip. No real program needs these excluded.
@@ -374,6 +380,8 @@ $BrowserRoots = @(
   @{ Name = 'Brave'; Dir = 'AppData\Local\BraveSoftware\Brave-Browser\User Data'; Proc = 'brave'; Policy = 'BraveSoftware\Brave' }
   @{ Name = 'Opera'; Dir = 'AppData\Roaming\Opera Software\Opera Stable'; Proc = 'opera'; Policy = $null }
 )
+# A file opened straight from inside a ZIP is unpacked by Explorer to Temp\<guid>_<zip name>.zip<anything>\.
+$TempZipRegex = '(?i)\\Temp\\[0-9a-f]{8}-[0-9a-f-]{27}_[^\\]+\.zip[^\\]*\\'
 $VbsLureRegex = '(?i)(?<![a-z])(Statement|Debt|Hutang|Outstanding|Balance Sheet|Financial ?Report|Penyata|Invoice|Invois|Payment|Billing|Sila semak|Promissory|Reconciliation|Acknowledg|Application ?form|Income Tax|Cukai|Work Snapshot|Salary|Gaji|Claim|Tuntutan|LHDN|KWSP|EPF).*\.(vbs|vbe|js|wsf)$'
 # A document-named script is only a lure when it is not part of a developer tool, and a .js only when it
 # uses Windows Script Host. A developer PC had 11 Node.js files (firebase-tools, jose, VS Code extensions,
@@ -1285,12 +1293,15 @@ function Scan-Files {
           Add-Finding 'File' 'HIGH' $f.FullName 'Malware in a fake Windows\System folder under AppData (downloader / keylogger seen on a victim PC).'; return }
         if ($f.FullName -match $StageRegex -or $f.Name -ieq 'active_desktop_render_x64.dll' -or $f.Name -ieq 'desk_compositor_x64.dll') {
           Add-Finding 'File' 'HIGH' $f.FullName 'SilverFox loader DLL (fake Microsoft\Update folder or KuGou/desk_compositor variant).'; return }
+        if ($f.Name -match '(?i)\.(iso|img)$' -and $f.FullName -match $TempZipRegex) {
+          Add-Finding 'File' 'HIGH' $f.FullName 'Disk image opened straight from a ZIP. This is how the WhatsApp ZIP lure starts.'; return }
         if ($f.Name -match '(?i)\.vhdx?$' -and $f.Name -ine 'ext4.vhdx' -and
             $f.FullName -match '(?i)^[a-z]:\\Users\\' -and
             $f.FullName -notmatch '(?i)\\AppData\\Local\\(Docker\\|Packages\\(?!5319275A\.WhatsAppDesktop))') {
           if (Test-WaOrigin $f) { Add-Finding 'File' 'HIGH' $f.FullName 'Virtual disk (VHD) downloaded from WhatsApp Web. The WhatsApp ZIP hides its payload in a VHD.'; return }
-          # Explorer unpacks a file opened straight from a ZIP to Temp\<guid>_<zip name>.zip.<n>\ (Notis Denda.zip report, Nov 2026).
-          if ($f.FullName -match '(?i)\\Temp\\[0-9a-f]{8}-[0-9a-f-]{27}_[^\\]+\.zip\.[0-9a-f]+\\') { Add-Finding 'File' 'HIGH' $f.FullName 'Virtual disk (VHD) opened straight from a ZIP. This is how the WhatsApp ZIP lure starts.'; return }
+          # Explorer unpacks a file opened straight from a ZIP to Temp\<guid>_<zip name>.zip.<n>\ (Notis Denda.zip report, Nov 2026)
+          # or Temp\<guid>_<name>.zip.<name>.zip\ (MYS2026C*.zip report, Nov 2026).
+          if ($f.FullName -match $TempZipRegex) { Add-Finding 'File' 'HIGH' $f.FullName 'Virtual disk (VHD) opened straight from a ZIP. This is how the WhatsApp ZIP lure starts.'; return }
           Add-Finding 'File' 'WARN' $f.FullName 'Virtual disk (VHD) in a user folder. The WhatsApp ZIP hides its payload in a VHD; delete it unless you made it.'; return }
         # Victim sample (4 Nov 2026, TBK20261104_9635.zip): renamed Edge notification_helper.exe loads a fake dbghelp.dll from its own folder.
         if ($f.Name -ieq 'dbghelp.dll' -and $f.FullName -match '(?i)^[a-z]:\\Users\\' -and
@@ -1354,6 +1365,10 @@ function Scan-Files {
           Add-Finding 'File' 'HIGH' $f.FullName 'hidserv.dll outside System32 (fake HID service for persistence).'; return }
         if ($f.Name -match '(?i)\.(exe|dll|sys)$' -and
             ($f.Attributes -band [IO.FileAttributes]::Hidden) -and ($f.Attributes -band [IO.FileAttributes]::System)) {
+          # Opt-in report (Nov 2026): hs_rt32_<hex>.dll stayed in Temp through two clean-ups while it was only a warning.
+          # Real programs do not hide themselves as system files in Temp.
+          if ($f.Name -match '(?i)^hs_rt(32|64)_' -or $f.FullName -match '(?i)\\AppData\\Local\\Temp\\') {
+            Add-Finding 'File' 'HIGH' $f.FullName 'Hidden+System program in the Temp folder (Winos4.0 / ValleyRAT payload left by the WhatsApp ZIP).'; return }
           Add-Finding 'File' 'WARN' $f.FullName 'Hidden+System program in a user folder (common Winos4.0 hiding trick).'; return }
         if ($f.Extension -match '(?i)^\.(exe|scr|vbs|vbe|js|wsf|msi|img|iso)$' -and (Test-WaOrigin $f)) {
           Add-Finding 'File' 'HIGH' $f.FullName 'Program, script or disk image downloaded from WhatsApp Web. Real documents are never programs.'; return }
@@ -2631,9 +2646,17 @@ Write-Host ''
 
 if ($Fix -and $high.Count) {
   $qdir = Join-Path $QuarantineRoot $stamp
-  $mf = Invoke-Fix $qdir
+  $mf = @(Invoke-Fix $qdir)[-1]
+  # A victim read the old one-line message as missing: it showed up pushed to the right edge of the window (Nov 2026).
+  # Short lines that start at the left edge, with a coloured tag, stay readable at any window width.
+  $script:MidLine = $false
   Write-Host ''
-  Say "Kuarantin siap. Salinan & manifest: $mf" "Quarantine done. Backups & manifest: $mf" Green
+  Write-Host ''
+  Write-Host ' KUARANTIN SIAP / QUARANTINE DONE ' -ForegroundColor Black -BackgroundColor DarkGreen
+  Write-Host 'Salinan & senarai (manifest) disimpan di:' -ForegroundColor Green
+  Write-Host '  (Backups & manifest saved in:)' -ForegroundColor DarkGray
+  Write-Host "$mf" -ForegroundColor Green
+  Write-Host ''
   Say 'Seterusnya: RESTART PC, kemudian imbas sekali lagi.' 'Next: RESTART the PC, then scan again.' Cyan
 } elseif ($high.Count) {
   Say 'Untuk buang semua yang BAHAYA di atas, taip Y bila ditanya kat bawah (atau jalankan semula dengan -Fix / 2-CLEAN-BERSIH.bat).' 'To remove everything marked BAHAYA (high), type Y when asked below (or run again with -Fix / 2-CLEAN-BERSIH.bat).' Cyan

@@ -101,6 +101,14 @@ Set-Content "$vlDir\WinCombo.exe" 'dummy'; Set-Content "$vlDir\Security_Module.d
 $vhdUnzip = "$env:TEMP\3f2bdc19-2690-456d-b323-37b01a256dc4_Waz Test Lure.zip.dc4"
 New-Item -ItemType Directory -Force -Path $vhdUnzip | Out-Null
 Set-Content "$vhdUnzip\Waz Test Lure.vhd" 'dummy'
+# Same, in the <guid>_<name>.zip.<name>.zip\ shape that two clean-ups left behind as a warning (opt-in report, Nov 2026).
+$vhdUnzip2 = "$env:TEMP\7b5e9327-c899-44e6-8733-29c21c690ee0_WazMys.zip.WazMys.zip"
+New-Item -ItemType Directory -Force -Path $vhdUnzip2 | Out-Null
+Set-Content "$vhdUnzip2\WazMys.vhd" 'dummy'
+# Hidden+System payload DLL in Temp from the same report.
+$hsDll = "$env:TEMP\hs_rt32_wazt0001.dll"
+Set-Content $hsDll 'dummy'
+(Get-Item -LiteralPath $hsDll -Force).Attributes = 'Hidden, System'
 # Developer files whose names contain a lure word must stay untouched (false positives from an opt-in report, Nov 2026).
 $devNpm = "$env:APPDATA\npm\node_modules\wazfake\lib"; $devDoc = "$env:USERPROFILE\Documents\WazDev"
 New-Item -ItemType Directory -Force -Path $devNpm, $devDoc | Out-Null
@@ -214,6 +222,8 @@ Check (Has $r 'File' 'HIGH' 'Rekonsiliasi Akun\.zip$') 'Rekonsiliasi Akun.zip (I
 Check (Has $r 'File' 'HIGH' 'WazVirtualLinux$' 'MicroPoint') 'renamed MicroPoint folder (WinCombo.exe) is HIGH'
 Check (Has $r 'Service' 'HIGH' '^WazMsDriver$' 'data file') 'driver loaded from a .dat file in ProgramData is HIGH'
 Check (Has $r 'File' 'HIGH' 'Waz Test Lure\.vhd$' 'straight from a ZIP') 'VHD opened straight from a ZIP is HIGH'
+Check (Has $r 'File' 'HIGH' 'WazMys\.zip\.WazMys\.zip\\WazMys\.vhd$' 'straight from a ZIP') 'VHD opened from a ZIP (<name>.zip.<name>.zip shape) is HIGH'
+Check (Has $r 'File' 'HIGH' 'hs_rt32_wazt0001\.dll$' 'Temp folder') 'Hidden+System hs_rt32 DLL in Temp is HIGH'
 Check (-not ($r.All | Where-Object { $_.Target -match 'checkProjectBilling\.js$|build_salary_deck\.js$|WorkflowsStepFailedResponse\.js$' })) 'developer .js files with lure words are not flagged'
 Check (Has $r 'File' 'HIGH' 'Invoice Nov 2026\.js$' 'VBS campaign') 'document-named .js that uses Windows Script Host is HIGH'
 Check (Has $r 'File' 'HIGH' 'wa\\Account Summary 0411\.zip$' 'Defender flagged as Trojan:Win32/Malgent') 'lure ZIP found from the Defender detection path'
@@ -258,6 +268,10 @@ $x2out = Get-Content -Raw "$env:TEMP\x2.out"
 Wait-Job $repJob -Timeout 200 | Out-Null; Receive-Job $repJob -ErrorAction SilentlyContinue | Out-Host
 if ($repJob.State -eq 'Running') { Write-Host 'stand-in inbox job still running; leaving it' } else { Remove-Job $repJob -Force }
 Check ($x2out -match 'WAZ-TEST7') 'opt-in report sent and the reference number shown'
+Check ($x2out -match '(?m)^ KUARANTIN SIAP') 'quarantine-done tag printed at the left edge on its own line'
+Check (-not (Test-Path -LiteralPath "$vhdUnzip2\WazMys.vhd")) 'lure VHD (<name>.zip.<name>.zip shape) quarantined by -Fix'
+Check (-not (Test-Path -LiteralPath $hsDll)) 'Hidden+System hs_rt32 DLL in Temp quarantined by -Fix'
+Remove-Item -LiteralPath $vhdUnzip2, $hsDll -Recurse -Force -ErrorAction SilentlyContinue
 $repEntries = @{}
 if (Test-Path "$repDir\posted.zip") {
   Add-Type -AssemblyName System.IO.Compression.FileSystem

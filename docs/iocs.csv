@@ -34,3 +34,8 @@ ip,137.220.205.162,IP-guard agent connection target blocked by Malwarebytes on a
 sha256,97ca10750526e7026bc65cb77d71afd47312834080ad991f385e883506198cc3,Lure ZIP Rekonsiliasi Akun.zip (Indonesian variant of Reconciliation Invoice; opt-in report Nov 2026)
 sha256,cf8ee9652aa18d5f2326669c7e392a137966ef3200e11847b4752900c241148b,Lure VHD Memeriksa.vhd from Rekonsiliasi Akun.zip (opt-in report Nov 2026)
 sha256,7173bd2d0f2f17b2fd1e71ba09a9bd03807b3af188dae725bb5c2606781bf620,Lure VHD Notis Denda.vhd from Notis Denda.zip (opt-in report Nov 2026)
+sha256,5a08a4196574ef2ff72c103104a23a0f5c27475d678fc847d80f0e2ebae5ae93,Lure VHD MYS2026C*.vhd opened from a WhatsApp ZIP (opt-in report Nov 2026)
+sha256,c163f979d5dec3a40b7f14ef03b4ca9af62d785c615568f1e08de5af321f4386,Hidden+System hs_rt32_*.dll in Temp (opt-in report Nov 2026)
+sha256,18db96354a00c1be908e4f3faebe7ab51e83d7e3342124bb7cacc5dbf7856d1a,Encrypted payload eneio64.dat (opt-in report Nov 2026)
+sha256,f130c20c0e4f1bf184514efc658c4bdcccba4816204426ef0eead0ff77acc516,ardrv.sys build dropped as pex7772.tmp (abused OPSWAT driver; opt-in report Nov 2026)
+sha256,eb57b6db9b6876a51c7bc05ef011adcf0909a7351da8a329d6a1aee52a286459,BootRepair.sys dropped as KV37F60000.sys (vulnerable Lenovo driver; opt-in report Nov 2026)

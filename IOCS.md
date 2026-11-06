@@ -255,6 +255,15 @@ From an opt-in report sent by the tool (scan log, Windows event 7045, Program Co
 - `C:\ProgramData\Virtual_Linux\WinCombo.exe` ran the same day; HKLM Run value `AutoStart` starts it. Winos4.0 module in `HKCU\Console\1`. Windows Update and the UAC prompt switched off.
 - Same file names as the MicroPoint chain (`WinCombo.exe`, `Security_Module.dat`) under a new folder name. Since v2026.11.05.29 the tool flags any ProgramData folder holding those files, any service loaded from a `.dat`-style file in ProgramData or a user folder, a VHD unpacked from a ZIP opened directly, and the `Notis Denda*` name.
 
+## MYS2026C lure VHD, payload left in Temp after two clean-ups (opt-in report, Nov 2026)
+
+- Lure ZIP `MYS2026C<nnn>V<xxx>.zip` opened straight from WhatsApp; Explorer unpacked it to `Temp\<guid>_<name>.zip.<name>.zip\<name>.vhd` (14,716,928 bytes), SHA-256 `5a08a4196574ef2ff72c103104a23a0f5c27475d678fc847d80f0e2ebae5ae93`. Not on VirusTotal (404 on 2026-11-06).
+- Hidden+System `Temp\hs_rt32_<hex>.dll` (638,313 bytes), SHA-256 `c163f979d5dec3a40b7f14ef03b4ca9af62d785c615568f1e08de5af321f4386`. Not on VirusTotal.
+- Encrypted payload `Temp\hs<hex>\eneio64.dat` (18,713 bytes), SHA-256 `18db96354a00c1be908e4f3faebe7ab51e83d7e3342124bb7cacc5dbf7856d1a`. Not on VirusTotal.
+- Antivirus-killer drivers dropped in Temp and loaded as services `PEx7772` and `BOOTREPAIR`: `pex7772.tmp` = ardrv.sys (17,744 bytes), SHA-256 `f130c20c0e4f1bf184514efc658c4bdcccba4816204426ef0eead0ff77acc516` (VirusTotal 7/75); `KV37F60000.sys` = BootRepair.sys, a vulnerable Lenovo driver (30,320 bytes), SHA-256 `eb57b6db9b6876a51c7bc05ef011adcf0909a7351da8a329d6a1aee52a286459` (VirusTotal 9/75).
+- Persistence: a Run value `MicrosoftTokenBroker` starting a Hidden+System `RuntimeBroker.exe` in `AppData\Local\{<guid>}\`.
+- The VHD and the DLL were only warnings, so they survived a Safe Mode pass and a later clean-up, and the payload was running again after the restart. Since v2026.11.06.34 any file under `Temp\<guid>_<name>.zip<anything>\` with a .vhd/.vhdx/.iso/.img name, and any Hidden+System program in Temp, is HIGH and quarantined; the name pattern `MYS20<yy>C<nnn>V<xxx>` and all five hashes are matched.
+
 ## Hiding folders, service-install history and ManageEngine leftovers (14 opt-in reports, Nov 2026)
 From opt-in reports sent by the tool (Windows event 7045 history, scheduled tasks, driver file version info; no samples, no victim data kept).
 - Driver services installed again and again (the `ardrv` BYOVD driver) from folders under `C:\Users\Public\Libraries\` whose names are strings of symbols, and from extensionless files in `C:\Windows\System32\drivers\`. Since v2026.11.06.31 any 7045 service image in `Public\Libraries`, in a folder named with six or more symbols, or an extensionless file in `System32\drivers` is HIGH, even when the service is already deleted. The whole folder is quarantined as one unit, with its processes, tasks, services and Run values.
