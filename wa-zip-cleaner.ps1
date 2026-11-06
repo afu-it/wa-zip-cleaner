@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.06.31'
+$Version = '2026.11.06.32'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -640,6 +640,43 @@ function Add-HideUnit([string]$dir, [string]$why) {
 }
 # Scheduled tasks as one list. In Safe Mode the Task Scheduler does not answer, so the task files are read instead
 # (two Safe Mode reports, Nov 2026, listed no tasks and left the ManageEngine tasks behind).
+function Grant-RegAdmin([string]$psPath) {
+  # Turn on the take-ownership and restore rights the admin token already holds, then give
+  # Administrators full control of an HKLM key and its subkeys.
+  if (-not ('WazTokPriv' -as [type])) {
+    Add-Type -TypeDefinition @'
+using System; using System.Runtime.InteropServices;
+public static class WazTokPriv {
+  [StructLayout(LayoutKind.Sequential, Pack = 1)] struct TP { public int Count; public long Luid; public int Attr; }
+  [DllImport("advapi32.dll", SetLastError = true)] static extern bool OpenProcessToken(IntPtr h, int acc, out IntPtr tok);
+  [DllImport("advapi32.dll", SetLastError = true)] static extern bool LookupPrivilegeValue(string sys, string name, out long luid);
+  [DllImport("advapi32.dll", SetLastError = true)] static extern bool AdjustTokenPrivileges(IntPtr tok, bool all, ref TP n, int len, IntPtr p, IntPtr r);
+  [DllImport("kernel32.dll")] static extern IntPtr GetCurrentProcess();
+  public static void Enable(string name) {
+    IntPtr tok; if (!OpenProcessToken(GetCurrentProcess(), 0x28, out tok)) return;
+    TP tp = new TP(); tp.Count = 1; tp.Attr = 2; LookupPrivilegeValue(null, name, out tp.Luid);
+    AdjustTokenPrivileges(tok, false, ref tp, 0, IntPtr.Zero, IntPtr.Zero);
+  }
+}
+'@
+  }
+  [WazTokPriv]::Enable('SeTakeOwnershipPrivilege'); [WazTokPriv]::Enable('SeRestorePrivilege')
+  $sub = $psPath -replace '^HKLM:\\', ''
+  $adm = New-Object System.Security.Principal.SecurityIdentifier('S-1-5-32-544')
+  $todo = @($sub)
+  while ($todo.Count) {
+    $k = $todo[0]; $todo = @($todo | Select-Object -Skip 1)
+    $rk = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey($k, [Microsoft.Win32.RegistryKeyPermissionCheck]::ReadWriteSubTree, [System.Security.AccessControl.RegistryRights]::TakeOwnership)
+    if (-not $rk) { continue }
+    $acl = New-Object System.Security.AccessControl.RegistrySecurity; $acl.SetOwner($adm); $rk.SetAccessControl($acl); $rk.Close()
+    $rk = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey($k, [Microsoft.Win32.RegistryKeyPermissionCheck]::ReadWriteSubTree, [System.Security.AccessControl.RegistryRights]::ChangePermissions -bor [System.Security.AccessControl.RegistryRights]::ReadKey)
+    $acl = $rk.GetAccessControl()
+    $acl.AddAccessRule((New-Object System.Security.AccessControl.RegistryAccessRule($adm, 'FullControl', 'ContainerInherit', 'None', 'Allow')))
+    $rk.SetAccessControl($acl)
+    $todo += @($rk.GetSubKeyNames() | ForEach-Object { "$k\$_" }); $rk.Close()
+  }
+}
+
 function Get-WazTasks {
   $list = @()
   if (-not $env:WAZIP_TEST_TASKFILES) { $list = @(Get-ScheduledTask -ErrorAction SilentlyContinue) }
@@ -2024,7 +2061,12 @@ function Invoke-Fix($qdir) {
               if (-not (Test-Path -LiteralPath $rk)) { continue }
               $j++; $reg = Join-Path $qdir "reg-$i-task-$j.reg"
               & reg.exe export (ConvertTo-RegExePath $rk) $reg /y | Out-Null
-              Remove-Item -LiteralPath $rk -Recurse -Force -ErrorAction Stop
+              try { Remove-Item -LiteralPath $rk -Recurse -Force -ErrorAction Stop }
+              catch {
+                # TaskCache keys only let SYSTEM delete them: take ownership as admin, then retry.
+                Grant-RegAdmin $rk
+                Remove-Item -LiteralPath $rk -Recurse -Force -ErrorAction Stop
+              }
               $log.Add(@{ Kind = 'Reg'; Target = $rk; Backup = $reg })
             }
             Remove-Item -LiteralPath $tf -Force -ErrorAction Stop
