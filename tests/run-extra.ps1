@@ -1131,6 +1131,81 @@ Stop-Process -Id $gP.Id -Force -ErrorAction SilentlyContinue
 Remove-ItemProperty -Path $runG -Name WazTokenBrokerTest -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $gDir, $hsDir -Recurse -Force -ErrorAction SilentlyContinue
 
+Write-Host '=== Opt-in malware samples go to the stand-in inbox; documents, zips and Downloads files never do ===' -ForegroundColor Cyan
+$sq = 'C:\WAZipQuarantineSample'
+Remove-Item -LiteralPath $sq -Recurse -Force -ErrorAction SilentlyContinue
+function New-SampleKit($tagName) {
+  $d = Join-Path $env:LOCALAPPDATA ('{437711d0-7b49-7cbc-e129-df3297' + $tagName + '}')
+  New-Item -ItemType Directory -Force -Path $d | Out-Null
+  Copy-Item -LiteralPath "$env:SystemRoot\System32\PING.EXE" -Destination "$d\RuntimeBroker.exe"
+  # Different bytes in every file, so the sha256 de-duplication keeps them apart.
+  Set-Content "$d\QtsVFS.dll" "dll $tagName"; Set-Content "$d\KV99AA0000.sys" "sys $tagName"; Set-Content "$d\eneio64.dat" "dat $tagName"
+  Set-Content "$d\notes.docx" "doc $tagName"; New-TestZip "$d\bundle.zip" @('a.txt')
+  foreach ($x in Get-ChildItem -LiteralPath $d -Force) { $x.Attributes = 'Hidden, System' }
+  # Running from the hiding folder, like the real loader.
+  [Diagnostics.Process]::Start("$d\RuntimeBroker.exe", '-n 900 127.0.0.1') | Out-Null
+  Start-Sleep 2
+  $d
+}
+function Start-SampleInbox($out, $port) {
+  Start-Job {
+    param($out, $port)
+    $l = New-Object Net.HttpListener; $l.Prefixes.Add("http://127.0.0.1:$port/"); $l.Start()
+    $limit = 150000
+    while ($true) {
+      $w = $l.GetContextAsync()
+      if (-not $w.Wait($limit)) { break }
+      $limit = 20000
+      $c = $w.Result
+      $ms = New-Object IO.MemoryStream; $c.Request.InputStream.CopyTo($ms)
+      Add-Content -LiteralPath $out -Value ("{0}|{1}|{2}|{3}" -f $c.Request.Url.AbsolutePath, $c.Request.Headers['X-Sha256'], $c.Request.Headers['X-File-Ext'], $ms.Length)
+      $b = [Text.Encoding]::ASCII.GetBytes('{"ok":true}')
+      $c.Response.ContentType = 'application/json'; $c.Response.ContentLength64 = $b.Length; $c.Response.OutputStream.Write($b, 0, $b.Length); $c.Response.Close()
+    }
+    $l.Close()
+  } -ArgumentList $out, $port
+}
+$sKit = New-SampleKit 'aa0001'
+$sLure = Join-Path $dl 'Notis Denda Sample 2026.exe'
+Set-Content -LiteralPath $sLure 'lure program stand-in from Downloads'
+$lureSha = (Get-FileHash -LiteralPath $sLure -Algorithm SHA256).Hash.ToLower()
+$sGot = "$env:TEMP\waz-samples-got.txt"; Remove-Item -LiteralPath $sGot -Force -ErrorAction SilentlyContinue
+$sJob = Start-SampleInbox $sGot 8798
+Start-Sleep 5
+$env:WAZIP_TEST_SAMPLE_URL = 'http://127.0.0.1:8798/sample'
+$env:WAZIP_TEST_SAMPLE_ANSWER = 'Y'
+$r47 = Scan "$env:TEMP\x47.json" -Fix -Root $sq -Out "$env:TEMP\x47.out"
+$x47 = Get-Content -Raw "$env:TEMP\x47.out"
+Wait-Job $sJob -Timeout 60 | Out-Null; Stop-Job $sJob -ErrorAction SilentlyContinue; Remove-Job $sJob -Force -ErrorAction SilentlyContinue
+$got = @(if (Test-Path $sGot) { Get-Content -LiteralPath $sGot })
+$gotExt = @($got | ForEach-Object { ($_ -split '\|')[2] })
+Write-Host "samples received: $($got -join '; ')"
+Check (-not (Test-Path -LiteralPath $sKit)) 'sample kit folder quarantined by -Fix'
+Check (-not (Test-Path -LiteralPath $sLure)) 'Downloads lure program quarantined by -Fix'
+Check ($x47 -match 'SAMPEL VIRUS' -and $x47 -match 'BUKAN dokumen') 'sample question asked, saying documents are not sent'
+Check (($gotExt -contains '.dll') -and ($gotExt -contains '.sys') -and ($gotExt -contains '.dat') -and ($gotExt -contains '.exe')) "quarantined .exe/.dll/.sys/.dat sent ($($gotExt -join ','))"
+Check (-not ($gotExt | Where-Object { $_ -match '^\.(docx|zip)$' })) 'no document or zip sent'
+Check (-not ($got | Where-Object { ($_ -split '\|')[1] -eq $lureSha })) 'quarantined program from Downloads not sent'
+Check (@($got | Where-Object { ($_ -split '\|')[0] -ne '/sample' }).Count -eq 0 -and @($got | Where-Object { [int](($_ -split '\|')[3]) -le 0 }).Count -eq 0) 'every sample posted to /sample with its bytes'
+Check ($x47 -match 'OK  sampel [0-9a-f]{12}') 'each sent sample shown with its sha256 start'
+Check (-not (Test-Path -LiteralPath "$sq\samples-pending.txt")) 'pending sample list cleared after sending'
+# Second run: the victim answers no, so nothing is sent.
+$sKit2 = New-SampleKit 'aa0002'
+Remove-Item -LiteralPath $sGot -Force -ErrorAction SilentlyContinue
+$sJob = Start-SampleInbox $sGot 8799
+Start-Sleep 5
+$env:WAZIP_TEST_SAMPLE_URL = 'http://127.0.0.1:8799/sample'
+$env:WAZIP_TEST_SAMPLE_ANSWER = 'N'
+$r48 = Scan "$env:TEMP\x48.json" -Fix -Root $sq -Out "$env:TEMP\x48.out"
+$x48 = Get-Content -Raw "$env:TEMP\x48.out"
+Stop-Job $sJob -ErrorAction SilentlyContinue; Remove-Job $sJob -Force -ErrorAction SilentlyContinue
+Check (-not (Test-Path -LiteralPath $sKit2)) 'second kit quarantined'
+Check ($x48 -match 'tiada sampel dihantar' -and -not (Test-Path $sGot)) 'answer other than Y sends no sample'
+Check (-not (Test-Path -LiteralPath "$sq\samples-pending.txt")) 'pending sample list cleared after a no'
+Remove-Item Env:\WAZIP_TEST_SAMPLE_URL, Env:\WAZIP_TEST_SAMPLE_ANSWER
+Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$env:LOCALAPPDATA\{437711d0-7b49-7cbc-e129-df3297aa000*" } | Stop-Process -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $sKit, $sKit2, $sLure, $sq -Recurse -Force -ErrorAction SilentlyContinue
+
 Write-Host '=== Task MicrosoftTokenBroker: rundll32 loads QtsVFS.dll from a {GUID} folder (WAZ-EU5BG, Nov 2026) ===' -ForegroundColor Cyan
 $tDir = Join-Path $env:LOCALAPPDATA '{437711d0-7b49-7cbc-e129-df32973225cc}'
 New-Item -ItemType Directory -Force -Path $tDir | Out-Null

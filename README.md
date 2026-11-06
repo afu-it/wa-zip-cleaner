@@ -78,6 +78,8 @@ irm waz.afuit.dev | iex
     - **BAHAYA** (merah): kat bawah sekali keluar *Taip Y dan Enter untuk bersihkan*. Taip `Y`, tekan **Enter**, pergi langkah 11. Chrome, Edge atau browser lain akan tertutup sendiri, sebab tool log keluar WhatsApp Web kat PC ni. Buka balik lepas siap (kalau anda baca panduan ni dalam browser, buka semula page ni).
 11. Tunggu sampai keluar **Kuarantin siap**. Fail jahat tu tak delete terus. Tool pindahkan dia ke folder `C:\WAZipQuarantine`, jadi kalau tersalah buang, boleh pulihkan balik.
     Lepas tu tool tanya *Nak hantar laporan?* Pilihan anda. Taip `Y` untuk hantar senarai benda yang dijumpai dan log imbasan kepada kami, supaya kami boleh kaji penggodam dan baiki tool ni. Nama akaun, nama PC, emel, nombor telefon dan alamat rangkaian dibuang dulu, dan dokumen anda tak dihantar. Tekan **Enter** je kalau tak nak hantar. Kalau internet tak dapat, laporan disimpan di Desktop dan anda boleh hantar ke Telegram [@afwazan](https://t.me/afwazan).
+
+    Kalau tool dah kuarantin fail virus, dia tanya satu lagi soalan: *Hantar fail virus untuk dianalisis?* Taip `Y` untuk hantar fail program virus yang dah dikuarantin (contohnya `.exe`, `.dll`, `.sys`, `.dat`, VHD) ke server kami. Server simpan fail tu dalam ZIP berkata laluan dan semak di VirusTotal; virus yang VirusTotal belum kenal dimuat naik ke sana supaya antivirus lain pun boleh tangkap. Dokumen, gambar, fail ZIP/RAR, dan apa-apa fail dari Downloads, Desktop atau Documents **tak pernah** dihantar. Tekan **Enter** je kalau tak nak hantar.
 12. **Restart PC** (Start > Power > Restart).
 13. Lepas PC hidup balik, buat Langkah 2 sekali lagi dari mula, sampai keluar **BERSIH**.
 

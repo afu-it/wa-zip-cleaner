@@ -2300,6 +2300,8 @@ function Invoke-Fix($qdir) {
   Set-Content -LiteralPath (Join-Path $QuarantineRoot 'last-fix.txt') -Value (Get-Date -Format o)
   $mf = Join-Path $qdir 'manifest.json'
   $log | ConvertTo-Json -Depth 4 | Out-File -Encoding UTF8 $mf
+  # Remember this clean-up for the opt-in sample question (asked online, after a Safe Mode pass too).
+  Add-Content -LiteralPath (Join-Path $QuarantineRoot 'samples-pending.txt') -Value $mf -ErrorAction SilentlyContinue
   $mf
 }
 
@@ -2521,7 +2523,7 @@ function Send-WazReport([string]$zip) {
   } catch { if ($env:WAZIP_TEST_REPORT_DIR) { Write-Host "  (report send error: $($_.Exception.Message))" -ForegroundColor DarkGray } }
   $null
 }
-function Invoke-ReportOffer {
+function Invoke-ReportOfferCore {
   $pending = Join-Path $QuarantineRoot 'report-safemode.zip'
   $test = $env:WAZIP_TEST_REPORT_DIR
   # Safe Mode has no internet and the user was told not to touch anything: keep the report for later.
@@ -2549,6 +2551,7 @@ function Invoke-ReportOffer {
     $i++
     $id = Send-WazReport $z
     if ($id) {
+      $script:LastReportId = $id
       Say "Laporan dihantar. Terima kasih! Nombor rujukan: $id" "Report sent. Thank you! Reference: $id" Green
     } else {
       $copy = Join-Path $desk ("Laporan-WAZIP-$stamp-$i.zip")
@@ -2558,6 +2561,101 @@ function Invoke-ReportOffer {
     }
     Remove-Item -LiteralPath $z -Force -ErrorAction SilentlyContinue
   }
+}
+
+# ---------------------------------------------------------- opt-in samples ---
+# Malware files the clean-up moved to quarantine can be sent, only if the victim types Y, to report.afuit.dev,
+# which keeps them in a password zip and checks them on VirusTotal (new ones are uploaded there).
+# Only program-like files from this tool's quarantine: never archives, documents, pictures, or anything that came
+# from Downloads/Desktop/Documents, never WhatsApp logins or registry items.
+$SampleUrl = if ($env:WAZIP_TEST_SAMPLE_URL) { $env:WAZIP_TEST_SAMPLE_URL } else { 'https://report.afuit.dev/sample' }
+$SampleExt = @('.exe', '.dll', '.sys', '.dat', '.tmp', '.vhd', '.vhdx', '.iso', '.img', '.scr', '.ocx', '.cpl')
+$SampleNever = '(?i)\.(zip|rar|7z|gz|tar|cab|docx?|xlsx?|pptx?|pdf|rtf|txt|csv|odt|ods|jpe?g|png|gif|bmp|heic|mp4|mov|mp3|lnk|url|json|xml|html?|log)$'
+$script:LastReportId = $null
+function Test-SampleName([string]$orig) {
+  if ($orig -match '(?i)\\(Downloads|Desktop|Documents|OneDrive[^\\]*|Pictures|Videos)\\') { return $false }
+  $leaf = Split-Path $orig -Leaf
+  if ($leaf -match $SampleNever) { return $false }
+  $ext = [IO.Path]::GetExtension($leaf).ToLower()
+  if ($SampleExt -contains $ext) { return $true }
+  # No usable extension (e.g. "3#.8"): only inside a symbol, {GUID} or Temp\hs<hex> hiding folder.
+  $dir = Split-Path $orig -Parent
+  if ($dir -match '(?i)\\\{[0-9a-f-]{36}\}(\\|$)|\\Temp\\hs[0-9a-f]{4,}(\\|$)|\\Public\\Libraries\\') { return $true }
+  ($dir -replace '^.*\\', '') -match '([!@#$%^&()+,;=\[\]{}~`'']).*([!@#$%^&()+,;=\[\]{}~`'']).*([!@#$%^&()+,;=\[\]{}~`''])'
+}
+function Get-SampleFiles([string[]]$manifests) {
+  $out = New-Object System.Collections.Generic.List[object]
+  $seen = @{}
+  foreach ($mf in $manifests | Select-Object -Unique) {
+    if (-not $mf -or -not (Test-Path -LiteralPath $mf)) { continue }
+    $items = @(try { Get-Content -Raw -LiteralPath $mf -ErrorAction Stop | ConvertFrom-Json | ForEach-Object { $_ } } catch { @() })
+    foreach ($it in $items | Where-Object { $_.Kind -eq 'File' -and $_.Backup -and $_.Target }) {
+      $bk = [string]$it.Backup; $tg = [string]$it.Target
+      if (-not (Test-Path -LiteralPath $bk)) { continue }
+      $pairs = @()
+      if (Test-Path -LiteralPath $bk -PathType Container) {
+        foreach ($c in @(Get-ChildItem -LiteralPath $bk -Recurse -File -Force -ErrorAction SilentlyContinue | Select-Object -First 200)) {
+          $pairs += , @($c, ($tg + $c.FullName.Substring($bk.Length)))
+        }
+      } else { $pairs += , @((Get-Item -LiteralPath $bk -Force), $tg) }
+      foreach ($pr in $pairs) {
+        $fi = $pr[0]; $orig = [string]$pr[1]
+        if ($fi.Length -le 0 -or $fi.Length -gt 50MB -or -not (Test-SampleName $orig)) { continue }
+        $sha = try { (Get-FileHash -LiteralPath $fi.FullName -Algorithm SHA256 -ErrorAction Stop).Hash.ToLower() } catch { $null }
+        if (-not $sha -or $seen[$sha]) { continue }
+        $seen[$sha] = $true
+        $out.Add([pscustomobject]@{ Path = $fi.FullName; Sha = $sha; Ext = [IO.Path]::GetExtension((Split-Path $orig -Leaf)).ToLower(); Size = $fi.Length })
+        if ($out.Count -ge 10) { return $out }
+      }
+    }
+  }
+  $out
+}
+function Send-WazSample($s) {
+  try {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+    $h = @{ 'X-Sha256' = $s.Sha }
+    if ($s.Ext -match '^\.[a-z0-9]{1,6}$') { $h['X-File-Ext'] = $s.Ext }
+    if ($script:LastReportId) { $h['X-Report-Id'] = $script:LastReportId }
+    $r = Invoke-WebRequest -Uri $SampleUrl -Method Post -InFile $s.Path -Headers $h -ContentType 'application/octet-stream' -UseBasicParsing -TimeoutSec 300 -ErrorAction Stop
+    $c = $r.Content
+    if ($c -is [byte[]]) { $c = [Text.Encoding]::UTF8.GetString($c) }
+    return ("$c" -match '"ok"\s*:\s*true')
+  } catch { return $false }
+}
+function Invoke-SampleOffer {
+  $list = Join-Path $QuarantineRoot 'samples-pending.txt'
+  # Safe Mode has no internet: the list stays for the next normal run.
+  if ($SafeAuto -or -not (Test-Path -LiteralPath $list)) { return }
+  $test = $env:WAZIP_TEST_SAMPLE_URL
+  if ($env:WAZIP_NO_PROMPT -and -not $test) { return }
+  $files = @(Get-SampleFiles @(Get-Content -LiteralPath $list -ErrorAction SilentlyContinue))
+  if (-not $files.Count) { Remove-Item -LiteralPath $list -Force -ErrorAction SilentlyContinue; return }
+  Show-Head 'SAMPEL VIRUS' 'MALWARE SAMPLES'
+  Write-Host ''
+  Say "Tool ni dah kuarantin $($files.Count) fail virus. Hantar fail virus tu (BUKAN dokumen anda) untuk dianalisis? Ia disemak di VirusTotal supaya antivirus lain pun boleh kenal virus ni." `
+      "This tool quarantined $($files.Count) malware file(s). Send those malware files (NOT your documents) for analysis? They are checked on VirusTotal so other antivirus programs learn to catch this malware too." White
+  Say 'Cuma fail program virus yang dah dikuarantin dihantar. Dokumen, gambar, ZIP dan fail dalam Downloads/Desktop/Documents TIDAK dihantar.' `
+      'Only quarantined malware program files are sent. Documents, pictures, ZIPs and files from Downloads/Desktop/Documents are NOT sent.' Gray
+  try { $Host.UI.RawUI.FlushInputBuffer() } catch {}
+  Write-Host '  Taip Y dan Enter untuk hantar, atau Enter je untuk tak hantar : ' -ForegroundColor Green -NoNewline
+  if ($test) { $ans = if ($env:WAZIP_TEST_SAMPLE_ANSWER) { $env:WAZIP_TEST_SAMPLE_ANSWER } else { 'Y' }; Write-Host $ans } else { $ans = ([string](Read-Host)).Trim() }
+  if ($ans -ne 'Y') {
+    Remove-Item -LiteralPath $list -Force -ErrorAction SilentlyContinue
+    Say 'OK, tiada sampel dihantar.' 'OK, no samples sent.' DarkGray; return
+  }
+  $bad = 0
+  foreach ($f in $files) {
+    $tag = $f.Sha.Substring(0, 12)
+    if (Send-WazSample $f) { Say "  OK  sampel $tag ($($f.Ext), $($f.Size) bait)" "  OK  sample $tag ($($f.Ext), $($f.Size) bytes)" Green }
+    else { $bad++; Say "  GAGAL hantar sampel $tag (internet?)" "  FAILED to send sample $tag (internet?)" Yellow }
+  }
+  if ($bad) { Say 'Sampel yang gagal akan ditanya lagi bila tool dijalankan semula.' 'Failed samples are offered again next time the tool runs.' DarkGray }
+  else { Remove-Item -LiteralPath $list -Force -ErrorAction SilentlyContinue; Say 'Terima kasih! Sampel dihantar.' 'Thank you! Samples sent.' Green }
+}
+function Invoke-ReportOffer {
+  Invoke-ReportOfferCore
+  Invoke-SampleOffer
 }
 
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
