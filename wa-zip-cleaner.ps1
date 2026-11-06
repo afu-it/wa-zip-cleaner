@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.06.35'
+$Version = '2026.11.06.36'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -1262,7 +1262,7 @@ function Scan-Files {
       ForEach-Object { Join-Path $u.FullName $_ }
     # Victim report (2 Nov 2026): a sideload pair hidden in AppData\Local\<16 random hex characters>.
     $roots += @(Get-ChildItem -LiteralPath (Join-Path $u.FullName 'AppData\Local') -Directory -Force -ErrorAction SilentlyContinue |
-      Where-Object { $_.Name -cmatch '^[0-9A-F]{16}$' } | ForEach-Object { $_.FullName })
+      Where-Object { $_.Name -cmatch '^[0-9A-F]{16}$' -or $_.Name -match '(?i)^\{[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\}$' } | ForEach-Object { $_.FullName })
   }
   $exts = '\.(zip|rar|7z|vhd|vhdx|img|iso|dll|exe|scr|dat|cnf|sys|tar|vbs|vbe|js|wsf|lnk|msi|mst|key)$|^DCAgentServerInfo\.json$|^UX64$'
   $wsh = New-Object -ComObject WScript.Shell
@@ -2681,6 +2681,28 @@ Say "      Jumpa: $($high.Count) bahaya, $($warn.Count) amaran." "      Found: $
 Show-Head 'LANGKAH SETERUSNYA' 'NEXT STEPS'
 Write-Host ''
 
+# Infection that comes back (6S85A victim, Nov 2026: the loader re-dropped its drivers after each online clean-up).
+# Loader-type finds this run: a malware process, an antivirus-killer service, or a Run value at a Hidden+System file.
+$skipRe = '(?i)ManageEngine|IP-guard|UltraViewer|Ping32'
+$loaderHits = @($high | Where-Object { "$($_.Detail)" -notmatch $skipRe -and (
+  $_.Kind -eq 'Process' -or
+  ($_.Kind -eq 'Service' -and "$($_.Detail)" -match '(?i)antivirus killer|data file|Temp folder|hiding place') -or
+  ($_.Kind -eq 'RegValue' -and "$($_.Detail)" -match 'Hidden\+System') ) })
+$script:Recur = $null
+if ($Fix -and -not $SafeAuto -and $loaderHits.Count) {
+  $liveProc = @($loaderHits | Where-Object { $_.Kind -eq 'Process' })
+  $avKill = @($high | Where-Object { $_.Kind -eq 'Service' -and ("$($_.Target)" -match '(?i)^(BOOTREPAIR|ardrv|PEx\d+)$' -or "$($_.Detail)" -match '(?i)antivirus killer') })
+  # An earlier clean-up by this tool that already removed the same kind of thing.
+  $prior = $false
+  foreach ($d in @(Get-ChildItem -LiteralPath $QuarantineRoot -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -ne $stamp })) {
+    $pm = Join-Path $d.FullName 'manifest.json'
+    if (-not (Test-Path -LiteralPath $pm)) { continue }
+    $old = @(try { Get-Content -Raw -LiteralPath $pm -ErrorAction Stop | ConvertFrom-Json | ForEach-Object { $_ } } catch { @() })
+    if ($old | Where-Object { $_.Kind -eq 'Process' -or ($_.Kind -eq 'Reg' -and "$($_.Target)" -match '(?i)\\Services\\|\\CurrentVersion\\Run') }) { $prior = $true; break }
+  }
+  if ($prior) { $script:Recur = 'came back after an earlier clean-up' }
+  elseif ($liveProc.Count -and $avKill.Count) { $script:Recur = 'loader running with an antivirus killer' }
+}
 if ($Fix -and $high.Count) {
   $qdir = Join-Path $QuarantineRoot $stamp
   $mf = @(Invoke-Fix $qdir)[-1]
@@ -2854,6 +2876,8 @@ if ($Findings | Where-Object { $_.Target -match '^IP-guard' -and $_.Severity -eq
 }
 # Blocked leftovers: offer to restart into Safe Mode (the tool runs itself there) or into the recovery screen (BUANG.bat).
 function Start-SafeAuto {
+  # Tests: record the decision instead of rebooting the machine.
+  if ($env:WAZIP_TEST_SAFEAUTO_DRY) { Add-Content -LiteralPath $env:WAZIP_TEST_SAFEAUTO_DRY -Value "safeauto $stamp $($script:Recur)"; return }
   $rk = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce'
   $copy = Join-Path $QuarantineRoot 'wa-zip-cleaner.ps1'
   try {
@@ -2899,6 +2923,14 @@ if ($SafeAuto -and $IpgAgain) {
     Say 'Siap. PC akan restart ke Windows biasa dalam 60 saat. Lepas tu jalankan tool ni sekali lagi untuk semak.' 'Done. The PC restarts into normal Windows in 60 seconds. Then run this tool again to check.' Green
     & shutdown.exe /r /t 60
   }
+} elseif ($Fix -and $script:Recur) {
+  Show-Head 'SAFE MODE AUTO' 'AUTOMATIC SAFE MODE'
+  Write-Host ''
+  Say 'Virus datang balik selepas dibersihkan. Tool akan restart ke Safe Mode untuk buang dia bila dia tak berjalan.' `
+      'The virus came back after cleaning. The tool restarts into Safe Mode to remove it while it is not running.' Yellow
+  Say 'JANGAN SENTUH APA-APA. Cuma taip PASSWORD akaun Windows (bukan PIN) bila Safe Mode minta.' `
+      'DO NOT TOUCH ANYTHING. Only type your Windows account PASSWORD (not PIN) when Safe Mode asks.' Yellow
+  Start-SafeAuto
 } elseif ($blocked -and -not $env:WAZIP_NO_PROMPT) {
   Show-Head 'PAKSA BUANG' 'FORCE REMOVAL'
   Write-Host ''

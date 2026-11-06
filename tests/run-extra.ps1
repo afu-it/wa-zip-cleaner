@@ -9,6 +9,9 @@ $tool = Join-Path $root 'wa-zip-cleaner.ps1'
 $q = 'C:\WAZipQuarantineExtra'
 $fail = 0
 $env:WAZIP_NO_PROMPT = '1'
+# Never reboot the runner into Safe Mode: the tool writes its decision here instead.
+$safeDry = "$env:TEMP\waz-safeauto.txt"
+$env:WAZIP_TEST_SAFEAUTO_DRY = $safeDry
 $env:WAZIP_TIMING = '1'
 Get-MpComputerStatus -ErrorAction SilentlyContinue | Format-List RealTimeProtectionEnabled, AMRunningMode, OnAccessProtectionEnabled
 $progress = "$env:TEMP\waz-progress.txt"
@@ -16,8 +19,8 @@ function Note($m) { Add-Content -LiteralPath $progress -Value ('{0} {1}' -f (Get
 function Check($ok, $msg) {
   if ($ok) { Write-Host "PASS $msg" -ForegroundColor Green; Note "PASS $msg" } else { Write-Host "FAIL $msg" -ForegroundColor Red; $script:fail++; Note "FAIL $msg" }
 }
-function Scan($report, [switch]$Fix, [switch]$RemoveME, [string]$Owner, [string]$Out) {
-  $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $tool, '-QuarantineRoot', $q, '-ReportPath', $report)
+function Scan($report, [switch]$Fix, [switch]$RemoveME, [string]$Owner, [string]$Out, [string]$Root = $q) {
+  $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $tool, '-QuarantineRoot', $Root, '-ReportPath', $report)
   if ($Fix) { $a += '-Fix' }
   if ($RemoveME) { $a += '-RemoveManageEngine' }
   if ($Owner) { $a += '-Owner', $Owner }
@@ -1117,7 +1120,7 @@ Check (Has $r45 'Process' 'HIGH' '^RuntimeBroker\.exe') 'RuntimeBroker.exe runni
 Check (Has $r45 'RegValue' 'HIGH' '\|WazTokenBrokerTest$' 'Hidden\+System') 'unquoted rundll32 Run value pointing at a Hidden+System DLL is HIGH'
 Check (Has $r45 'File' 'HIGH' ('^' + [regex]::Escape($gDir) + '$') 'Random-named folder') '{GUID} loader folder is one HIGH finding'
 Check (Has $r45 'File' 'HIGH' 'QtsVFS\.dll$' 'Hidden\+System') 'Hidden+System DLL in an AppData\Local {GUID} folder is HIGH'
-Check (Has $r45 'File' 'HIGH' ('^' + [regex]::Escape($hsDir) + '$') 'Random-named folder') 'Temp\hs<hex> drop folder is one HIGH finding'
+Check (Has $r45 'File' 'HIGH' '\\Temp\\hs5b46aa00$' 'Random-named folder') 'Temp\hs<hex> drop folder is one HIGH finding'
 $r46 = Scan "$env:TEMP\x46.json" -Fix
 Check (-not (Get-Process -Id $gP.Id -ErrorAction SilentlyContinue)) 'loader process stopped'
 Check (-not (Test-Path -LiteralPath $gDir)) '{GUID} loader folder quarantined (RuntimeBroker.exe and QtsVFS.dll gone)'
@@ -1126,6 +1129,44 @@ Check (-not (Test-Path -LiteralPath $hsDir)) 'Temp\hs<hex> drop folder quarantin
 Stop-Process -Id $gP.Id -Force -ErrorAction SilentlyContinue
 Remove-ItemProperty -Path $runG -Name WazTokenBrokerTest -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $gDir, $hsDir -Recurse -Force -ErrorAction SilentlyContinue
+
+Write-Host '=== Infection that comes back goes straight to Safe Mode (6S85A report, Nov 2026) ===' -ForegroundColor Cyan
+$qR = 'C:\WAZipQuarantineRecur'
+Remove-Item -LiteralPath $qR -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $safeDry -Force -ErrorAction SilentlyContinue
+# First-ever clean-up with one bad file: no forced Safe Mode.
+$nDll = "$env:TEMP\hs_rt32_waznrc01.dll"; Set-Content $nDll 'dummy'; (Get-Item -LiteralPath $nDll -Force).Attributes = 'Hidden, System'
+$r47 = Scan "$env:TEMP\x47.json" -Fix -Root $qR
+Check (-not (Test-Path -LiteralPath $nDll)) 'first clean-up quarantines the single bad file'
+Check (-not ((Test-Path $safeDry) -and ((Get-Content -Raw $safeDry) -match 'safeauto'))) 'first-ever clean-up with one bad file does not force Safe Mode'
+# An earlier clean-up stopped a malware process; now a loader process is running again.
+$oldD = Join-Path $qR '20200101-000000'; New-Item -ItemType Directory -Force -Path $oldD | Out-Null
+'[{"Kind":"Process","Target":"RuntimeBroker.exe (PID 1)"}]' | Out-File -Encoding UTF8 (Join-Path $oldD 'manifest.json')
+$rDir = Join-Path $env:LOCALAPPDATA '{437711d0-7b49-7cbc-e129-df32973225bb}'
+New-Item -ItemType Directory -Force -Path $rDir | Out-Null
+Copy-Item -LiteralPath "$env:SystemRoot\System32\PING.EXE" -Destination "$rDir\RuntimeBroker.exe"
+$rP = [Diagnostics.Process]::Start("$rDir\RuntimeBroker.exe", '-n 900 127.0.0.1')
+Start-Sleep 2
+$r48 = Scan "$env:TEMP\x48.json" -Fix -Root $qR
+$sd = if (Test-Path $safeDry) { Get-Content -Raw $safeDry } else { '' }
+Check ($sd -match 'safeauto .*came back') "malware back after an earlier clean-up goes to Safe Mode ($("$sd".Trim()))"
+Check (-not (Test-Path -LiteralPath $rDir)) 'online pass still quarantines the loader folder before Safe Mode'
+Stop-Process -Id $rP.Id -Force -ErrorAction SilentlyContinue
+# Loader running together with an antivirus-killer driver, on a PC never cleaned before.
+Remove-Item -LiteralPath $qR, $safeDry -Recurse -Force -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Force -Path $rDir | Out-Null
+Copy-Item -LiteralPath "$env:SystemRoot\System32\PING.EXE" -Destination "$rDir\RuntimeBroker.exe"
+$rP = [Diagnostics.Process]::Start("$rDir\RuntimeBroker.exe", '-n 900 127.0.0.1')
+$kvSys = "$env:TEMP\KVwazrc01.sys"; Set-Content $kvSys 'dummy'
+& sc.exe create WazBootRepairRc type= kernel start= demand binPath= $kvSys | Out-Null
+Start-Sleep 2
+$r49 = Scan "$env:TEMP\x49.json" -Fix -Root $qR
+$sd = if (Test-Path $safeDry) { Get-Content -Raw $safeDry } else { '' }
+Check (Has $r49 'Service' 'HIGH' '^WazBootRepairRc$' 'antivirus killer') 'driver loaded from Temp is an antivirus killer'
+Check ($sd -match 'safeauto .*antivirus killer') "loader running with an antivirus killer goes to Safe Mode ($("$sd".Trim()))"
+Stop-Process -Id $rP.Id -Force -ErrorAction SilentlyContinue
+& sc.exe delete WazBootRepairRc | Out-Null
+Remove-Item -LiteralPath $rDir, $qR, $safeDry, $kvSys -Recurse -Force -ErrorAction SilentlyContinue
 
 Write-Host '=== ManageEngine leftovers and task files in Safe Mode (VVF5Z/2F44T reports, Nov 2026) ===' -ForegroundColor Cyan
 New-MePlant 'MEUemsTest5'
