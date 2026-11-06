@@ -246,6 +246,7 @@ From an opt-in report sent by the tool (Windows Defender history on the PC; no f
 - `Reconciliation Invoice.zip` holding `4.img`. Defender flagged the image as `Trojan:Win32/Malgent` on 2026-11-05, in the temporary folder Explorer uses when a file is opened straight from a ZIP.
 - Same PC, 2026-11-03: Defender flagged `D:\is.dll` as `Trojan:Win32/Wacatac.C!ml`. `D:` was most likely an earlier lure image opened as a drive.
 - The tool found nothing left running or set to start. The name pattern `Reconciliation Invoice*.zip|img|iso|vhd(x)` is HIGH since v2026.11.05.25. From that version, reports also carry the SHA-256 and size of every file found (never the file itself).
+- Indonesian-language variant (second opt-in report, Nov 2026): `Rekonsiliasi Akun.zip` (3,913,007 bytes), SHA-256 `97ca10750526e7026bc65cb77d71afd47312834080ad991f385e883506198cc3`, holding `Memeriksa.vhd` (32,506,368 bytes), SHA-256 `cf8ee9652aa18d5f2326669c7e392a137966ef3200e11847b4752900c241148b`. The VHD was opened straight from the ZIP (Explorer unpack folder in Temp). Neither hash is on VirusTotal. The name pattern `Rekonsiliasi Akun*.zip|img|iso|vhd(x)` and both hashes are HIGH since v2026.11.06.30.
 
 ## Notis Denda lure, MicroPoint chain renamed Virtual_Linux (opt-in report, Nov 2026)
 From an opt-in report sent by the tool (scan log, Windows event 7045, Program Compatibility records, Prefetch, `Get-FileHash`; no sample).

@@ -83,6 +83,7 @@ Set-Content "$env:SystemRoot\System32\drivers\ardrv.sys" 'dummy'
 # D. Lure file held open by a running process (stands in for malware resisting removal)
 $locked = "$dl\Click here to view7.zip"
 Set-Content "$dl\Reconciliation Invoice.zip" 'dummy'
+Set-Content "$dl\Rekonsiliasi Akun.zip" 'dummy'
 # MicroPoint chain under another ProgramData name, with its driver loaded from a .dat file (opt-in report, Nov 2026).
 $vlDir = "$env:ProgramData\WazVirtualLinux"
 New-Item -ItemType Directory -Force -Path $vlDir | Out-Null
@@ -198,9 +199,10 @@ Check (Has $r 'Process' 'HIGH' 'powershell' 'Loaded fake rime\.dll') 'process wi
 Check (Has $r 'File' 'WARN' 'RimeTest\\rime\.dll$') 'lone rime.dll outside Program Files is WARN'
 Check (Has $r 'Service' 'HIGH' '^ardrv$') 'ardrv service outside OPSWAT folder'
 Check (-not ($r.All | Where-Object { $_.Target -eq 'OpswatLegitTest' })) 'ardrv in OPSWAT folder ignored'
-Check (Has $r 'Info' 'WARN' 'ManageEngine') 'ManageEngine agent warning'
+Check (Has $r 'Info' 'HIGH' 'ManageEngine' 'other malware') 'ManageEngine is HIGH when other malware is on the PC'
 Check (Has $r 'File' 'HIGH' 'Click here to view7\.zip$') 'locked lure file detected'
 Check (Has $r 'File' 'HIGH' 'Reconciliation Invoice\.zip$') 'Reconciliation Invoice.zip lure name is HIGH'
+Check (Has $r 'File' 'HIGH' 'Rekonsiliasi Akun\.zip$') 'Rekonsiliasi Akun.zip (Indonesian variant) lure name is HIGH'
 Check (Has $r 'File' 'HIGH' 'WazVirtualLinux$' 'MicroPoint') 'renamed MicroPoint folder (WinCombo.exe) is HIGH'
 Check (Has $r 'Service' 'HIGH' '^WazMsDriver$' 'data file') 'driver loaded from a .dat file in ProgramData is HIGH'
 Check (Has $r 'File' 'HIGH' 'Waz Test Lure\.vhd$' 'straight from a ZIP') 'VHD opened straight from a ZIP is HIGH'
@@ -271,7 +273,7 @@ Check (-not (Test-Path "$hd\invoice-copy.dat")) 'hash-matched file quarantined'
 Check (-not (Get-Process -Id $rimeHost.Id -ErrorAction SilentlyContinue)) 'rime.dll host process stopped'
 & sc.exe query ardrv | Out-Null; Check ($LASTEXITCODE -ne 0) 'ardrv service deleted'
 Check (-not (Test-Path "$env:SystemRoot\System32\drivers\ardrv.sys")) 'ardrv.sys driver file quarantined'
-Check ([bool](Get-Service MEUemsTest -ErrorAction SilentlyContinue)) 'ManageEngine left for the user to decide'
+Check (-not (Get-Service MEUemsTest -ErrorAction SilentlyContinue)) 'ManageEngine removed when other malware is on the PC'
 & sc.exe query WazUvTest | Out-Null; Check ($LASTEXITCODE -ne 0) 'UltraViewer service deleted'
 Check (-not (Test-Path -LiteralPath $uvDir)) 'UltraViewer folder quarantined'
 Check (-not (Test-Path $uvKey)) 'UltraViewer Apps entry removed'
@@ -591,6 +593,35 @@ $r24 = Scan "$env:TEMP\x24.json" -Fix
 Check (-not (Test-Path -LiteralPath $libExe)) 'Public\Libraries program quarantined'
 Check (-not (Test-Path -LiteralPath (Join-Path $symDir 'host.exe'))) 'symbol folder program quarantined'
 Remove-Item -LiteralPath $libDir, $symDir -Recurse -Force -ErrorAction SilentlyContinue
+
+Write-Host '=== ManageEngine on an office PC that has other malware (victim reports, Nov 2026) ===' -ForegroundColor Cyan
+$meDir2 = "${env:ProgramFiles(x86)}\ManageEngine\UEMS_Agent"
+New-Item -ItemType Directory -Force -Path "$meDir2\bin" | Out-Null
+Set-Content "$meDir2\bin\dcagentservice.exe" 'dummy'
+& sc.exe create MEOfficeTest start= demand DisplayName= "ManageEngine UEMS - Agent Office Test" binPath= "`"$meDir2\bin\dcagentservice.exe`"" | Out-Null
+New-Item -ItemType Directory -Force -Path $libDir | Out-Null
+[IO.File]::WriteAllText($libExe, 'dummy')
+(Get-Item -LiteralPath $libExe -Force).Attributes = 'Hidden, System'
+$rM1 = Scan "$env:TEMP\xm1.json" -Fix -Owner Office
+Check (Has $rM1 'Info' 'HIGH' 'ManageEngine' 'other malware') 'office PC with other malware: ManageEngine is HIGH'
+Check (-not (Test-Path $meDir2)) 'office PC with other malware: ManageEngine folder quarantined'
+& sc.exe query MEOfficeTest | Out-Null; Check ($LASTEXITCODE -ne 0) 'office PC with other malware: ManageEngine service deleted'
+Check (-not (Test-Path -LiteralPath $libExe)) 'office PC with other malware: Public\Libraries program quarantined'
+Remove-Item -LiteralPath $libDir -Recurse -Force -ErrorAction SilentlyContinue
+# Only a WhatsApp zip: not proof of infection, so an office ManageEngine stays a warning.
+New-Item -ItemType Directory -Force -Path "$meDir2\bin" | Out-Null
+Set-Content "$meDir2\bin\dcagentservice.exe" 'dummy'
+& sc.exe create MEOfficeTest start= demand DisplayName= "ManageEngine UEMS - Agent Office Test" binPath= "`"$meDir2\bin\dcagentservice.exe`"" | Out-Null
+$waOnly = "$dl\Gambar kenduri.zip"
+Set-Content $waOnly 'dummy'
+Set-Content -LiteralPath $waOnly -Stream Zone.Identifier -Value "[ZoneTransfer]`r`nZoneId=3`r`nReferrerUrl=https://web.whatsapp.com/`r`nHostUrl=blob:https://web.whatsapp.com/1f2e3d4c-aaaa-bbbb-cccc-0123456789ab"
+$rM2 = Scan "$env:TEMP\xm2.json" -Fix -Owner Office
+Check (Has $rM2 'File' 'HIGH' 'Gambar kenduri\.zip$') 'office PC with only a WhatsApp zip: zip found'
+Check (Has $rM2 'Info' 'WARN' 'ManageEngine' 'IT') "office PC with only a WhatsApp zip: ManageEngine stays a warning (HIGH: $(@($rM2.All | Where-Object Severity -eq 'HIGH' | ForEach-Object { $_.Target }) -join '; '))"
+Check (Test-Path $meDir2) 'office PC with only a WhatsApp zip: ManageEngine kept'
+& sc.exe delete MEOfficeTest | Out-Null
+Remove-Item -LiteralPath "${env:ProgramFiles(x86)}\ManageEngine" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $waOnly -Force -ErrorAction SilentlyContinue
 }
 
 if (InPart 3) {

@@ -31,4 +31,6 @@ filename,unityplayer.dll,Fake DLL loaded by a signed Toolkit.exe from %LOCALAPPD
 task,WindowsUpdateSync,Root scheduled task that starts Toolkit.exe from AppData\Local (victim PC Nov 2026)
 path,%LOCALAPPDATA%\Microsoft\Windows\Caches\<folder>\DCAgentServerInfo.json,ManageEngine installer kit hidden in the Windows Caches folder (victim PC Nov 2026)
 ip,137.220.205.162,IP-guard agent connection target blocked by Malwarebytes on a victim PC (Nov 2026); also ManageEngine agent server port 8383 (Triage sweep)
+sha256,97ca10750526e7026bc65cb77d71afd47312834080ad991f385e883506198cc3,Lure ZIP Rekonsiliasi Akun.zip (Indonesian variant of Reconciliation Invoice; opt-in report Nov 2026)
+sha256,cf8ee9652aa18d5f2326669c7e392a137966ef3200e11847b4752900c241148b,Lure VHD Memeriksa.vhd from Rekonsiliasi Akun.zip (opt-in report Nov 2026)
 sha256,7173bd2d0f2f17b2fd1e71ba09a9bd03807b3af188dae725bb5c2606781bf620,Lure VHD Notis Denda.vhd from Notis Denda.zip (opt-in report Nov 2026)
