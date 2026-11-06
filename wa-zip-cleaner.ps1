@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.06.32'
+$Version = '2026.11.06.33'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -652,6 +652,15 @@ public static class WazTokPriv {
   [DllImport("advapi32.dll", SetLastError = true)] static extern bool LookupPrivilegeValue(string sys, string name, out long luid);
   [DllImport("advapi32.dll", SetLastError = true)] static extern bool AdjustTokenPrivileges(IntPtr tok, bool all, ref TP n, int len, IntPtr p, IntPtr r);
   [DllImport("kernel32.dll")] static extern IntPtr GetCurrentProcess();
+  [DllImport("advapi32.dll", CharSet = CharSet.Unicode)] static extern int RegOpenKeyEx(IntPtr k, string sub, int opt, int sam, out IntPtr res);
+  [DllImport("advapi32.dll", CharSet = CharSet.Unicode)] static extern int RegDeleteKeyEx(IntPtr k, string sub, int sam, int res);
+  [DllImport("advapi32.dll")] static extern int RegCloseKey(IntPtr k);
+  // Deleting a key needs DELETE on the key itself, not write access to its parent.
+  public static int DeleteKey(string parent, string name) {
+    IntPtr h; int r = RegOpenKeyEx(new IntPtr(unchecked((int)0x80000002)), parent, 0, 0x20119, out h);
+    if (r != 0) return r;
+    r = RegDeleteKeyEx(h, name, 0x100, 0); RegCloseKey(h); return r;
+  }
   public static void Enable(string name) {
     IntPtr tok; if (!OpenProcessToken(GetCurrentProcess(), 0x28, out tok)) return;
     TP tp = new TP(); tp.Count = 1; tp.Attr = 2; LookupPrivilegeValue(null, name, out tp.Luid);
@@ -675,6 +684,18 @@ public static class WazTokPriv {
     $rk.SetAccessControl($acl)
     $todo += @($rk.GetSubKeyNames() | ForEach-Object { "$k\$_" }); $rk.Close()
   }
+}
+
+function Remove-RegKeyAdmin([string]$psPath) {
+  # Delete an HKLM key and its subkeys, deepest first, without write access to the parent.
+  $sub = $psPath -replace '^HKLM:\\', ''
+  $rk = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey($sub)
+  if (-not $rk) { return }
+  $kids = @($rk.GetSubKeyNames()); $rk.Close()
+  foreach ($c in $kids) { Remove-RegKeyAdmin "$psPath\$c" }
+  $i = $sub.LastIndexOf('\')
+  $r = [WazTokPriv]::DeleteKey($sub.Substring(0, $i), $sub.Substring($i + 1))
+  if ($r -ne 0) { throw "registry key could not be deleted (error $r): $sub" }
 }
 
 function Get-WazTasks {
@@ -2065,7 +2086,7 @@ function Invoke-Fix($qdir) {
               catch {
                 # TaskCache keys only let SYSTEM delete them: take ownership as admin, then retry.
                 Grant-RegAdmin $rk
-                Remove-Item -LiteralPath $rk -Recurse -Force -ErrorAction Stop
+                Remove-RegKeyAdmin $rk
               }
               $log.Add(@{ Kind = 'Reg'; Target = $rk; Backup = $reg })
             }

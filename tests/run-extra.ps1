@@ -574,6 +574,7 @@ $hexDir = Join-Path $env:LOCALAPPDATA '0115DF0258E52000'
 New-Item -ItemType Directory -Force -Path $hexDir | Out-Null
 Set-Content "$hexDir\CrashHunter_PC3.dll" 'dummy'; Set-Content "$hexDir\Launcher.exe" 'dummy'
 $runH = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+if (-not (Test-Path $runH)) { New-Item -Path $runH -Force | Out-Null }
 Set-ItemProperty -Path $runH -Name WazHexTest -Value "`"$hexDir\Launcher.exe`""
 $r21 = Scan "$env:TEMP\x21.json"
 Check (Has $r21 'File' 'HIGH' '0115DF0258E52000\\CrashHunter_PC3\.dll$') 'DLL in random hex AppData\Local folder is HIGH'
