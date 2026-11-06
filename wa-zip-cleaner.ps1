@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.06.30'
+$Version = '2026.11.06.31'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -379,6 +379,10 @@ $VbsLureRegex = '(?i)(?<![a-z])(Statement|Debt|Hutang|Outstanding|Balance Sheet|
 # uses Windows Script Host. A developer PC had 11 Node.js files (firebase-tools, jose, VS Code extensions,
 # build_salary_deck.js) quarantined by name alone (opt-in report, Nov 2026).
 $DevPathRegex = '(?i)\\(node_modules|\.git|\.vscode|\.cursor|\.npm|site-packages|bower_components|vendor)\\|\\AppData\\Roaming\\(npm|Code|Cursor)\\|\\AppData\\Local\\Programs\\'
+# A folder name with six or more of these symbols is the Winos/ValleyRAT hiding place (victim reports, Nov 2026).
+$SymNameRegex = '([{}()\[\]@#!%&+=~,`''^$;][^\\]*){6}'
+# Archive entries that make a WhatsApp zip dangerous: a program, a script or a disk image. Documents alone are not.
+$ArchRiskRegex = '(?i)\.(vhdx?|iso|img|vbs|vbe|js|jse|wsf|lnk|exe|msi|scr|bat|cmd|hta|ps1|com|pif)$'
 function Test-ScriptLure($f) {
   if ($f.Name -notmatch $VbsLureRegex -or $f.FullName -match $DevPathRegex) { return $false }
   if ($f.Extension -ine '.js') { return $true }
@@ -420,20 +424,41 @@ function Invoke-Step([int]$n, [string]$ms, [scriptblock]$run) {
   Write-Host $label -ForegroundColor Gray -NoNewline
   Write-Host (' ' + ('.' * [Math]::Max(3, 46 - $label.Length))) -ForegroundColor DarkGray -NoNewline
   $script:MidLine = $true
-  & $run
+  $script:StepErr = New-Object System.Collections.Generic.List[string]
+  if ($env:WAZIP_TEST_STEPERR -eq "$n") { Add-StepError 'test step error' }
+  # Errors a check prints are collected, so a step that could not finish is not reported as clean (opt-in reports, Nov 2026).
+  try {
+    & $run 2>&1 | ForEach-Object { if ($_ -is [System.Management.Automation.ErrorRecord]) { Add-StepError ("$($_.Exception.Message)" -replace '\s+', ' ') } else { $_ } }
+  } catch { Add-StepError ("$($_.Exception.Message)" -replace '\s+', ' ') }
   if (-not $script:MidLine) { Write-Host (' ' * 48) -NoNewline }
   $script:MidLine = $false
   $new = @($Findings | Select-Object -Skip $before)
   $h = @($new | Where-Object Severity -eq 'HIGH').Count
   if ($h) { Show-Tag "BAHAYA $h" White DarkRed }
   elseif ($new.Count) { Show-Tag "PERIKSA $($new.Count)" Black DarkYellow }
+  elseif ($script:StepErr.Count) { Show-Tag 'TAK DAPAT SEMAK' Black DarkYellow }
   else { Show-Tag 'BERSIH' Black DarkGreen }
+  foreach ($e in @($script:StepErr | Select-Object -Unique -First 3)) {
+    $short = if ($e.Length -gt 160) { $e.Substring(0, 160) + '...' } else { $e }
+    Write-Host "        tak dapat semak (could not check): $short" -ForegroundColor DarkGray
+    $script:NotChecked.Add("[$n/8] $($ms): $short")
+  }
 }
 
 $Findings = New-Object System.Collections.Generic.List[object]
 $DefExclLeft = @()
-# ManageEngine pieces that can outlive the agent folder (user reports, Oct 2026).
-$MeSvcRegex = '(?i)^MEARW?Service$'
+# ManageEngine pieces that can outlive the agent folder (user reports, Oct 2026). The filter drivers and the
+# Device Control service were left behind on victim PCs after the agent folder went (opt-in reports, Nov 2026).
+$MeSvcRegex = '(?i)^(MEARW?Service|MEARWFltDriver|DCFAFilter|uesAgentService)$'
+# Checks a step could not finish (an error, or a Windows part that refused to answer). Such a step is never called BERSIH.
+$script:StepErr = New-Object System.Collections.Generic.List[string]
+$script:NotChecked = New-Object System.Collections.Generic.List[string]
+function Add-StepError([string]$what) { $script:StepErr.Add($what) }
+$script:HideUnits = @()
+$script:ProcCache = $null
+$script:BadSvcHist = @()
+$script:MeNearBad = $null
+$script:PiiFileNames = @{}
 $MeRegKeys = 'HKLM:\SOFTWARE\ManageEngine', 'HKLM:\SOFTWARE\WOW6432Node\ManageEngine', 'HKLM:\SOFTWARE\AdventNet', 'HKLM:\SOFTWARE\WOW6432Node\AdventNet'
 $SvcLeft = @()
 $MeLeft = @()
@@ -557,6 +582,87 @@ function Resolve-ImagePath([string]$img) {
   ($img -replace '^\\\?\?\\', '' -replace '^\\SystemRoot', $env:SystemRoot -replace '^System32', "$env:SystemRoot\System32").Trim('"')
 }
 
+# The program file of a service command line: the quoted part, or the path up to its extension.
+function Get-ImageFile([string]$img) {
+  $img = "$img".Trim()
+  if ($img.StartsWith('"')) { $e = $img.IndexOf('"', 1); if ($e -gt 0) { $img = $img.Substring(1, $e - 1) } }
+  elseif ($img -match '^(.+?\.(exe|sys|dll|dat|bin|tmp))(\s|$)') { $img = $Matches[1] }
+  Resolve-ImagePath $img
+}
+# A service or driver file in a Winos/ValleyRAT hiding place: Public\Libraries, a folder named with symbols, or a
+# driver with no file extension in the Windows drivers folder (ardrv floods and 1jlk5tbaaa, opt-in reports Nov 2026).
+function Test-HideImage([string]$p) {
+  if (-not $p) { return $false }
+  if ($p -match '(?i)\\Users\\Public\\Libraries\\') { return $true }
+  $dir = $p.Substring(0, [Math]::Max(0, $p.LastIndexOf('\')))
+  foreach ($seg in @($dir -split '\\')) { if ($seg -match $SymNameRegex) { return $true } }
+  [bool]($p -match '(?i)\\System32\\drivers\\[^\\.]+$')
+}
+# The folder that is quarantined as one piece: the top folder under Public\Libraries (which normally holds no
+# folders), or a symbol-named top folder under ProgramData.
+function Get-HideUnit([string]$p) {
+  if (-not $p) { return $null }
+  foreach ($base in "$env:SystemDrive\Users\Public\Libraries\", "$env:ProgramData\") {
+    if (-not $p.StartsWith($base, [StringComparison]::OrdinalIgnoreCase)) { continue }
+    $rest = $p.Substring($base.Length)
+    $top = ($rest -split '\\')[0]
+    if (-not $top) { return $null }
+    if ($base -like '*\Libraries\' -or $top -match $SymNameRegex) { return (Join-Path $base.TrimEnd('\') $top) }
+  }
+  $null
+}
+function Get-ProcCache {
+  if ($null -eq $script:ProcCache) { $script:ProcCache = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue) }
+  $script:ProcCache
+}
+# One finding for the whole hiding folder: every file in it goes, whatever its extension (YXP2B kept loading "3#.8"),
+# and so do programs running from it.
+function Add-HideUnit([string]$dir, [string]$why) {
+  if (-not $dir -or -not (Test-Path -LiteralPath $dir -PathType Container)) { return }
+  if ($script:HideUnits -contains $dir) { return }
+  $top = try { (New-Object IO.DirectoryInfo $dir).GetFileSystemInfos() } catch { $null }
+  $files = @()
+  if ($null -ne $top) {
+    $files = @(Get-TreeFiles $dir | Select-Object -First 50)
+    if (-not $files.Count) { return }
+  }
+  $script:HideUnits += $dir
+  $names = if ($null -eq $top) { 'could not look inside (access blocked)' } else { (@($files | Select-Object -First 3 | ForEach-Object { $_.Name }) -join ', ') + $(if ($files.Count -gt 3) { ", ... ($($files.Count)$(if ($files.Count -ge 50) { '+' }) files)" }) }
+  $det = "Hidden folder in Public\Libraries or a ProgramData folder named with symbols (Winos/ValleyRAT hiding place). The whole folder goes to quarantine: $names."
+  if ($why) { $det += " Seen: $why." }
+  Add-Finding 'File' 'HIGH' $dir $det @{ Unit = $true }
+  foreach ($pr in Get-ProcCache) {
+    $exe = [string]$pr.ExecutablePath; $cl = [string]$pr.CommandLine
+    if ($exe.StartsWith("$dir\", [StringComparison]::OrdinalIgnoreCase) -or $cl.IndexOf("$dir\", [StringComparison]::OrdinalIgnoreCase) -ge 0) {
+      Add-Finding 'Process' 'HIGH' "$($pr.Name) (PID $($pr.ProcessId))" "Program running from a malware hiding folder: $exe" @{ Pid = $pr.ProcessId; Path = $exe }
+    }
+  }
+}
+# Scheduled tasks as one list. In Safe Mode the Task Scheduler does not answer, so the task files are read instead
+# (two Safe Mode reports, Nov 2026, listed no tasks and left the ManageEngine tasks behind).
+function Get-WazTasks {
+  $list = @()
+  if (-not $env:WAZIP_TEST_TASKFILES) { $list = @(Get-ScheduledTask -ErrorAction SilentlyContinue) }
+  if ($list.Count) {
+    return @($list | ForEach-Object {
+      [pscustomobject]@{ TaskPath = $_.TaskPath; TaskName = $_.TaskName; Author = $_.Author; Date = $_.Date
+        Txt = ((@($_.Actions) | ForEach-Object { "$($_.Execute) $($_.Arguments)" }) -join ' ; ')
+        Exec = @(@($_.Actions) | Where-Object { $_.Execute } | ForEach-Object { [Environment]::ExpandEnvironmentVariables(([string]$_.Execute).Trim().Trim('"')) }) }
+    })
+  }
+  $root = Join-Path $env:SystemRoot 'System32\Tasks'
+  @(foreach ($f in Get-TreeFiles $root) {
+    $x = try { [xml](Get-Content -Raw -LiteralPath $f.FullName -ErrorAction Stop) } catch { $null }
+    if (-not $x -or -not $x.Task) { continue }
+    $rel = $f.FullName.Substring($root.Length)
+    $tp = $rel.Substring(0, $rel.LastIndexOf('\') + 1)
+    $acts = @($x.Task.Actions.Exec | Where-Object { $_ })
+    [pscustomobject]@{ TaskPath = $tp; TaskName = $f.Name; Author = [string]$x.Task.RegistrationInfo.Author; Date = [string]$x.Task.RegistrationInfo.Date
+      Txt = ((@($acts) | ForEach-Object { "$($_.Command) $($_.Arguments)" }) -join ' ; ')
+      Exec = @($acts | Where-Object { $_.Command } | ForEach-Object { [Environment]::ExpandEnvironmentVariables(([string]$_.Command).Trim().Trim('"')) }) }
+  })
+}
+
 # Vulnerable and malicious Windows drivers from LOLDrivers (loldrivers.io). Refresh with tools/update-loldrivers.py.
 function Get-LolDrivers {
   $src = if ($env:WAZIP_TEST_LOLDRIVERS) { $env:WAZIP_TEST_LOLDRIVERS } else { Join-Path $PSScriptRoot 'data\loldrivers.csv' }
@@ -636,7 +742,12 @@ function Scan-Services {
     # Opt-in report (Nov 2026, MicroPoint chain renamed Virtual_Linux): service MSDRIVER1005 loads ProgramData\<folder>\Security_Module.dat.
     elseif ($img -match '(?i)\\(ProgramData|Users|AppData)\\[^"]*\.(dat|bin|tmp|log|jpg|png|txt)"?$') { $hit = "Service or driver loaded from a data file (antivirus killer, ValleyRAT MicroPoint chain): $img" }
     elseif ($name -match '^(TCLService|Cndom6)$' -and $img -notmatch '(?i)\\Program Files') { $hit = "Silver Fox service (Chinese security reports): $img" }
-    if ($hit) { Add-Finding 'Service' 'HIGH' $name $hit @{ RegPath = $svc.PSPath; Image = $img } }
+    elseif ($img -and $img -notmatch 'OPSWAT' -and (Test-HideImage ($imf = Get-ImageFile $img)) -and -not ((Test-Path -LiteralPath $imf -PathType Leaf) -and (Test-MicrosoftSigned $imf))) {
+      $hit = "Service or driver loaded from a malware hiding place (Public\Libraries, a folder named with symbols, or a driver file with no extension): $img" }
+    if ($hit) {
+      Add-Finding 'Service' 'HIGH' $name $hit @{ RegPath = $svc.PSPath; Image = $img }
+      $u = Get-HideUnit (Get-ImageFile $img); if ($u) { Add-HideUnit $u "service $name loads it" }
+    }
     # A service that launches a script interpreter from a user-writable folder is a common persistence trick.
     elseif ($img -match '(?i)\b(cmd|powershell|pwsh|wscript|cscript|mshta|rundll32)\b' -and
             $img -match '(?i)\\(Users|ProgramData|AppData|Temp|Public)\\') {
@@ -655,6 +766,7 @@ function Scan-Services {
   if ($ci -and $null -ne $ci.VulnerableDriverBlocklistEnable -and $ci.VulnerableDriverBlocklistEnable -eq 0) {
     Add-Finding 'Info' 'WARN' 'Microsoft Vulnerable Driver Blocklist is OFF' 'Turn it on: Windows Security > Device security > Core isolation details > Microsoft Vulnerable Driver Blocklist, then restart.'
   }
+  Scan-ServiceHistory
   $drv = Join-Path $env:SystemRoot 'System32\drivers\ZyArk.dat'
   if (Test-Path -LiteralPath $drv) { Add-Finding 'File' 'HIGH' $drv 'ZyArk driver data file.' }
   # VulcanRAT (Morphisec, Oct 2026) drops its driver as drivers\tp_<tick>.tmp.
@@ -664,6 +776,51 @@ function Scan-Services {
   # Huorong (2026): the AV killer sets the firewall to block everything going out, then allows itself.
   foreach ($fp in Get-NetFirewallProfile -ErrorAction SilentlyContinue | Where-Object { [string]$_.DefaultOutboundAction -eq 'Block' }) {
     Add-Finding 'Info' 'WARN' "Firewall blocks all outgoing connections ($($fp.Name))" 'Silver Fox does this so antivirus cannot update. Unless you or your IT set it, restore the firewall defaults: Windows Security > Firewall & network protection > Restore firewalls to default.'
+  }
+}
+
+# Windows logs every service install (System event 7045). The antivirus killer is installed from a hiding place
+# hundreds of times and deleted again, so it is missing from the live service list (63WYJ, RA477, YXP2B, PZUKK,
+# 94V6P and UYRPQ opt-in reports, Nov 2026). Any program still on disk goes; a gone one is listed as a warning.
+function Scan-ServiceHistory {
+  $since = (Get-Date).AddDays(-60)
+  $rx = '(?i)ManageEngine|UEMS|DesktopCentral|Endpoint Central'
+  $ev = @(try { Get-WinEvent -FilterHashtable @{ LogName = 'System'; Id = 7045; StartTime = $since } -MaxEvents 5000 -ErrorAction Stop } catch {
+    if ("$($_.FullyQualifiedErrorId)" -notmatch 'NoMatchingEventsFound') { Add-StepError "service-install history: $($_.Exception.Message)" } })
+  $meTimes = @(); $bad = [ordered]@{}
+  foreach ($e in $ev) {
+    $nm = [string]$e.Properties[0].Value; $img = [string]$e.Properties[1].Value
+    if ("$nm $img" -match $rx) { $meTimes += $e.TimeCreated; continue }
+    $p = Get-ImageFile $img
+    if (-not (Test-HideImage $p) -or $img -match 'OPSWAT') { continue }
+    $k = $p.ToLower()
+    if (-not $bad.Contains($k)) { $bad[$k] = @{ Path = $p; Name = $nm; N = 0; First = $e.TimeCreated; Last = $e.TimeCreated } }
+    $b = $bad[$k]; $b.N++
+    if ($e.TimeCreated -lt $b.First) { $b.First = $e.TimeCreated }
+    if ($e.TimeCreated -gt $b.Last) { $b.Last = $e.TimeCreated }
+  }
+  foreach ($e in @(try { Get-WinEvent -FilterHashtable @{ LogName = 'Application'; ProviderName = 'MsiInstaller'; Id = 1033, 11707; StartTime = $since } -MaxEvents 500 -ErrorAction Stop } catch {})) {
+    if ("$($e.Message)" -match $rx) { $meTimes += $e.TimeCreated }
+  }
+  foreach ($b in $bad.Values) {
+    $p = $b.Path
+    if ((Test-Path -LiteralPath $p -PathType Leaf) -and (Test-MicrosoftSigned $p)) { continue }
+    $when = "$($b.N) time(s), $($b.First.ToString('yyyy-MM-dd HH:mm'))..$($b.Last.ToString('yyyy-MM-dd HH:mm'))"
+    $script:BadSvcHist += [pscustomobject]@{ Path = $p; Name = $b.Name; N = $b.N; First = $b.First; Last = $b.Last }
+    $u = Get-HideUnit $p
+    if ($u -and (Test-Path -LiteralPath $u)) { Add-HideUnit $u "installed as service $($b.Name) $when"; if ($script:HideUnits -contains $u) { continue } }
+    if (Test-Path -LiteralPath $p -PathType Leaf) {
+      Add-Finding 'File' 'HIGH' $p "Program installed as a service ($($b.Name), $when) from a malware hiding place (Public\Libraries, a folder named with symbols, or a driver with no file extension): antivirus killer."
+    } else {
+      Add-Finding 'Info' 'WARN' "Service installed from a malware hiding place: $($b.Name)" "Windows records show $p was installed as a service $when (the antivirus killer of Winos/ValleyRAT). The file is gone now; treat this PC as infected."
+    }
+  }
+  # ManageEngine installed within an hour of that service: the attacker's (94V6P, 2F44T/UYRPQ reports, Nov 2026).
+  foreach ($b in $script:BadSvcHist) {
+    foreach ($t in $meTimes) {
+      if ($t -ge $b.First.AddMinutes(-60) -and $t -le $b.Last.AddMinutes(60)) { $script:MeNearBad = "$($b.Name) at $($b.First.ToString('yyyy-MM-dd HH:mm'))"; break }
+    }
+    if ($script:MeNearBad) { break }
   }
 }
 
@@ -731,8 +888,8 @@ function Scan-Persistence {
       }
     }
   }
-  foreach ($t in Get-ScheduledTask -ErrorAction SilentlyContinue) {
-    $txt = ($t.Actions | ForEach-Object { "$($_.Execute) $($_.Arguments)" }) -join ' ; '
+  foreach ($t in Get-WazTasks) {
+    $txt = $t.Txt
     # Victim PC (Nov 2026): a root task named like Windows Update starts the Toolkit.exe sideload from AppData\Local.
     if ($t.TaskName -ieq 'WindowsUpdateSync' -and $t.TaskPath -eq '\' -and $txt -match '(?i)\\AppData\\Local\\|%LOCALAPPDATA%') {
       Add-Finding 'Task' 'HIGH' "$($t.TaskPath)$($t.TaskName)" "Fake Windows Update task that starts malware from AppData\Local: $txt" @{ Path = $t.TaskPath; Name = $t.TaskName } }
@@ -826,6 +983,12 @@ function Scan-Persistence {
     $wl = Join-Path $u.FullName 'AppData\Local\Temp\whatsapp_backup.lock'
     if (Test-Path -LiteralPath $wl) { Add-Finding 'File' 'HIGH' $wl 'Marker left while stealing WhatsApp data (Sekoia, Malaysia).' }
   }
+  # Public\Libraries holds only library shortcuts; any folder with files in it, and any ProgramData folder named
+  # with symbols, is the Winos/ValleyRAT hiding place (PZUKK, 94V6P, 63WYJ, RA477, YXP2B reports, Nov 2026).
+  foreach ($d in @(Get-ChildItem -LiteralPath "$env:SystemDrive\Users\Public\Libraries" -Directory -Force -ErrorAction SilentlyContinue) +
+                 @(Get-ChildItem -LiteralPath $env:ProgramData -Directory -Force -ErrorAction SilentlyContinue | Where-Object { $_.Name -match $SymNameRegex })) {
+    Add-HideUnit $d.FullName ''
+  }
   Scan-DefenderExclusions
   Scan-DefenderHistory
   Scan-RanPrograms
@@ -846,7 +1009,16 @@ function Scan-Persistence {
 # The malware tells Windows Defender to ignore svchost.exe/QtsUpdater.exe, so antivirus scans come back clean.
 function Scan-DefenderExclusions {
   $policy = @{}
-  $mp = try { Get-MpPreference -ErrorAction Stop } catch { $null }
+  $mp = if ($env:WAZIP_TEST_MPFAIL) { $null } else { try { Get-MpPreference -ErrorAction Stop } catch { $null } }
+  # Get-MpPreference fails on some PCs (0x800106ba in 5 of 7 opt-in reports, Nov 2026): read the exclusions from the registry.
+  if (-not $mp) {
+    $ek = 'HKLM:\SOFTWARE\Microsoft\Windows Defender\Exclusions'
+    try {
+      $ep = @(if (Test-Path -LiteralPath "$ek\Paths") { (Get-Item -LiteralPath "$ek\Paths" -ErrorAction Stop).GetValueNames() })
+      $ex = @(if (Test-Path -LiteralPath "$ek\Processes") { (Get-Item -LiteralPath "$ek\Processes" -ErrorAction Stop).GetValueNames() })
+      $mp = [pscustomobject]@{ ExclusionPath = $ep; ExclusionProcess = $ex }
+    } catch { Add-StepError "Windows Defender exclusions: $($_.Exception.Message)" }
+  }
   # Huorong (2026): the AV killer excludes every drive. Build machines often skip C:\ and D:\, so it takes three
   # drives, or the system drive together with cmd/powershell/wscript, before it counts.
   $driveRx = '^[A-Za-z]:\\?$'
@@ -1127,11 +1299,31 @@ function Scan-Files {
           Add-Finding 'File' 'WARN' $f.FullName 'Hidden+System program in a user folder (common Winos4.0 hiding trick).'; return }
         if ($f.Extension -match '(?i)^\.(exe|scr|vbs|vbe|js|wsf|msi|img|iso)$' -and (Test-WaOrigin $f)) {
           Add-Finding 'File' 'HIGH' $f.FullName 'Program, script or disk image downloaded from WhatsApp Web. Real documents are never programs.'; return }
+        # Only an archive with a program, script or disk image inside is the lure. 9ENRG, THY3F and HXCEB reports
+        # (Nov 2026) had ordinary document zips quarantined for coming from WhatsApp Web alone.
         if ($f.Extension -match '(?i)^\.(zip|rar|7z)$' -and (Test-WaOrigin $f)) {
-          Add-Finding 'File' 'HIGH' $f.FullName 'Archive downloaded from WhatsApp Web. The WhatsApp malware arrives as a zip, so it is moved to quarantine (it can be restored).' @{ Tidy = $true } }
+          $ar = Get-ArchiveRisk $f
+          if ($ar.Listed -and $ar.Risky.Count) {
+            Add-Finding 'File' 'HIGH' $f.FullName "Archive downloaded from WhatsApp Web with a program, script or disk image inside ($(@($ar.Risky | Select-Object -First 3) -join ', ')). The WhatsApp malware arrives like this, so it is moved to quarantine (it can be restored)." @{ Tidy = $true }
+          } elseif ($ar.Listed) {
+            Add-Finding 'File' 'WARN' $f.FullName "Archive downloaded from WhatsApp Web. Only documents inside ($($ar.Count) file(s)), so it is left in place."
+          } else {
+            Add-Finding 'File' 'WARN' $f.FullName "Archive downloaded from WhatsApp Web that this tool cannot look inside ($($f.Extension), damaged or locked). It is left in place; do not open a program, .vhd or .iso file from it."
+          } }
       }
     if ($env:WAZIP_TIMING) { if ($script:MidLine) { Write-Host ''; $script:MidLine = $false }; Write-Host "[timing] $r : $tn files checked, $([int]$sw.Elapsed.TotalSeconds)s" }
   }
+}
+
+# What is inside a zip, by entry name only (nothing is unpacked). .rar and .7z cannot be listed without extra tools.
+function Get-ArchiveRisk([IO.FileInfo]$f) {
+  if ($f.Extension -ine '.zip') { return @{ Listed = $false } }
+  try {
+    Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction Stop
+    $z = [IO.Compression.ZipFile]::OpenRead($f.FullName)
+    try { $names = @($z.Entries | ForEach-Object { $_.FullName } | Where-Object { $_ -notmatch '/$' }) } finally { $z.Dispose() }
+    @{ Listed = $true; Risky = @($names | Where-Object { $_ -match $ArchRiskRegex }); Count = $names.Count }
+  } catch { @{ Listed = $false } }
 }
 
 # What a mounted disk image holds: a known bad file, a lure name, or a hidden DLL beside a program (DLL sideloading).
@@ -1153,6 +1345,9 @@ function Scan-Vhd {
   foreach ($d in Get-Disk -ErrorAction SilentlyContinue | Where-Object { $_.BusType -eq 'File Backed Virtual' }) {
     $loc = [string]$d.Location
     $bad = Get-ImageThreat @($d | Get-Partition -ErrorAction SilentlyContinue | Where-Object DriveLetter | ForEach-Object { [string]$_.DriveLetter })
+    # Security programs keep their own disk under Program Files (Bitdefender BdDci4 VHD, RA477 report, Nov 2026).
+    $vendor = $loc -match '(?i)^[a-z]:\\Program Files( \(x86\))?\\' -or ($env:WAZIP_TEST_VENDORVHD -and $loc -like "$env:WAZIP_TEST_VENDORVHD*")
+    if ($vendor -and -not $bad -and (Split-Path $loc -Leaf) -notmatch $LureRegex) { continue }
     $sev = if ((Split-Path $loc -Leaf) -match $LureRegex -or $bad) { 'HIGH' } else { 'WARN' }
     $det = 'Mounted virtual disk. The WhatsApp ZIP opens as a VHD drive.'
     if ($bad) { $det += " Malware inside: $bad"; Add-Finding 'File' 'HIGH' $loc "Virtual disk with malware inside ($bad)." }
@@ -1603,6 +1798,65 @@ function Scan-Browsers {
 # On an infected PC, log WhatsApp Web out of every browser. The login lives in the site's
 # IndexedDB folder, not in cookies. The attacker's stolen copy keeps working until the phone
 # logs out Linked devices; this stops the PC handing it over again.
+# Malware auto-starts and the files they start belong together (94V6P/PZUKK reports, Nov 2026: the task went, its
+# program stayed; YXP2B: the program went, its task stayed). Programs started by a bad task or Run value, and tasks,
+# services and Run values that start a file being removed, are added here.
+function Get-CmdPath([string]$cmd) {
+  $cmd = [Environment]::ExpandEnvironmentVariables("$cmd".Trim())
+  if ($cmd -match '^"([^"]+)"') { return $Matches[1] }
+  if ($cmd -match '^([A-Za-z]:\\.+?\.(exe|dll|scr|bat|cmd|vbs|js|ps1|com))(\s|$)') { return $Matches[1] }
+  if ($cmd -match '^[A-Za-z]:\\') { return $cmd }
+  $null
+}
+function Add-LinkedFindings {
+  $skip = '(?i)ManageEngine|IP-guard|UltraViewer|Ping32'
+  $tasks = $null
+  foreach ($f in @($Findings | Where-Object { $_.Severity -eq 'HIGH' -and $_.Kind -in 'Task', 'RegValue' -and "$($_.Detail)" -notmatch $skip })) {
+    $paths = @()
+    if ($f.Kind -eq 'Task') {
+      if ($null -eq $tasks) { $tasks = @(Get-WazTasks) }
+      $t = $tasks | Where-Object { "$($_.TaskPath)$($_.TaskName)" -eq $f.Target } | Select-Object -First 1
+      if ($t) { $paths = @($t.Exec) }
+    } else {
+      $key, $val = $f.Target -split '\|', 2
+      $v = [string](Get-ItemProperty -LiteralPath $key -Name $val -ErrorAction SilentlyContinue).$val
+      if ($v) { $paths = @(Get-CmdPath $v) }
+    }
+    foreach ($p in $paths | Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Leaf) }) {
+      $u = Get-HideUnit $p
+      if ($u) { Add-HideUnit $u "started by $($f.Kind) $($f.Target)"; if ($script:HideUnits -contains $u) { continue } }
+      if ($p -match '(?i)\\(Users|ProgramData|AppData|Temp)\\' -and $p -notmatch '(?i)\\(Program Files( \(x86\))?|Windows)\\' -and -not (Test-MicrosoftSigned $p)) {
+        Add-Finding 'File' 'HIGH' $p "Program started by a malware auto-start ($($f.Kind) $($f.Target))."
+      }
+    }
+  }
+  $targets = @($Findings | Where-Object { $_.Kind -eq 'File' -and $_.Severity -eq 'HIGH' -and -not ($_.Extra -is [hashtable] -and $_.Extra.Tidy) -and
+    "$($_.Detail)" -notmatch $skip -and "$($_.Target)" -match '^[A-Za-z]:\\' -and "$($_.Target)" -notmatch '(?i)\.(zip|rar|7z)$' } | ForEach-Object {
+      if (Test-Path -LiteralPath $_.Target -PathType Container) { "$($_.Target)\" } else { "$($_.Target)" } } | Select-Object -Unique)
+  if (-not $targets.Count) { return }
+  $hit = { param($txt) foreach ($tg in $targets) { if ("$txt".IndexOf($tg, [StringComparison]::OrdinalIgnoreCase) -ge 0) { return $tg } }; $null }
+  if ($null -eq $tasks) { $tasks = @(Get-WazTasks) }
+  foreach ($t in $tasks) {
+    $txt = [Environment]::ExpandEnvironmentVariables("$($t.Txt)")
+    if ($m = & $hit $txt) { Add-Finding 'Task' 'HIGH' "$($t.TaskPath)$($t.TaskName)" "Scheduled task starts malware that is being removed ($m): $txt" @{ Path = $t.TaskPath; Name = $t.TaskName } }
+  }
+  foreach ($svc in Get-ChildItem 'HKLM:\SYSTEM\CurrentControlSet\Services' -ErrorAction SilentlyContinue) {
+    $pr = Get-ItemProperty -LiteralPath $svc.PSPath -ErrorAction SilentlyContinue
+    if (-not $pr.ImagePath -or $pr.DeleteFlag -eq 1) { continue }
+    $img = [string]$pr.ImagePath
+    if ($m = & $hit (Get-ImageFile $img)) { Add-Finding 'Service' 'HIGH' $svc.PSChildName "Service starts malware that is being removed ($m): $img" @{ RegPath = $svc.PSPath; Image = $img } }
+  }
+  $runKeys = @('HKLM:\Software\Microsoft\Windows\CurrentVersion\Run', 'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Run')
+  foreach ($hv in Get-UserHives) { $runKeys += "$hv\Software\Microsoft\Windows\CurrentVersion\Run" }
+  foreach ($k in $runKeys | Where-Object { Test-Path -LiteralPath $_ }) {
+    $item = Get-Item -LiteralPath $k
+    foreach ($n in $item.GetValueNames()) {
+      $v = [Environment]::ExpandEnvironmentVariables([string]$item.GetValue($n))
+      if ($m = & $hit $v) { Add-Finding 'RegValue' 'HIGH' "$k|$n" "Auto-start runs malware that is being removed ($m): $v" }
+    }
+  }
+}
+
 function Add-WhatsAppWebSessions {
   foreach ($p in Get-BrowserProfiles) {
     $dirs = if ($p.Browser -eq 'Firefox') { Join-Path $p.Path 'storage\default\https+++web.whatsapp.com' }
@@ -1622,13 +1876,19 @@ function Add-ManageEngineRemoval {
   }
   foreach ($svc in Get-ChildItem 'HKLM:\SYSTEM\CurrentControlSet\Services' -ErrorAction SilentlyContinue) {
     $pr = Get-ItemProperty -LiteralPath $svc.PSPath -ErrorAction SilentlyContinue
-    if (("$($svc.PSChildName) $($pr.DisplayName) $($pr.ImagePath)" -match $rx -or $svc.PSChildName -match $MeSvcRegex) -and $pr.DeleteFlag -ne 1) {
+    # Its filter drivers live in System32\drivers under short names; a driver file made by Zoho/ManageEngine counts too.
+    $zoho = $false
+    if ($pr.Type -in 1, 2 -and $pr.ImagePath -and ($df = Resolve-ImagePath ([string]$pr.ImagePath)) -and (Test-Path -LiteralPath $df -PathType Leaf)) {
+      $vi = try { (Get-Item -LiteralPath $df -Force -ErrorAction Stop).VersionInfo } catch { $null }
+      $zoho = [bool]("$($vi.CompanyName) $($vi.ProductName)" -match '(?i)Zoho|ManageEngine|AdventNet')
+    }
+    if (("$($svc.PSChildName) $($pr.DisplayName) $($pr.ImagePath)" -match $rx -or $svc.PSChildName -match $MeSvcRegex -or $zoho) -and $pr.DeleteFlag -ne 1) {
       Add-Finding 'Service' 'HIGH' $svc.PSChildName 'ManageEngine service' @{ RegPath = $svc.PSPath; Image = '' }
     }
   }
-  foreach ($t in Get-ScheduledTask -ErrorAction SilentlyContinue) {
-    $txt = "$($t.TaskPath)$($t.TaskName) " + (($t.Actions | ForEach-Object { "$($_.Execute) $($_.Arguments)" }) -join ' ')
-    if ($txt -match $rx) { Add-Finding 'Task' 'HIGH' "$($t.TaskPath)$($t.TaskName)" 'ManageEngine task' @{ Path = $t.TaskPath; Name = $t.TaskName } }
+  foreach ($t in Get-WazTasks) {
+    $txt = "$($t.TaskPath)$($t.TaskName) $($t.Txt)"
+    if ($txt -match $rx -or $t.TaskName -match '(?i)^(DCAgentUpdater|UEMSLogCollector)$') { Add-Finding 'Task' 'HIGH' "$($t.TaskPath)$($t.TaskName)" 'ManageEngine task' @{ Path = $t.TaskPath; Name = $t.TaskName } }
   }
   foreach ($k in 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall', 'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall') {
     foreach ($u in Get-ChildItem -LiteralPath $k -ErrorAction SilentlyContinue) {
@@ -1665,6 +1925,7 @@ function Invoke-Fix($qdir) {
   $i = 0
   $closed = $false
   $exclScan = @()
+  $j = 0
   $ipgSafe = ($SafeAuto -or $env:WAZIP_TEST_IPG_SAFE) -and $script:IpgParts -and -not $script:IpgPending -and -not $script:IpgNoAuto
   if ($ipgSafe) { Stop-IpGuardProcs }
   $ipgSwept = $false
@@ -1684,7 +1945,13 @@ function Invoke-Fix($qdir) {
             $script:NeedRestart = $true
             Say "  LANGKAU $($f.Target): program ni dikunci (kalau dimatikan PC akan skrin biru). Dia akan mati bila PC restart." "  SKIP $($f.Target): critical process (killing it would blue-screen the PC). It stops after a restart." Yellow
             $done = $false
-          } else { Stop-Process -Id $f.Extra.Pid -Force -ErrorAction Stop; $log.Add(@{ Kind = 'Process'; Target = $f.Target }) }
+          } else {
+            $gp = Get-Process -Id $f.Extra.Pid -ErrorAction SilentlyContinue
+            Stop-Process -Id $f.Extra.Pid -Force -ErrorAction Stop
+            # Let it exit so its folder can be moved right after.
+            if ($gp) { try { $gp.WaitForExit(3000) | Out-Null } catch {} }
+            $log.Add(@{ Kind = 'Process'; Target = $f.Target })
+          }
         }
         'Wmi' {
           $ns = 'root\subscription'; $nm = $f.Extra.Name -replace "'", "\'"
@@ -1741,8 +2008,27 @@ function Invoke-Fix($qdir) {
         'Vhd'     { Dismount-DiskImage -ImagePath $f.Target -ErrorAction Stop | Out-Null; $log.Add(@{ Kind = 'Vhd'; Target = $f.Target }) }
         'Task'    {
           $xml = Join-Path $qdir "task-$i.xml"
-          Export-ScheduledTask -TaskPath $f.Extra.Path -TaskName $f.Extra.Name | Out-File -Encoding Unicode $xml
-          Unregister-ScheduledTask -TaskPath $f.Extra.Path -TaskName $f.Extra.Name -Confirm:$false -ErrorAction Stop
+          $live = if ($env:WAZIP_TEST_TASKFILES) { $null } else { Get-ScheduledTask -TaskPath $f.Extra.Path -TaskName $f.Extra.Name -ErrorAction SilentlyContinue }
+          if ($live) {
+            Export-ScheduledTask -TaskPath $f.Extra.Path -TaskName $f.Extra.Name | Out-File -Encoding Unicode $xml
+            Unregister-ScheduledTask -TaskPath $f.Extra.Path -TaskName $f.Extra.Name -Confirm:$false -ErrorAction Stop
+          } else {
+            # Safe Mode: no Task Scheduler, so take out the task file and its registry entries (backed up).
+            $tf = Join-Path "$env:SystemRoot\System32\Tasks" ("$($f.Extra.Path)$($f.Extra.Name)".TrimStart('\'))
+            if (-not (Test-Path -LiteralPath $tf)) { throw 'task file not found' }
+            Copy-Item -LiteralPath $tf -Destination $xml -Force -ErrorAction Stop
+            $tc = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache'
+            $tree = "$tc\Tree$($f.Extra.Path)$($f.Extra.Name)"
+            $id = [string](Get-ItemProperty -LiteralPath $tree -ErrorAction SilentlyContinue).Id
+            foreach ($rk in @($tree) + @(if ($id) { 'Tasks', 'Plain', 'Logon', 'Boot', 'Maintenance' | ForEach-Object { "$tc\$_\$id" } })) {
+              if (-not (Test-Path -LiteralPath $rk)) { continue }
+              $j++; $reg = Join-Path $qdir "reg-$i-task-$j.reg"
+              & reg.exe export (ConvertTo-RegExePath $rk) $reg /y | Out-Null
+              Remove-Item -LiteralPath $rk -Recurse -Force -ErrorAction Stop
+              $log.Add(@{ Kind = 'Reg'; Target = $rk; Backup = $reg })
+            }
+            Remove-Item -LiteralPath $tf -Force -ErrorAction Stop
+          }
           $log.Add(@{ Kind = 'Task'; Target = $f.Target; Backup = $xml; Path = $f.Extra.Path; Name = $f.Extra.Name })
         }
         'DefExcl' {
@@ -1800,17 +2086,33 @@ function Invoke-Fix($qdir) {
             $sr = $script:IpgSysSvc[([string](Split-Path $f.Target -Leaf)).ToLower()]
             if ($sr -and (Test-Path -LiteralPath $sr) -and (Get-ItemProperty -LiteralPath $sr -ErrorAction SilentlyContinue).Start -ne 4) { throw 'its driver service is still switched on, so the file stays (Windows must still start)' }
           }
-          $dest = Join-Path $qdir ("file-$i-" + (Split-Path $f.Target -Leaf) + '.quarantine')
-          Move-Item -LiteralPath $f.Target -Destination $dest -Force -ErrorAction Stop
+          $dest = Join-Path $qdir ("file-$i-" + ((Split-Path $f.Target -Leaf) -replace '[\[\]`*?]', '_') + '.quarantine')
+          try { Move-Item -LiteralPath $f.Target -Destination $dest -Force -ErrorAction Stop }
+          catch {
+            if (-not $f.Extra.Unit) { throw }
+            # The hiding folder can deny access to everyone: take it over, then move it.
+            & takeown.exe /f $f.Target /r /d y 2>&1 | Out-Null
+            & icacls.exe $f.Target /reset /t /c /q 2>&1 | Out-Null
+            Move-Item -LiteralPath $f.Target -Destination $dest -Force -ErrorAction Stop
+          }
           $log.Add(@{ Kind = 'File'; Target = $f.Target; Backup = $dest })
         }
       }
       if ($done) { Say "  OK  $($f.Kind): $($f.Target)" "  OK  $($f.Kind): $($f.Target)" Green }
     } catch {
+      # Failed items go in the manifest too, so the report shows what is still on the PC (RA477 report, Nov 2026).
+      $log.Add(@{ Kind = 'Failed'; Target = "$($f.Target)"; Item = $f.Kind; Error = "$($_.Exception.Message)" })
       if ($f.Detail -match 'ManageEngine') { $script:MeLeft += $f.Target }
       if ($f.Kind -eq 'File') { $script:FileLeft += $f.Target }
       if ($f.Detail -match '^IP-guard (file|service)$') { $script:IpgFail += $f.Target }
       Say "  GAGAL $($f.Kind): $($f.Target) - $($_.Exception.Message) (cuba restart & jalankan semula)" "  FAILED $($f.Kind): $($f.Target) (restart and run again)" Red
+    }
+  }
+  # A hiding folder must be gone after the clean-up; one that is still there goes to the Safe Mode / recovery list.
+  foreach ($f in $Findings | Where-Object { $_.Severity -eq 'HIGH' -and $_.Extra -is [hashtable] -and $_.Extra.Unit }) {
+    if (Test-Path -LiteralPath $f.Target) {
+      if ($script:FileLeft -notcontains $f.Target) { $script:FileLeft += $f.Target }
+      Say "  MASIH ADA folder malware: $($f.Target)" "  Malware folder still there: $($f.Target)" Red
     }
   }
   # Driver files found while removing services are added late; quarantine them now.
@@ -1884,7 +2186,14 @@ function Invoke-Restore($mf) {
   [array]::Reverse($items)
   foreach ($it in $items) {
     switch ($it.Kind) {
-      'File' { Move-Item -LiteralPath $it.Backup -Destination $it.Target -Force; Say "  Dipulih: $($it.Target)" "  Restored: $($it.Target)" Green }
+      # .NET moves take the name as it is; Move-Item reads [ ] in a destination as a wildcard (hiding-folder names).
+      'File' {
+        try {
+          if (Test-Path -LiteralPath $it.Target -PathType Leaf) { Remove-Item -LiteralPath $it.Target -Force }
+          if (Test-Path -LiteralPath $it.Backup -PathType Container) { [IO.Directory]::Move($it.Backup, $it.Target) } else { [IO.File]::Move($it.Backup, $it.Target) }
+          Say "  Dipulih: $($it.Target)" "  Restored: $($it.Target)" Green
+        } catch { Say "  GAGAL pulih: $($it.Target) - $($_.Exception.Message)" "  FAILED to restore: $($it.Target)" Red }
+      }
       'Reg'  { & reg.exe import $it.Backup | Out-Null; Say "  Registry dipulih: $($it.Target)" "  Registry restored: $($it.Target)" Green }
       'DefExcl' {
         if ($it.Type -eq 'Process') { Add-MpPreference -ExclusionProcess $it.Value } else { Add-MpPreference -ExclusionPath $it.Value }
@@ -1935,17 +2244,38 @@ function Hide-Pii([string]$s) {
       Where-Object { $_ -and $_.Length -ge 3 } | Select-Object -Unique)
   }
   $s = $s -replace '(?i)(Users(?:\\\\|\\|/))(?!(?:Public|Default|All Users)(?:\\|/|"|$))[^\\/"|:*?<>\r\n]+', '$1<user>'
-  foreach ($n in $script:PiiNames) {
-    $s = $s -replace ('(?i)(?<![A-Za-z0-9])' + [regex]::Escape($n) + '(?![A-Za-z0-9])'), '<name>'
+  # Downloads, Desktop and Documents file names are personal (9ENRG report, Nov 2026); a lure name stays as evidence.
+  $s = [regex]::Replace($s, '(?i)(<user>(\\{1,2})(?:Downloads|Desktop|Documents)\\{1,2})((?:[^\\\r\n"|<>:]+\\{1,2})*)([^\\\r\n"|<>:]+?)(\.[A-Za-z0-9]{1,5})(?=$|[\s"''|),;:]|\.quarantine)', [Text.RegularExpressions.MatchEvaluator]{
+    param($m)
+    $full = $m.Groups[4].Value + $m.Groups[5].Value
+    if ($full -match $LureRegex -or $full -match $ExeLureRegex -or $full -match $VbsLureRegex) { return $m.Value }
+    $script:PiiFileNames[$full.ToLower()] = $true
+    $sep = $m.Groups[2].Value
+    $m.Groups[1].Value + $(if ($m.Groups[3].Value) { "<folder>$sep" }) + '<file>' + $m.Groups[5].Value
+  })
+  $s = [regex]::Replace($s, '(?i)((?:file|wa)-\d+-)([^\\\r\n"|<>:]+?)(\.[A-Za-z0-9]{1,5})(?=\.quarantine)', [Text.RegularExpressions.MatchEvaluator]{
+    param($m)
+    if ($script:PiiFileNames.ContainsKey(($m.Groups[2].Value + $m.Groups[3].Value).ToLower())) { $m.Groups[1].Value + '<file>' + $m.Groups[3].Value } else { $m.Value }
+  })
+  # Account and PC names that are also everyday words (User, Dell, Admin, Temp) are only taken out where they are
+  # an account; elsewhere they broke "User Data", "Program Files\Dell" and "Dell, Inc." (opt-in reports, Nov 2026).
+  $weak = '^(?i)(user|users|admin|administrator|owner|guest|dell|hp|lenovo|acer|asus|toshiba|samsung|microsoft|windows|pc|laptop|desktop|office|staff|home|test|temp|default|public|data|files|program|name|sid|file|folder|email|phone)$'
+  foreach ($n in $script:PiiNames | Where-Object { $_ -notmatch $weak }) {
+    $s = $s -replace ('(?i)(?<![<A-Za-z0-9])' + [regex]::Escape($n) + '(?![>A-Za-z0-9])'), '<name>'
   }
+
   $s = $s -replace 'S-1-5-21-\d+-\d+-\d+(-\d+)?', '<sid>'
   $s = $s -replace '(?i)(?<![A-Za-z0-9])(LAPTOP|DESKTOP|PC)-[A-Z0-9]{5,10}(?![A-Za-z0-9])', '<name>'
-  $s = $s -replace '(?<![\\A-Za-z0-9])[A-Za-z0-9-]{1,15}\\<name>', '<name>\<name>'
+  foreach ($n in $script:PiiNames | Where-Object { $_ -match $weak }) {
+    $s = $s -replace ('(?i)(<name>\\{1,2})' + [regex]::Escape($n) + '(?![A-Za-z0-9])'), '$1<name>'
+  }
+  $s = $s -replace '(?<![\\A-Za-z0-9])(?<!Program )[A-Za-z0-9-]{1,15}\\<name>', '<name>\<name>'
   $s = $s -replace '(?<![\d.])(?:10\.\d{1,3}|192\.168|172\.(?:1[6-9]|2\d|3[01]))\.\d{1,3}\.\d{1,3}(?![\d.])', '<lan-ip>'
   $s = $s -replace '[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+', '<email>'
   $s = $s -replace '(?<![\w.])\+?6?01\d[- ]?\d{3,4}[- ]?\d{4}(?![\w.])', '<phone>'
   $s
 }
+if ($env:WAZIP_TEST_PII) { [IO.File]::WriteAllText("$($env:WAZIP_TEST_PII).out", (Hide-Pii ([IO.File]::ReadAllText($env:WAZIP_TEST_PII)))); exit 0 }
 function Read-Shared([string]$path, [int]$max) {
   # The scan log is still open while the transcript runs.
   try {
@@ -1973,19 +2303,33 @@ function Get-ReportTimeline {
   $since = (Get-Date).AddDays(-60)
   $out = New-Object System.Text.StringBuilder
   $null = $out.AppendLine('== Services installed (System event 7045), last 60 days')
-  foreach ($e in @(try { Get-WinEvent -FilterHashtable @{ LogName = 'System'; Id = 7045; StartTime = $since } -MaxEvents 300 -ErrorAction Stop } catch {})) {
+  # Repeats in a row are one line ("xN, first..last"): an antivirus killer reinstalled every 5 seconds filled the
+  # old 300-line cap and pushed the ManageEngine installs out (63WYJ, RA477, YXP2B reports, Nov 2026).
+  $groups = New-Object System.Collections.Generic.List[object]
+  foreach ($e in @(try { Get-WinEvent -FilterHashtable @{ LogName = 'System'; Id = 7045; StartTime = $since } -MaxEvents 5000 -ErrorAction Stop } catch {})) {
     $p = $e.Properties
-    $null = $out.AppendLine(('{0} | {1} | {2} | {3}' -f $e.TimeCreated.ToString('yyyy-MM-dd HH:mm:ss'), $p[0].Value, $p[1].Value, $p[3].Value))
+    $key = "$($p[0].Value)|$($p[1].Value)|$($p[3].Value)"
+    $g = if ($groups.Count) { $groups[$groups.Count - 1] } else { $null }
+    if ($g -and $g.Key -eq $key) { $g.N++; $g.First = $e.TimeCreated }
+    else { $groups.Add([pscustomobject]@{ Key = $key; N = 1; First = $e.TimeCreated; Last = $e.TimeCreated; Name = $p[0].Value; Img = $p[1].Value; Start = $p[3].Value }) }
   }
+  foreach ($g in $groups | Select-Object -First 300) {
+    $when = if ($g.N -gt 1) { "$($g.First.ToString('yyyy-MM-dd HH:mm:ss'))..$($g.Last.ToString('yyyy-MM-dd HH:mm:ss')) x$($g.N)" } else { $g.Last.ToString('yyyy-MM-dd HH:mm:ss') }
+    $null = $out.AppendLine(('{0} | {1} | {2} | {3}' -f $when, $g.Name, $g.Img, $g.Start))
+  }
+  if ($groups.Count -gt 300) { $null = $out.AppendLine("... $($groups.Count - 300) more") }
   $null = $out.AppendLine(''); $null = $out.AppendLine('== MSI installs and removals (Application, MsiInstaller), last 60 days')
   foreach ($e in @(try { Get-WinEvent -FilterHashtable @{ LogName = 'Application'; ProviderName = 'MsiInstaller'; Id = 1033, 1034, 11707, 11724; StartTime = $since } -MaxEvents 300 -ErrorAction Stop } catch {})) {
     $m = ("$($e.Message)" -replace '\s+', ' ')
     $null = $out.AppendLine(('{0} | {1} | {2}' -f $e.TimeCreated.ToString('yyyy-MM-dd HH:mm:ss'), $e.Id, $m.Substring(0, [Math]::Min(200, $m.Length))))
   }
   $null = $out.AppendLine(''); $null = $out.AppendLine('== Scheduled tasks outside \Microsoft\')
-  foreach ($t in @(Get-ScheduledTask -ErrorAction SilentlyContinue | Where-Object { $_.TaskPath -notlike '\Microsoft\*' })) {
-    $act = (@($t.Actions | ForEach-Object { "$($_.Execute) $($_.Arguments)".Trim() }) -join ' ; ')
-    $null = $out.AppendLine(('{0}{1} | {2} | {3} | {4}' -f $t.TaskPath, $t.TaskName, $t.Author, $t.Date, $act))
+  foreach ($t in @(Get-WazTasks | Where-Object { $_.TaskPath -notlike '\Microsoft\*' })) {
+    # The author is often "<PC name>\<account>" of the PC the task was made on (YXP2B report, Nov 2026).
+    $au = [string]$t.Author
+    if ($au -match '^[^\\]+\\[^\\]+$' -and $au -notmatch '^(?i)(NT AUTHORITY|BUILTIN|NT SERVICE|Window Manager|Font Driver Host)\\') { $au = '<host>\<user>' }
+    elseif ($au -match '^(?i)(LAPTOP|DESKTOP|PC|WIN)-[A-Z0-9]+$') { $au = '<host>' }
+    $null = $out.AppendLine(('{0}{1} | {2} | {3} | {4}' -f $t.TaskPath, $t.TaskName, $au, $t.Date, $t.Txt.Trim()))
   }
   $null = $out.AppendLine(''); $null = $out.AppendLine('== Windows Defender detections, last 60 days')
   foreach ($e in @(try { Get-WinEvent -FilterHashtable @{ LogName = 'Microsoft-Windows-Windows Defender/Operational'; Id = 1116, 1117; StartTime = $since } -MaxEvents 200 -ErrorAction Stop } catch {})) {
@@ -2019,6 +2363,7 @@ function New-WazReport([string]$dest) {
         $o
       })
       c2       = @($c2 | Select-Object -Unique)
+      notChecked = @($script:NotChecked | ForEach-Object { Hide-Pii $_ })
     }
     [IO.File]::WriteAllText((Join-Path $tmp 'summary.json'), ($sum | ConvertTo-Json -Depth 5), $utf8)
     $mf = Join-Path $QuarantineRoot "$stamp\manifest.json"
@@ -2135,6 +2480,8 @@ Invoke-Step 5 'Auto-jalan & pengecualian antivirus' { Scan-Persistence }
 Invoke-Step 6 'Fail (2-10 minit)' { Scan-Files }
 Invoke-Step 7 'Kawalan jauh & tetapan keselamatan' { Scan-ManageEngine }
 Invoke-Step 8 'Browser' { Scan-Browsers }
+Add-LinkedFindings
+if ($env:WAZIP_TEST_TIMELINE) { [IO.File]::WriteAllText($env:WAZIP_TEST_TIMELINE, (Hide-Pii (Get-ReportTimeline))) }
 
 # ManageEngine: a personal PC should never have it, an office PC often does.
 $me = $Findings | Where-Object { $_.Kind -eq 'Info' -and $_.Target -match 'ManageEngine' }
@@ -2145,9 +2492,11 @@ $meRemove = $false
 $meOther = @($Findings | Where-Object { $_.Severity -eq 'HIGH' -and -not $_.Extra.Tidy -and $_.Kind -ne 'WaSession' -and "$($_.Target)" -notmatch '(?i)\.(zip|rar|7z)$' -and "$($_.Target) $($_.Detail)" -notmatch 'ManageEngine' })
 $meInfected = $false
 if ($me) {
-  $meInfected = -not $script:MeAttacker -and $meOther.Count -gt 0
-  if ($meInfected) {
+  $meInfected = -not $script:MeAttacker -and ($meOther.Count -gt 0 -or $script:MeNearBad)
+  if ($meInfected -and $meOther.Count) {
     $me | ForEach-Object { $_.Detail = "Remote-management agent on a PC where other malware was found ($($meOther.Count) item(s), for example $($meOther[0].Kind): $($meOther[0].Target)). Other malware found on this PC, so this ManageEngine is almost certainly the attacker's. This tool will force-remove it." }
+  } elseif ($meInfected) {
+    $me | ForEach-Object { $_.Detail = "Remote-management agent installed within an hour of a program from a malware hiding place being installed as a service ($($script:MeNearBad)). Other malware found on this PC, so this ManageEngine is almost certainly the attacker's. This tool will force-remove it." }
   }
   $meRemove = [bool]$RemoveManageEngine -or $Owner -eq 'Personal' -or $script:MeAttacker -or $meInfected
   if (-not $meRemove -and $Fix -and -not $Owner -and -not $env:WAZIP_NO_PROMPT) {
@@ -2155,7 +2504,13 @@ if ($me) {
     Say 'ManageEngine dijumpai. Kalau office/syarikat anda yang pasang, JANGAN buang. Kalau anda tak pernah pasang, taip BUANG dan Enter:' `
         'ManageEngine found. If your company installed it, do NOT remove it. If you never installed it, type BUANG and press Enter:' Yellow
     try { $Host.UI.RawUI.FlushInputBuffer() } catch {}
-    $meRemove = (Read-Host) -ceq 'BUANG'
+    $ansB = [string](Read-Host)
+    $meRemove = $ansB -ceq 'BUANG'
+    if (-not $meRemove) {
+      $why = if ($ansB.Trim()) { 'the answer was not BUANG' } else { 'no answer' }
+      $me | ForEach-Object { $_.Detail += " Not removed: $why." }
+      Say "  ManageEngine TIDAK dibuang ($(if ($ansB.Trim()) { 'jawapan bukan BUANG' } else { 'tiada jawapan' }))." "  ManageEngine NOT removed: $why." Yellow
+    }
   }
   if ($meRemove) {
     $me.Severity = 'HIGH'
@@ -2188,7 +2543,9 @@ Write-Host ''
 if (-not $Findings.Count) {
   Write-Host '      ' -NoNewline; Show-Tag 'PC BERSIH' Black DarkGreen
   Write-Host ''
-  Say 'BERSIH: tiada tanda malware ZIP WhatsApp dijumpai.' 'CLEAN: no signs of the WhatsApp ZIP malware found.' Green
+  if ($script:NotChecked.Count) {
+    Say "Tiada tanda malware ZIP WhatsApp dijumpai, tapi $($script:NotChecked.Count) semakan tak dapat dibuat (lihat 'tak dapat semak' di atas). Restart PC dan jalankan tool ni sekali lagi." "No signs of the WhatsApp ZIP malware found, but $($script:NotChecked.Count) check(s) could not run (see 'could not check' above). Restart the PC and run this tool again." Yellow
+  } else { Say 'BERSIH: tiada tanda malware ZIP WhatsApp dijumpai.' 'CLEAN: no signs of the WhatsApp ZIP malware found.' Green }
   Stop-Transcript | Out-Null; Invoke-ReportOffer; exit 0
 }
 foreach ($f in $Findings) {
@@ -2275,7 +2632,7 @@ if ($Fix -and ($script:SvcLeft -or $script:MeLeft -or $ipgSvcOff -or $ipgFileOff
     if ($script:MeLeft) {
       # Every ManageEngine service and driver, including the self-protection driver whatever its name.
       foreach ($w in 'ManageEngine', 'UEMS', 'AdventNet', 'DesktopCentral', 'Zoho') { $b.Add("for /f `"tokens=5 delims=\`" %%a in ('reg query %S% /s /f $w /d ^| find `"HKEY_`"') do call :off `"%%a`"") }
-      foreach ($w in 'MEARW', 'MEEDR') { $b.Add("for /f `"tokens=5 delims=\`" %%a in ('reg query %S% /f $w /k ^| find `"HKEY_`"') do call :off `"%%a`"") }
+      foreach ($w in 'MEARW', 'MEEDR', 'DCFA', 'uesAgent') { $b.Add("for /f `"tokens=5 delims=\`" %%a in ('reg query %S% /f $w /k ^| find `"HKEY_`"') do call :off `"%%a`"") }
     }
     $b.Add('reg unload HKLM\WAZOFF'); $b.Add('mkdir "%D%\WAZipQuarantine\winre" 2>nul')
     $k = 0

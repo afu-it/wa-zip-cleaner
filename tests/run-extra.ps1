@@ -1,8 +1,8 @@
 # Extra coverage: hash matching, loaded fake rime.dll, ardrv/OPSWAT, ManageEngine,
 # locked files, and the double-click .bat launchers. Harmless stand-ins only.
-# -Part 1|2|3 runs one third of the checks (each part plants what it needs and cleans up);
+# -Part 1|2|3|4 runs a quarter of the checks (each part plants what it needs and cleans up);
 # 0 (the default) runs everything in one go.
-param([ValidateSet(0, 1, 2, 3)][int]$Part = 0)
+param([ValidateSet(0, 1, 2, 3, 4)][int]$Part = 0)
 $ErrorActionPreference = 'Continue'
 $root = Split-Path -Parent $PSScriptRoot
 $tool = Join-Path $root 'wa-zip-cleaner.ps1'
@@ -45,7 +45,15 @@ function Start-Encoded($script) {
   Start-Process powershell -ArgumentList '-NoProfile', '-EncodedCommand', $enc -WindowStyle Hidden -PassThru
 }
 function InPart($n) { $Part -eq 0 -or $Part -eq $n }
-if ($Part) { Write-Host "Running part $Part of 3" -ForegroundColor Cyan }
+if ($Part) { Write-Host "Running part $Part of 4" -ForegroundColor Cyan }
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+# A real zip holding the named entries, so the tool can look inside it.
+function New-TestZip($path, [string[]]$entries) {
+  Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
+  $z = [IO.Compression.ZipFile]::Open($path, 'Create')
+  foreach ($e in $entries) { $w = New-Object IO.StreamWriter($z.CreateEntry($e).Open()); $w.Write('dummy'); $w.Close() }
+  $z.Dispose()
+}
 
 if (InPart 1) {
 Write-Host '=== Plant ===' -ForegroundColor Cyan
@@ -407,7 +415,7 @@ Write-Host '=== WhatsApp download tag, Defender history, ran-programs records ==
 # Files saved from WhatsApp Web carry a Zone.Identifier tag naming web.whatsapp.com.
 $zone = "[ZoneTransfer]`r`nZoneId=3`r`nReferrerUrl=https://web.whatsapp.com/`r`nHostUrl=blob:https://web.whatsapp.com/1f2e3d4c-aaaa-bbbb-cccc-0123456789ab"
 $waImg = "$dl\Dokumen penting.img"; $waZip = "$dl\Gambar raya.zip"
-Set-Content $waImg 'dummy'; Set-Content $waZip 'dummy'
+Set-Content $waImg 'dummy'; New-TestZip $waZip 'Gambar raya.img'
 Set-Content -LiteralPath $waImg -Stream Zone.Identifier -Value $zone
 Set-Content -LiteralPath $waZip -Stream Zone.Identifier -Value $zone
 # Windows 11's program-launch list and Prefetch, as stand-ins (Windows Server keeps neither by default).
@@ -426,7 +434,7 @@ Start-Sleep 3
 
 $r8 = Scan "$env:TEMP\x8.json"
 Check (Has $r8 'File' 'HIGH' 'Dokumen penting\.img$' 'WhatsApp Web') 'disk image downloaded from WhatsApp Web is HIGH'
-Check (Has $r8 'File' 'HIGH' 'Gambar raya\.zip$' 'WhatsApp Web') 'zip downloaded from WhatsApp Web is HIGH (tidied away)'
+Check (Has $r8 'File' 'HIGH' 'Gambar raya\.zip$' 'WhatsApp Web.*inside') 'zip from WhatsApp Web with a disk image inside is HIGH (tidied away)'
 Check (Has $r8 'Info' 'WARN' 'Malware program ran: C:\\ProgramData\\MicroPoint\\WinCombo\.exe$') 'program-launch list entry for WinCombo.exe is WARN'
 Check (-not (Has $r8 'Info' 'WARN' 'notepad')) 'ordinary programs in the launch list are ignored'
 Check (Has $r8 'Info' 'WARN' 'Malware program ran: TAXFILING\.EXE$' 'Prefetch') 'Prefetch entry for TaxFiling.exe is WARN'
@@ -616,7 +624,8 @@ $waOnly = "$dl\Gambar kenduri.zip"
 Set-Content $waOnly 'dummy'
 Set-Content -LiteralPath $waOnly -Stream Zone.Identifier -Value "[ZoneTransfer]`r`nZoneId=3`r`nReferrerUrl=https://web.whatsapp.com/`r`nHostUrl=blob:https://web.whatsapp.com/1f2e3d4c-aaaa-bbbb-cccc-0123456789ab"
 $rM2 = Scan "$env:TEMP\xm2.json" -Fix -Owner Office
-Check (Has $rM2 'File' 'HIGH' 'Gambar kenduri\.zip$') 'office PC with only a WhatsApp zip: zip found'
+Check (Has $rM2 'File' 'WARN' 'Gambar kenduri\.zip$' 'cannot look inside') 'office PC with only a WhatsApp zip: zip found (warning, not quarantined)'
+Check (Test-Path -LiteralPath $waOnly) 'office PC with only a WhatsApp zip: zip left in place'
 Check (Has $rM2 'Info' 'WARN' 'ManageEngine' 'IT') "office PC with only a WhatsApp zip: ManageEngine stays a warning (HIGH: $(@($rM2.All | Where-Object Severity -eq 'HIGH' | ForEach-Object { $_.Target }) -join '; '))"
 Check (Test-Path $meDir2) 'office PC with only a WhatsApp zip: ManageEngine kept'
 & sc.exe delete MEOfficeTest | Out-Null
@@ -961,6 +970,185 @@ if ($mf) {
   Check (Test-Path "$dl\Click here to view8.zip") '3-RESTORE-PULIH.bat restores the file'
 }
 Pop-Location
+}
+
+if (InPart 4) {
+$zoneW = "[ZoneTransfer]`r`nZoneId=3`r`nReferrerUrl=https://web.whatsapp.com/`r`nHostUrl=blob:https://web.whatsapp.com/1f2e3d4c-aaaa-bbbb-cccc-0123456789ab"
+$meDir4 = "${env:ProgramFiles(x86)}\ManageEngine\UEMS_Agent"
+function New-MePlant($svc) {
+  New-Item -ItemType Directory -Force -Path "$meDir4\bin" | Out-Null
+  Set-Content "$meDir4\bin\dcagentservice.exe" 'dummy'
+  & sc.exe create $svc start= demand DisplayName= "ManageEngine UEMS - Agent $svc" binPath= "`"$meDir4\bin\dcagentservice.exe`"" | Out-Null
+}
+function Remove-MePlant($svc) {
+  & sc.exe delete $svc | Out-Null
+  Remove-Item -LiteralPath "${env:ProgramFiles(x86)}\ManageEngine" -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+Write-Host '=== Unanswered BUANG question is logged (HXCEB/PZUKK reports, Nov 2026) ===' -ForegroundColor Cyan
+New-MePlant 'MEAskTest'
+Remove-Item Env:\WAZIP_NO_PROMPT
+$inB = "$env:TEMP\waz-blank.txt"; Set-Content $inB ("`r`n" * 8) -Encoding ASCII
+$outB = "$env:TEMP\xb0.out"
+$pB = Start-Process powershell -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$tool`"", '-QuarantineRoot', $q, '-ReportPath', "$env:TEMP\xb0.json", '-Fix' `
+  -RedirectStandardInput $inB -RedirectStandardOutput $outB -NoNewWindow -Wait -PassThru
+$env:WAZIP_NO_PROMPT = '1'
+$xb = Get-Content -Raw $outB
+$rB = @(); if (Test-Path "$env:TEMP\xb0.json") { $rB = @(Get-Content -Raw "$env:TEMP\xb0.json" | ConvertFrom-Json | ForEach-Object { $_ }) }
+Check ($xb -match 'ManageEngine TIDAK dibuang \(tiada jawapan\)') 'unanswered BUANG question is shown as not removed'
+Check ([bool]($rB | Where-Object { $_.Kind -eq 'Info' -and $_.Target -match 'ManageEngine' -and $_.Detail -match 'Not removed: no answer' })) 'unanswered BUANG question is in the report'
+Check (Test-Path $meDir4) 'ManageEngine kept when BUANG is not typed'
+Remove-MePlant 'MEAskTest'
+
+Write-Host '=== ManageEngine installed within an hour of an antivirus killer (94V6P/UYRPQ reports, Nov 2026) ===' -ForegroundColor Cyan
+New-MePlant 'MEOfficeTest4'
+$goneLib = 'C:\Users\Public\Libraries\9&]!])^}[!!]%[#~##Gone'
+& sc.exe create WazArdrvGone type= kernel start= demand binPath= ($goneLib + '\4=!=[)](gone') | Out-Null
+& sc.exe delete WazArdrvGone | Out-Null
+Start-Sleep 2
+$rT = Scan "$env:TEMP\xt1.json" -Owner Office
+Check (Has $rT 'Info' 'WARN' 'Service installed from a malware hiding place: WazArdrvGone') 'service once installed from a hiding place (file gone) is a warning'
+Check (Has $rT 'Info' 'HIGH' 'ManageEngine' 'within an hour') "office ManageEngine installed within an hour of the antivirus killer is HIGH ($(@($rT.All | Where-Object { $_.Target -match 'ManageEngine' } | ForEach-Object { "$($_.Severity) $($_.Detail)" }) -join '; '))"
+Remove-MePlant 'MEOfficeTest4'
+
+Write-Host '=== Hiding folders, service-install history, linked task, zips (opt-in reports, Nov 2026) ===' -ForegroundColor Cyan
+$libU = 'C:\Users\Public\Libraries\1&]!])^}[!!]%[#~##41242331885'
+[IO.Directory]::CreateDirectory($libU) | Out-Null
+$libF = $libU + '\3=!=[)](844'
+[IO.File]::WriteAllText($libF, 'dummy')
+for ($k = 0; $k -lt 3; $k++) { & sc.exe create WazArdrvHist type= kernel start= demand binPath= $libF | Out-Null; & sc.exe delete WazArdrvHist | Out-Null }
+$pdU = 'C:\ProgramData\_z}#,(@[+%${,^(&!]]&}~#V'
+[IO.Directory]::CreateDirectory($pdU) | Out-Null
+[IO.File]::WriteAllText($pdU + '\iS.dLl', 'dummy'); [IO.File]::WriteAllText($pdU + '\3#.8', 'dummy'); [IO.File]::WriteAllText($pdU + '\PrivacyPolicy_wazt.exe', 'dummy')
+Copy-Item -LiteralPath "$env:SystemRoot\System32\PING.EXE" -Destination ($pdU + '\wazping.exe')
+$pingP = [Diagnostics.Process]::Start($pdU + '\wazping.exe', '-n 900 127.0.0.1')
+$taskXml = @"
+<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo><Author>WAZOLDPC\wazuser</Author></RegistrationInfo>
+  <Triggers><LogonTrigger><Enabled>true</Enabled></LogonTrigger></Triggers>
+  <Principals><Principal id="Author"><UserId>S-1-5-18</UserId><RunLevel>HighestAvailable</RunLevel></Principal></Principals>
+  <Settings><Enabled>false</Enabled></Settings>
+  <Actions Context="Author"><Exec><Command>$([Security.SecurityElement]::Escape($pdU + '\PrivacyPolicy_wazt.exe'))</Command></Exec></Actions>
+</Task>
+"@
+Register-ScheduledTask -TaskName 'WazPrivacyPolicyTest' -Xml $taskXml -Force | Out-Null
+$drv1 = "$env:SystemRoot\System32\drivers\wazq1jlk5t"; Set-Content $drv1 'dummy'
+& sc.exe create Wazq1jlk5t type= kernel start= demand binPath= 'System32\drivers\wazq1jlk5t' | Out-Null
+$drv2 = "$env:SystemRoot\System32\drivers\wazq2hist"; Set-Content $drv2 'dummy'
+& sc.exe create Wazq2hist type= kernel start= demand binPath= 'System32\drivers\wazq2hist' | Out-Null
+& sc.exe delete Wazq2hist | Out-Null
+$zDoc = "$dl\SPK SOLEH 2024.zip"; New-TestZip $zDoc 'SPK.pdf', 'foto/ktp.jpg'
+$zVhd = "$dl\Gambar majlis.zip"; New-TestZip $zVhd 'Gambar majlis.vhd'
+$zRar = "$dl\Arsip kerja.rar"; Set-Content $zRar 'dummy'
+foreach ($z in $zDoc, $zVhd, $zRar) { Set-Content -LiteralPath $z -Stream Zone.Identifier -Value $zoneW }
+$locked9 = "$dl\Click here to view9.zip"; Set-Content $locked9 'dummy'
+$locker9 = Start-Encoded "`$f=[IO.File]::Open('$locked9','Open','Read','None'); Start-Sleep 3600"
+Start-Sleep 2
+$env:WAZIP_TEST_TIMELINE = "$env:TEMP\waz-timeline.txt"
+$r41 = Scan "$env:TEMP\x41.json"
+Remove-Item Env:\WAZIP_TEST_TIMELINE
+Check (Has $r41 'File' 'HIGH' ('^' + [regex]::Escape($libU) + '$') 'hiding place') 'Public\Libraries hiding folder is one HIGH finding'
+Check (Has $r41 'File' 'HIGH' ('^' + [regex]::Escape($pdU) + '$') 'hiding place') 'symbol-named ProgramData folder is one HIGH finding'
+Check (Has $r41 'Process' 'HIGH' '^wazping\.exe' 'hiding folder') 'program running from a hiding folder is HIGH'
+Check (Has $r41 'Task' 'HIGH' '\\WazPrivacyPolicyTest$' 'being removed') 'task that starts a file in a hiding folder is HIGH'
+Check (Has $r41 'Service' 'HIGH' '^Wazq1jlk5t$' 'hiding place') 'live driver with no file extension is HIGH'
+Check (Has $r41 'File' 'HIGH' 'wazq2hist$' 'installed as a service') 'driver file of a deleted no-extension service (service-install history) is HIGH'
+Check (Has $r41 'File' 'HIGH' 'Gambar majlis\.zip$' 'inside') 'WhatsApp zip with a disk image inside is HIGH'
+Check (Has $r41 'File' 'WARN' 'SPK SOLEH 2024\.zip$' 'Only documents') 'WhatsApp zip with only documents is a warning'
+Check (Has $r41 'File' 'WARN' 'Arsip kerja\.rar$' 'cannot look inside') 'WhatsApp .rar the tool cannot open is a warning'
+$tl = if (Test-Path "$env:TEMP\waz-timeline.txt") { Get-Content -Raw "$env:TEMP\waz-timeline.txt" } else { '' }
+Check ($tl -match 'x3 \| WazArdrvHist') "repeated service installs are one timeline line ($(([regex]::Matches($tl, '[^\r\n]*WazArdrvHist[^\r\n]*') | ForEach-Object { $_.Value }) -join ' / '))"
+Check ($tl -match 'WazPrivacyPolicyTest \| <host>\\<user>' -and $tl -notmatch 'WAZOLDPC') 'task author PC name is hidden in the timeline'
+$r42 = Scan "$env:TEMP\x42.json" -Fix
+Check (-not (Test-Path -LiteralPath $libU)) 'Public\Libraries hiding folder quarantined whole'
+Check (-not (Test-Path -LiteralPath $pdU)) 'ProgramData hiding folder quarantined whole (files with any extension)'
+Check (-not (Get-Process -Id $pingP.Id -ErrorAction SilentlyContinue)) 'program running from the hiding folder stopped'
+Check (-not (Get-ScheduledTask -TaskName 'WazPrivacyPolicyTest' -ErrorAction SilentlyContinue)) 'task pointing into the hiding folder removed'
+& sc.exe query Wazq1jlk5t | Out-Null; Check ($LASTEXITCODE -ne 0) 'no-extension driver service deleted'
+Check (-not (Test-Path -LiteralPath $drv1) -and -not (Test-Path -LiteralPath $drv2)) 'no-extension driver files quarantined'
+Check (-not (Test-Path -LiteralPath $zVhd)) 'WhatsApp zip with a disk image quarantined'
+Check ((Test-Path -LiteralPath $zDoc) -and (Test-Path -LiteralPath $zRar)) 'WhatsApp document zip and .rar left in place'
+$mf4 = Get-ChildItem $q -Recurse -Filter manifest.json -ErrorAction SilentlyContinue | Sort-Object LastWriteTime | Select-Object -Last 1
+$mfItems = @(); if ($mf4) { $mfItems = @(Get-Content -Raw $mf4.FullName | ConvertFrom-Json | ForEach-Object { $_ }) }
+Check ([bool]($mfItems | Where-Object { $_.Kind -eq 'Failed' -and $_.Target -match 'Click here to view9\.zip$' })) 'item that could not be removed is listed in the manifest'
+Stop-Process -Id $locker9.Id -Force -ErrorAction SilentlyContinue; Start-Sleep 1
+if ($mf4) {
+  & powershell -NoProfile -ExecutionPolicy Bypass -File $tool -Restore -Manifest $mf4.FullName | Out-Host
+  Check (Test-Path -LiteralPath $pdU) 'restore puts the hiding folder back (Failed entries are skipped)'
+}
+Unregister-ScheduledTask -TaskName 'WazPrivacyPolicyTest' -Confirm:$false -ErrorAction SilentlyContinue
+& sc.exe delete Wazq1jlk5t | Out-Null
+Remove-Item -LiteralPath $libU, $pdU -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $drv1, $drv2, $zDoc, $zVhd, $zRar, $locked9 -Force -ErrorAction SilentlyContinue
+
+Write-Host '=== ManageEngine leftovers and task files in Safe Mode (VVF5Z/2F44T reports, Nov 2026) ===' -ForegroundColor Cyan
+New-MePlant 'MEUemsTest5'
+& sc.exe create DCFAFilter type= kernel start= demand binPath= 'System32\DRIVERS\DCFAFilter.sys' | Out-Null
+& sc.exe create MEARWFltDriver type= kernel start= demand binPath= '\SystemRoot\System32\drivers\MEARWFltDriver.sys' | Out-Null
+& sc.exe create uesAgentService start= demand DisplayName= 'Device Control Test' binPath= "$env:SystemRoot\System32\svchost.exe" | Out-Null
+foreach ($tn in 'DCAgentUpdater', 'UEMSLogCollector') { Register-ScheduledTask -TaskName $tn -Action (New-ScheduledTaskAction -Execute 'notepad.exe') -Force | Out-Null }
+$env:WAZIP_TEST_TASKFILES = '1'
+$rM5 = Scan "$env:TEMP\xm5.json" -Fix -RemoveME
+Remove-Item Env:\WAZIP_TEST_TASKFILES
+foreach ($sv in 'DCFAFilter', 'MEARWFltDriver', 'uesAgentService') {
+  Check (Has $rM5 'Service' 'HIGH' "^$sv$" 'ManageEngine') "ManageEngine leftover service $sv found"
+  & sc.exe query $sv | Out-Null; Check ($LASTEXITCODE -ne 0) "ManageEngine leftover service $sv deleted"
+}
+foreach ($tn in 'DCAgentUpdater', 'UEMSLogCollector') {
+  Check (Has $rM5 'Task' 'HIGH' "\\$tn$" 'ManageEngine') "ManageEngine task $tn found from the task files"
+  Check (-not (Test-Path -LiteralPath "$env:SystemRoot\System32\Tasks\$tn")) "ManageEngine task file $tn removed without the Task Scheduler"
+  Check (-not (Test-Path -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache\Tree\$tn")) "ManageEngine task $tn registry entry removed"
+  Unregister-ScheduledTask -TaskName $tn -Confirm:$false -ErrorAction SilentlyContinue
+}
+foreach ($sv in 'MEUemsTest5', 'DCFAFilter', 'MEARWFltDriver', 'uesAgentService') { & sc.exe delete $sv 2>&1 | Out-Null }
+Remove-MePlant 'MEUemsTest5'
+
+Write-Host '=== Step errors, Defender exclusions from the registry, vendor disk, report names ===' -ForegroundColor Cyan
+$mpOk = $false; try { Add-MpPreference -ExclusionProcess 'QtsUpdater.exe' -ErrorAction Stop; $mpOk = $true } catch {}
+$regOk = $false; try { $regOk = @((Get-Item 'HKLM:\SOFTWARE\Microsoft\Windows Defender\Exclusions\Processes' -ErrorAction Stop).GetValueNames()) -contains 'QtsUpdater.exe' } catch {}
+$vdir = "$env:ProgramFiles\WazVendorTest"; New-Item -ItemType Directory -Force -Path $vdir | Out-Null
+$vhdV = "$vdir\Vendor_Virtual_Disk.vhd"
+Set-Content "$env:TEMP\dp1.txt" "create vdisk file=`"$vhdV`" maximum=8 type=expandable`r`nattach vdisk`r`n" -Encoding ASCII
+& diskpart.exe /s "$env:TEMP\dp1.txt" | Out-Null
+$vAtt = [bool](Get-Disk -ErrorAction SilentlyContinue | Where-Object { $_.BusType -eq 'File Backed Virtual' -and $_.Location -eq $vhdV })
+$env:WAZIP_TEST_MPFAIL = '1'; $env:WAZIP_TEST_STEPERR = '8'
+$rD = Scan "$env:TEMP\xd1.json" -Out "$env:TEMP\xd1.out"
+Remove-Item Env:\WAZIP_TEST_MPFAIL, Env:\WAZIP_TEST_STEPERR
+$xd = Get-Content -Raw "$env:TEMP\xd1.out"
+Check ($xd -match 'could not check\): test step error' -and $xd -notmatch '\[8/8\] Browser[^\r\n]*BERSIH') 'a step that hit an error is not shown as BERSIH'
+if ($mpOk -and $regOk) { Check (Has $rD 'DefExcl' 'HIGH' 'QtsUpdater\.exe') 'Defender exclusions read from the registry when Get-MpPreference fails' }
+else { Write-Host "SKIP Defender registry fallback: exclusion added $mpOk, registry readable $regOk" -ForegroundColor Yellow }
+if ($vAtt) { Check (-not ($rD.All | Where-Object { $_.Kind -eq 'Vhd' -and $_.Target -eq $vhdV })) 'vendor virtual disk under Program Files is not flagged' }
+else { Write-Host 'SKIP vendor virtual disk: could not attach a test VHD' -ForegroundColor Yellow }
+Set-Content "$env:TEMP\dp2.txt" "select vdisk file=`"$vhdV`"`r`ndetach vdisk`r`n" -Encoding ASCII
+& diskpart.exe /s "$env:TEMP\dp2.txt" | Out-Null
+Remove-Item -LiteralPath $vdir -Recurse -Force -ErrorAction SilentlyContinue
+Remove-MpPreference -ExclusionProcess 'QtsUpdater.exe' -ErrorAction SilentlyContinue
+# Report anonymiser: everyday-word account names, Downloads file names, quarantine copies.
+New-Item -ItemType Directory -Force -Path 'C:\Users\Dell', 'C:\Users\User' | Out-Null
+$piiIn = "$env:TEMP\waz-pii.txt"
+@(
+  "C:\Users\$env:USERNAME\AppData\Local\Google\Chrome\User Data\Default"
+  'C:\Program Files\Dell\SupportAssist\x.exe'
+  'Publisher: Dell, Inc.'
+  "C:\Users\$env:USERNAME\Downloads\SPK SOLEH 2024.zip"
+  "C:\Users\$env:USERNAME\Downloads\KPMG-ITMAX\ITMAX.rar"
+  "C:\Users\$env:USERNAME\Downloads\Rekonsiliasi Akun.zip"
+  'C:\WAZipQuarantine\20261106-1\file-3-SPK SOLEH 2024.zip.quarantine'
+  "$env:COMPUTERNAME\User"
+) -join "`r`n" | Set-Content -LiteralPath $piiIn -Encoding ASCII
+$env:WAZIP_TEST_PII = $piiIn
+& powershell -NoProfile -ExecutionPolicy Bypass -File $tool | Out-Null
+Remove-Item Env:\WAZIP_TEST_PII
+$po = if (Test-Path "$piiIn.out") { Get-Content -Raw "$piiIn.out" } else { '' }
+Write-Host $po
+Check ($po -match 'Chrome\\User Data' -and $po -match 'Program Files\\Dell\\SupportAssist' -and $po -match 'Dell, Inc\.') 'everyday words that are also account names are kept'
+Check ($po -match '<user>\\Downloads\\<file>\.zip' -and $po -match '<user>\\Downloads\\<folder>\\<file>\.rar' -and $po -notmatch 'SOLEH|ITMAX') 'Downloads file and folder names are hidden'
+Check ($po -match 'Rekonsiliasi Akun\.zip') 'lure file names are kept as evidence'
+Check ($po -match 'file-3-<file>\.zip\.quarantine') 'quarantine copies of hidden names are hidden too'
+Check ($po -match '<name>\\<name>' -and $po -notmatch [regex]::Escape($env:COMPUTERNAME) -and $po -notmatch '<<') 'account name after the PC name is hidden, with no doubled markers'
+Remove-Item -LiteralPath 'C:\Users\Dell', 'C:\Users\User' -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 Write-Host ''

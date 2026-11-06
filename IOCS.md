@@ -255,6 +255,12 @@ From an opt-in report sent by the tool (scan log, Windows event 7045, Program Co
 - `C:\ProgramData\Virtual_Linux\WinCombo.exe` ran the same day; HKLM Run value `AutoStart` starts it. Winos4.0 module in `HKCU\Console\1`. Windows Update and the UAC prompt switched off.
 - Same file names as the MicroPoint chain (`WinCombo.exe`, `Security_Module.dat`) under a new folder name. Since v2026.11.05.29 the tool flags any ProgramData folder holding those files, any service loaded from a `.dat`-style file in ProgramData or a user folder, a VHD unpacked from a ZIP opened directly, and the `Notis Denda*` name.
 
+## Hiding folders, service-install history and ManageEngine leftovers (14 opt-in reports, Nov 2026)
+From opt-in reports sent by the tool (Windows event 7045 history, scheduled tasks, driver file version info; no samples, no victim data kept).
+- Driver services installed again and again (the `ardrv` BYOVD driver) from folders under `C:\Users\Public\Libraries\` whose names are strings of symbols, and from extensionless files in `C:\Windows\System32\drivers\`. Since v2026.11.06.31 any 7045 service image in `Public\Libraries`, in a folder named with six or more symbols, or an extensionless file in `System32\drivers` is HIGH, even when the service is already deleted. The whole folder is quarantined as one unit, with its processes, tasks, services and Run values.
+- ManageEngine Endpoint Central leftovers installed seconds after the agent: services `uesAgentService` and `NotifDriver` (under `ManageEngine\UEMS_Agent`), filter drivers `DCFAFilter` and `MEARWFltDriver`, tasks `DCAgentUpdater` and `UEMSLogCollector`. `DRMFilter`/`DFMFilter` are only removed when the driver file says Zoho, ManageEngine or AdventNet. ManageEngine installed within an hour of a flagged 7045 service is HIGH.
+- Plain WhatsApp document zips (for example school or office paperwork) were being quarantined. Since v2026.11.06.31 a zip is HIGH only when it holds a program, script or disk image, or matches a known lure name or hash; otherwise it stays a warning and is left in place.
+
 ## References
 
 - CloudSEK, Silver Fox targeting India using tax-themed phishing lures (2025-12-24): https://www.cloudsek.com/blog/silver-fox-targeting-india-using-tax-themed-phishing-lures
