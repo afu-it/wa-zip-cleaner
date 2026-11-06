@@ -1,5 +1,8 @@
 # Extra coverage: hash matching, loaded fake rime.dll, ardrv/OPSWAT, ManageEngine,
 # locked files, and the double-click .bat launchers. Harmless stand-ins only.
+# -Part 1|2|3 runs one third of the checks (each part plants what it needs and cleans up);
+# 0 (the default) runs everything in one go.
+param([ValidateSet(0, 1, 2, 3)][int]$Part = 0)
 $ErrorActionPreference = 'Continue'
 $root = Split-Path -Parent $PSScriptRoot
 $tool = Join-Path $root 'wa-zip-cleaner.ps1'
@@ -37,6 +40,14 @@ function Has($r, $kind, $sev, $targetRx, $detailRx = '.') {
 $dl = Join-Path $env:USERPROFILE 'Downloads'
 New-Item -ItemType Directory -Force -Path $dl | Out-Null
 
+function Start-Encoded($script) {
+  $enc = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($script))
+  Start-Process powershell -ArgumentList '-NoProfile', '-EncodedCommand', $enc -WindowStyle Hidden -PassThru
+}
+function InPart($n) { $Part -eq 0 -or $Part -eq $n }
+if ($Part) { Write-Host "Running part $Part of 3" -ForegroundColor Cyan }
+
+if (InPart 1) {
 Write-Host '=== Plant ===' -ForegroundColor Cyan
 # A. Hash matching via test IOC file (random bytes, not malware)
 $hd = 'C:\Users\Public\HashTest'
@@ -61,10 +72,6 @@ Add-Type -Name K -Namespace W -MemberDefinition '[DllImport("kernel32.dll", Char
 [W.K]::LoadLibrary('$rd\rime.dll') | Out-Null
 Start-Sleep 900
 "@
-function Start-Encoded($script) {
-  $enc = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($script))
-  Start-Process powershell -ArgumentList '-NoProfile', '-EncodedCommand', $enc -WindowStyle Hidden -PassThru
-}
 $rimeHost = Start-Encoded $loader
 
 # C. Driver services and a ManageEngine agent look-alike (never started)
@@ -391,7 +398,9 @@ Check (-not (Test-Path 'C:\Windows\Temp\EmbeddedDriverService.sys')) 'Temp drive
 & sc.exe query WazPing32Test | Out-Null; Check ($LASTEXITCODE -ne 0) 'Ping32 service deleted'
 Check (-not (Test-Path $p32)) 'Ping32 folder quarantined'
 Set-NetFirewallProfile -Profile Domain -DefaultOutboundAction $fwOld
+}
 
+if (InPart 2) {
 Write-Host '=== WhatsApp download tag, Defender history, ran-programs records ===' -ForegroundColor Cyan
 # Files saved from WhatsApp Web carry a Zone.Identifier tag naming web.whatsapp.com.
 $zone = "[ZoneTransfer]`r`nZoneId=3`r`nReferrerUrl=https://web.whatsapp.com/`r`nHostUrl=blob:https://web.whatsapp.com/1f2e3d4c-aaaa-bbbb-cccc-0123456789ab"
@@ -547,7 +556,9 @@ Remove-Item -LiteralPath $vlcBad, $vlcOk, $tk, "$env:SystemDrive\cool" -Recurse 
 Remove-Item -LiteralPath "$dl\arphaDump.dll", "$env:TEMP\meca.cer" -Force -ErrorAction SilentlyContinue
 foreach ($n in $myNames) { Remove-Item -LiteralPath "$dl\$n" -Force -ErrorAction SilentlyContinue }
 if ($meCa) { Remove-Item -LiteralPath "Cert:\LocalMachine\Root\$meCa" -ErrorAction SilentlyContinue }
+}
 
+if (InPart 1) {
 Write-Host '=== Random hex folder in AppData\Local (CrashHunter_PC3.dll report) ===' -ForegroundColor Cyan
 $hexDir = Join-Path $env:LOCALAPPDATA '0115DF0258E52000'
 New-Item -ItemType Directory -Force -Path $hexDir | Out-Null
@@ -580,7 +591,9 @@ $r24 = Scan "$env:TEMP\x24.json" -Fix
 Check (-not (Test-Path -LiteralPath $libExe)) 'Public\Libraries program quarantined'
 Check (-not (Test-Path -LiteralPath (Join-Path $symDir 'host.exe'))) 'symbol folder program quarantined'
 Remove-Item -LiteralPath $libDir, $symDir -Recurse -Force -ErrorAction SilentlyContinue
+}
 
+if (InPart 3) {
 Write-Host '=== IP-guard (OCular) agent pushed by the attacker''s ManageEngine (victim report, Nov 2026) ===' -ForegroundColor Cyan
 $ocDir = Join-Path $env:SystemRoot 'SysWOW64\Ocular'
 New-Item -ItemType Directory -Force -Path $ocDir | Out-Null
@@ -802,7 +815,9 @@ Get-CimInstance -Namespace root\subscription -ClassName CommandLineEventConsumer
 Get-CimInstance -Namespace root\subscription -ClassName __EventFilter -Filter "Name='ovd_f1a2b3c4d'" -ErrorAction SilentlyContinue | Remove-CimInstance -ErrorAction SilentlyContinue
 if ($rcOld) { Set-Content -LiteralPath "$oem\ResetConfig.xml" -Value $rcOld -NoNewline } else { Remove-Item -LiteralPath "$oem\ResetConfig.xml" -Force -ErrorAction SilentlyContinue }
 if (-not $oemExisted) { Remove-Item -LiteralPath $oem -Recurse -Force -ErrorAction SilentlyContinue }
+}
 
+if (InPart 2) {
 Write-Host '=== TBK lure (renamed Edge helper + fake dbghelp.dll) ===' -ForegroundColor Cyan
 $tbkDir = Join-Path $dl 'TBK20261104_9635'
 New-Item -ItemType Directory -Force -Path $tbkDir | Out-Null
@@ -843,7 +858,9 @@ Check (-not (Test-Path "$ksDir\client.exe") -and -not (Test-Path "$ksDir\keylogg
 Check ($null -eq (Get-ItemProperty -Path $runK -Name WindowsUpdate -ErrorAction SilentlyContinue)) 'Run value WindowsUpdate removed'
 Remove-ItemProperty -Path $runK -Name WindowsUpdate -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $ksDir -Recurse -Force -ErrorAction SilentlyContinue
+}
 
+if (InPart 3) {
 Write-Host '=== Chinese remote-control vendor found by code-signing company (watchlist) ===' -ForegroundColor Cyan
 # Two harmless programs that only sleep, signed with throwaway test certificates; one keeps a connection
 # to a test "attacker server" on an odd loopback address.
@@ -877,7 +894,9 @@ Start-Sleep 1
 Remove-Item -LiteralPath $cnDir -Recurse -Force -ErrorAction SilentlyContinue
 $cnCerts | ForEach-Object { Remove-Item -LiteralPath "Cert:\CurrentUser\My\$($_.Thumbprint)" -Force -ErrorAction SilentlyContinue }
 Remove-Item Env:\WAZIP_TEST_C2, Env:\WAZIP_TEST_CNSIGNER
+}
 
+if (InPart 1) {
 Write-Host '=== .bat launchers ===' -ForegroundColor Cyan
 # Clear WARN-only leftovers so a clean result reads BERSIH.
 & sc.exe delete MEUemsTest | Out-Null; & sc.exe delete OpswatLegitTest | Out-Null
@@ -911,6 +930,7 @@ if ($mf) {
   Check (Test-Path "$dl\Click here to view8.zip") '3-RESTORE-PULIH.bat restores the file'
 }
 Pop-Location
+}
 
 Write-Host ''
 if ($fail) { Write-Host "$fail check(s) failed" -ForegroundColor Red; exit 1 }

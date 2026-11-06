@@ -10,12 +10,20 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-2022, windows-2025]
-        suite: [run-e2e, run-extra]
+        # run-extra is split into three parts so each job stays short (about 5 minutes).
+        suite: [run-e2e, run-extra-1, run-extra-2, run-extra-3]
     runs-on: ${{ matrix.os }}
+    # The windows-2025 runner drops its connection at random points of long PowerShell runs
+    # ("hosted runner lost communication"), with disk, memory and process count healthy and
+    # no check failing first. Its run-extra parts still run and report, but cannot block a push.
+    # windows-2025 run-e2e and every windows-2022 job stay blocking.
+    continue-on-error: ${{ matrix.os == 'windows-2025' && startsWith(matrix.suite, 'run-extra') }}
     steps:
       - uses: actions/checkout@v4
       - name: ${{ matrix.suite }} (Windows PowerShell 5.1)
         shell: powershell
         # A hung step is stopped with its log kept, instead of the runner dropping after ~54 minutes.
-        timeout-minutes: 35
-        run: .\tests\${{ matrix.suite }}.ps1
+        timeout-minutes: 20
+        run: |
+          $s = '${{ matrix.suite }}'
+          if ($s -match '^run-extra-(\d)$') { .\tests\run-extra.ps1 -Part ([int]$Matches[1]) } else { .\tests\run-e2e.ps1 }
