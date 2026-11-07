@@ -815,6 +815,7 @@ $ds = Join-Path $env:APPDATA 'Microsoft\DeviceSync'
 New-Item -ItemType Directory -Force -Path $ds | Out-Null
 $ovd = Join-Path $ds 'ovd_0123456789ab.exe'; [IO.File]::WriteAllText($ovd, 'dummy')
 $runH = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+if (-not (Test-Path $runH)) { New-Item -Path $runH -Force | Out-Null }
 Set-ItemProperty -Path $runH -Name 'WindowsUpdate_Ab12' -Value "`"$tc\ExplorerBroker.exe`""
 Set-ItemProperty -Path $runH -Name 'OverlordAgent-1a2b3c4d' -Value "`"$ovd`""
 Register-ScheduledTask -TaskName 'ovd_1a2b3c4d' -Action (New-ScheduledTaskAction -Execute 'C:\Windows\System32\notepad.exe') -Force | Out-Null
