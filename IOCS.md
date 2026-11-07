@@ -106,6 +106,43 @@ C2: `14.128.53.155` (ports 21131, 21132, 443, 449; extracted ValleyRAT config), 
 - Hashes: Securelist lists 40 MD5 only, no sizes; not usable by the scanner. MyCERT references SHA-256 `65662fbfee31784502f46a4ea3cf58a5146d6f6299b40391cd71c9fc67e3e621`.
 - Microsoft variant: hidden `C:\ProgramData\EDS8738\` with curl as `netapi.dll` and bitsadmin as `sc.exe`, junk key `HKLM\SOFTWARE\Microsoft\Win`, unsigned `Setup.msi`/`WinRAR.msi`/`LinkPoint.msi`/`AnyDesk.msi`, domains `neescil.top`, `velthora.top`.
 
+Hive Pro advisory TA2026174 (23 Jun 2026, https://www.hivepro.com/threat-advisory/whatsapp-campaign-turns-victims-into-remotely-managed-hosts) lists 35 SHA-256 lure scripts from the Securelist report; 34 were new here. All 34 are VBScript on VirusTotal (14-39/75, looked up 7 Nov 2026) and are in `$KnownBad` with their sizes:
+
+- `09cfe9dbd75095b17ccea62466ff128279e54a0d501587ec9c5b992b987b5784` 10145 bytes, Debt Note (2).vbs, VT 32/75
+- `03402dbfc9ccfe612c37405bbcf072c9c07273fe4f77e82f8238a31d0040094d` 5067 bytes, Applicationform1.vbs, VT 34/75
+- `b798fcbc54e84c03ac2b7be97d016d05f04cd754db36dd5c6cfbf3aedd0b7dff` 6714 bytes, Extrato de Conciliacao.vbs, VT 35/75
+- `f10dae1863e89f72adf8ba913b8a9fa898e6a430430098722e62600a2d4e94a4` 7107 bytes, Statement of Debt(29K).vbs, VT 35/75
+- `1f92da4c68b8c88edf6e055ef75efd1dcf55296e252545f5782880f6556564d4` 7094 bytes, Outstanding Payment List.vbs, VT 24/75
+- `6169aee26b75b486018e4fd10a2ec8d67de7d382c9f2900f2b8d78ea0c1cda33` 10144 bytes, billing statement (2).vbs, VT 30/75
+- `cca9c3f98c6552a7b52132b4fb3d969db5c743b7e663e630d37ce8b2f619c30a` 10142 bytes, Statement of Debt(A).vbs, VT 33/75
+- `0d3d531a8fae455a0676ef4408a683c8af0671fd589bb6106aff4637439d73a7` 7146 bytes, Financial Reports(C1).vbs, VT 32/75
+- `452259dc297f56cf22c7932e8fbcefe821ef9c3127134074fae585f89355d397` 6971 bytes, (no lure name), VT 36/75
+- `a95ee5a8c40c7705f1612335f3e4f4fcd8a28692095c04e0d48f7a6e77caa42b` 27253 bytes, Outstanding Balance Sheet(A).vbs, VT 14/75
+- `3140c5bee192b0f125e188451a68b82199ee551dbab78c92d04711588c400669` 20694 bytes, (no lure name), VT 32/75
+- `2223cc6687d89a5273041e5410948a852536ed8b63d67a8cec9e0fdae884cb64` 72856 bytes, Penyata bank.vbs, VT 34/75
+- `f37d677ad936d6409e64a3ecc9f3685c455826db3dabbf21e8c54eb01ebd9128` 41784 bytes, Account Statement(13K) (2).vbs, VT 36/75
+- `01f1eb07125db5de0c2362afc777aa015f136feabd769628f01d01ac6472646c` 12538 bytes, (no lure name), VT 32/75
+- `02a7db29d35cf01ed94b6dfb14a7026bb2906d8fa9a99ef801040c52284cceb1` 6494 bytes, Bitte fullen Sie das Formular fur Umsatzsteuer-Nullsatz-Verkaufe aus..vbs, VT 23/75
+- `d36f50ecfb6a9104f235df7aefdbddab699495532ede9c79ef1a577dce359a90` 61809 bytes, Account Statement.vbs, VT 32/75
+- `cff48752738313b9cb36bb381bbd415ac7d2e8395387b972460b58983af68fb7` 7050 bytes, Statement of Account(O).vbs, VT 31/75
+- `ae44ee4b40c478c109e795c328812d9ebb82750233cf18d0dd3ac1d4518a08c6` 7062 bytes, Sila semak bil anda..vbs, VT 33/75
+- `99681a15717aedb8f3d2df119d313334442f8505869866f8bfdabd54dd7c8ac3` 7078 bytes, Sila semak bil anda..vbs, VT 35/75
+- `69efbea795491bdac117a299f18977f1e2968a06e7cd3a11f6366169d7214b04` 7149 bytes, (no lure name), VT 33/75
+- `4195efdeb8833f17e545d1e46bfcbfa634382a5efe5696cedc24043c9e116372` 4522 bytes, (no lure name), VT 37/75
+- `3a18072502c440c51cf8bf42f21fa6fa3216788982892868380c04818fb61291` 7042 bytes, (no lure name), VT 39/75
+- `1c5e88505728e1b11507fe7d6672eb89de200bd45c79030fe60edae2a17b69cf` 5337 bytes, dfjieya.vbs, VT 37/75
+- `3c9cc5b72fdd0a52fcecae8c5b952933163527599a15189a01ded39a1a8609e4` 5332 bytes, 0lf.vbs, VT 32/75
+- `5adf130842c88d6b732def0f5fd1be2a889a3f7dfbc5af5ff7438374f3ded233` 10396 bytes, iowepv.vbs, VT 35/75
+- `27b5cea842c0add3cb0d7a106ee190eda65201e45cfcfd20f340fd26d1290118` 9450 bytes, btksfmsi.vbs, VT 36/75
+- `07f4130e0a52e8c63d8c3dcc989eb185161ea917a9c45900692fdf031af13ab1` 8990 bytes, home3.vbs, VT 33/75
+- `845d8887ec023255c9896d1644c821168c33b5e8426519228ab3003715fe19dc` 5510 bytes, zipats.vbs, VT 36/75
+- `50c74b468c217776b8890b841baefec8b196b14083a7873a9201c838a8e4c90a` 6400 bytes, 1122.vbs, VT 36/75
+- `76d351946565aed51b1cb8361097ca5e7d9a6d281300a188cfa8aff9b6845234` 2863 bytes, payload_1.vbs, VT 34/75
+- `be532be5beac3c7656654628cc557e546aea3ee47c0046428a53d23ac58875d1` 2883 bytes, sac8.vbs, VT 25/75
+- `c30408b75ebc58d15f2766db15e3789dbf2909b0d71c99a13499e25270c275ee` 38365 bytes, 6oy.vbs, VT 35/75
+- `28292b9822d83e28c0a5bb3befdd5b188be351314e9b3a1c2740702722999cfa` 6403 bytes, kof.vbs, VT 36/75
+- `4a1b69a8ab51378c1e36c5d9944c4a345e0502cb8cfe2ab7fd9a9496553b02c6` 31554 bytes, zip_bloy.vbs, VT 35/75
+
 Sample `65662fbf…` (VirusTotal, 7107 bytes, `Statement of Debt(30K).vbs`): stages curl as `lib.dll` and bitsadmin as `sys.dll` in `MSUpdate_<5 digits>`, pulls `https://baolongwes.oss-ap-southeast-1.aliyuncs.com/blaoso/owpa.txt` → `run.vbs` → `/kasf/spsx.vbs` → `/blaoso/alOffic.zip`; agent C2 `https://202.61.160.160:8383/`; registry `HKLM\Software\WOW6432Node\AdventNet\DesktopCentral\DCAgent` with `DsRootCertPath`/`ServerRootCertPath` pointing into the `MSUpdate_` folder; mutexes `dcResourceId_Mutex`, `dcCertCreationStatusMutex`. Child hashes with sizes are in `$KnownBad`.
 
 Triage sweep of 79 runs (setup1.vbs, spsx.vbs, owpa.txt, alOffic.zip): further agent C2 on port 8383 `202.61.160.203`, `202.61.160.145`, `137.220.205.167`, `137.220.205.162`, `137.220.224.63`, `103.140.154.117`, `206.238.68.33`, `43.224.224.151` (also `192.229.81.105`, `192.229.87.219`, left out as shared CDN space); downloads `https://azuheq.s3.ap-southeast-1.amazonaws.com/19881.exe`, `https://www.kammwv.cc/222/9989.exe`, `d156sk07toobyl.cloudfront.net`. 16 more installer-kit zips (all 32.8-32.9 MB, same contents) and the attacker `DCAgentServerInfo.json` (`b57b2334…`, 1670 bytes) are in `$KnownBad`.

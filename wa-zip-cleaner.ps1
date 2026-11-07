@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.07.39'
+$Version = '2026.11.07.40'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -58,6 +58,41 @@ $KnownBad = @(
   @{ Sha = 'c5d9b6e889ac776410b9e70930bc12afa202843d8ec2aa971204c416a3251c76'; Size = 35896; Name = 'Encrypted payload _Bottom.dat (Triage, Sep 2026)' }
   @{ Sha = '29f67c17b528a877949878a3d0453a34c6f5eee7d872edd33c0996b057b56258'; Size = 726016; Name = 'Encrypted payload _Driver.cnf (Triage, Sep 2026)' }
   @{ Sha = '65662fbfee31784502f46a4ea3cf58a5146d6f6299b40391cd71c9fc67e3e621'; Size = 7107; Name = 'WhatsApp VBS lure Statement of Debt(30K).vbs (MyCERT MA-1464)' }
+  # More VBS lures of the same campaign (Hive Pro TA2026174, 23 Jun 2026, from Securelist); sizes from VirusTotal, 7 Nov 2026.
+  @{ Sha = '09cfe9dbd75095b17ccea62466ff128279e54a0d501587ec9c5b992b987b5784'; Size = 10145; Name = 'WhatsApp VBS lure Debt Note (2).vbs (Hive Pro / Securelist, Jun 2026)' }
+  @{ Sha = '03402dbfc9ccfe612c37405bbcf072c9c07273fe4f77e82f8238a31d0040094d'; Size = 5067; Name = 'WhatsApp VBS lure Applicationform1.vbs (Hive Pro / Securelist, Jun 2026)' }
+  @{ Sha = 'b798fcbc54e84c03ac2b7be97d016d05f04cd754db36dd5c6cfbf3aedd0b7dff'; Size = 6714; Name = 'WhatsApp VBS lure Extrato de Conciliacao.vbs (Hive Pro / Securelist, Jun 2026)' }
+  @{ Sha = 'f10dae1863e89f72adf8ba913b8a9fa898e6a430430098722e62600a2d4e94a4'; Size = 7107; Name = 'WhatsApp VBS lure Statement of Debt(29K).vbs (Hive Pro / Securelist, Jun 2026)' }
+  @{ Sha = '1f92da4c68b8c88edf6e055ef75efd1dcf55296e252545f5782880f6556564d4'; Size = 7094; Name = 'WhatsApp VBS lure Outstanding Payment List.vbs (Hive Pro / Securelist, Jun 2026)' }
+  @{ Sha = '6169aee26b75b486018e4fd10a2ec8d67de7d382c9f2900f2b8d78ea0c1cda33'; Size = 10144; Name = 'WhatsApp VBS lure billing statement (2).vbs (Hive Pro / Securelist, Jun 2026)' }
+  @{ Sha = 'cca9c3f98c6552a7b52132b4fb3d969db5c743b7e663e630d37ce8b2f619c30a'; Size = 10142; Name = 'WhatsApp VBS lure Statement of Debt(A).vbs (Hive Pro / Securelist, Jun 2026)' }
+  @{ Sha = '0d3d531a8fae455a0676ef4408a683c8af0671fd589bb6106aff4637439d73a7'; Size = 7146; Name = 'WhatsApp VBS lure Financial Reports(C1).vbs (Hive Pro / Securelist, Jun 2026)' }
+  @{ Sha = '452259dc297f56cf22c7932e8fbcefe821ef9c3127134074fae585f89355d397'; Size = 6971; Name = 'WhatsApp VBS lure (no lure name) (Hive Pro / Securelist, Jun 2026)' }
+  @{ Sha = 'a95ee5a8c40c7705f1612335f3e4f4fcd8a28692095c04e0d48f7a6e77caa42b'; Size = 27253; Name = 'WhatsApp VBS lure Outstanding Balance Sheet(A).vbs (Hive Pro / Securelist, Jun 2026)' }
+  @{ Sha = '3140c5bee192b0f125e188451a68b82199ee551dbab78c92d04711588c400669'; Size = 20694; Name = 'WhatsApp VBS lure (no lure name) (Hive Pro / Securelist, Jun 2026)' }
+  @{ Sha = '2223cc6687d89a5273041e5410948a852536ed8b63d67a8cec9e0fdae884cb64'; Size = 72856; Name = 'WhatsApp VBS lure Penyata bank.vbs (Hive Pro / Securelist, Jun 2026)' }
+  @{ Sha = 'f37d677ad936d6409e64a3ecc9f3685c455826db3dabbf21e8c54eb01ebd9128'; Size = 41784; Name = 'WhatsApp VBS lure Account Statement(13K) (2).vbs (Hive Pro / Securelist, Jun 2026)' }
+  @{ Sha = '01f1eb07125db5de0c2362afc777aa015f136feabd769628f01d01ac6472646c'; Size = 12538; Name = 'WhatsApp VBS lure (no lure name) (Hive Pro / Securelist, Jun 2026)' }
+  @{ Sha = '02a7db29d35cf01ed94b6dfb14a7026bb2906d8fa9a99ef801040c52284cceb1'; Size = 6494; Name = 'WhatsApp VBS lure Bitte fullen Sie das Formular fur Umsatzsteuer-Nullsatz-Verkaufe aus..vbs (Hive Pro / Securelist, Jun 2026)' }
+  @{ Sha = 'd36f50ecfb6a9104f235df7aefdbddab699495532ede9c79ef1a577dce359a90'; Size = 61809; Name = 'WhatsApp VBS lure Account Statement.vbs (Hive Pro / Securelist, Jun 2026)' }
+  @{ Sha = 'cff48752738313b9cb36bb381bbd415ac7d2e8395387b972460b58983af68fb7'; Size = 7050; Name = 'WhatsApp VBS lure Statement of Account(O).vbs (Hive Pro / Securelist, Jun 2026)' }
+  @{ Sha = 'ae44ee4b40c478c109e795c328812d9ebb82750233cf18d0dd3ac1d4518a08c6'; Size = 7062; Name = 'WhatsApp VBS lure Sila semak bil anda..vbs (Hive Pro / Securelist, Jun 2026)' }
+  @{ Sha = '99681a15717aedb8f3d2df119d313334442f8505869866f8bfdabd54dd7c8ac3'; Size = 7078; Name = 'WhatsApp VBS lure Sila semak bil anda..vbs (Hive Pro / Securelist, Jun 2026)' }
+  @{ Sha = '69efbea795491bdac117a299f18977f1e2968a06e7cd3a11f6366169d7214b04'; Size = 7149; Name = 'WhatsApp VBS lure (no lure name) (Hive Pro / Securelist, Jun 2026)' }
+  @{ Sha = '4195efdeb8833f17e545d1e46bfcbfa634382a5efe5696cedc24043c9e116372'; Size = 4522; Name = 'WhatsApp VBS lure (no lure name) (Hive Pro / Securelist, Jun 2026)' }
+  @{ Sha = '3a18072502c440c51cf8bf42f21fa6fa3216788982892868380c04818fb61291'; Size = 7042; Name = 'WhatsApp VBS lure (no lure name) (Hive Pro / Securelist, Jun 2026)' }
+  @{ Sha = '1c5e88505728e1b11507fe7d6672eb89de200bd45c79030fe60edae2a17b69cf'; Size = 5337; Name = 'WhatsApp VBS lure dfjieya.vbs (Hive Pro / Securelist, Jun 2026)' }
+  @{ Sha = '3c9cc5b72fdd0a52fcecae8c5b952933163527599a15189a01ded39a1a8609e4'; Size = 5332; Name = 'WhatsApp VBS lure 0lf.vbs (Hive Pro / Securelist, Jun 2026)' }
+  @{ Sha = '5adf130842c88d6b732def0f5fd1be2a889a3f7dfbc5af5ff7438374f3ded233'; Size = 10396; Name = 'WhatsApp VBS lure iowepv.vbs (Hive Pro / Securelist, Jun 2026)' }
+  @{ Sha = '27b5cea842c0add3cb0d7a106ee190eda65201e45cfcfd20f340fd26d1290118'; Size = 9450; Name = 'WhatsApp VBS lure btksfmsi.vbs (Hive Pro / Securelist, Jun 2026)' }
+  @{ Sha = '07f4130e0a52e8c63d8c3dcc989eb185161ea917a9c45900692fdf031af13ab1'; Size = 8990; Name = 'WhatsApp VBS lure home3.vbs (Hive Pro / Securelist, Jun 2026)' }
+  @{ Sha = '845d8887ec023255c9896d1644c821168c33b5e8426519228ab3003715fe19dc'; Size = 5510; Name = 'WhatsApp VBS lure zipats.vbs (Hive Pro / Securelist, Jun 2026)' }
+  @{ Sha = '50c74b468c217776b8890b841baefec8b196b14083a7873a9201c838a8e4c90a'; Size = 6400; Name = 'WhatsApp VBS lure 1122.vbs (Hive Pro / Securelist, Jun 2026)' }
+  @{ Sha = '76d351946565aed51b1cb8361097ca5e7d9a6d281300a188cfa8aff9b6845234'; Size = 2863; Name = 'WhatsApp VBS lure payload_1.vbs (Hive Pro / Securelist, Jun 2026)' }
+  @{ Sha = 'be532be5beac3c7656654628cc557e546aea3ee47c0046428a53d23ac58875d1'; Size = 2883; Name = 'WhatsApp VBS lure sac8.vbs (Hive Pro / Securelist, Jun 2026)' }
+  @{ Sha = 'c30408b75ebc58d15f2766db15e3789dbf2909b0d71c99a13499e25270c275ee'; Size = 38365; Name = 'WhatsApp VBS lure 6oy.vbs (Hive Pro / Securelist, Jun 2026)' }
+  @{ Sha = '28292b9822d83e28c0a5bb3befdd5b188be351314e9b3a1c2740702722999cfa'; Size = 6403; Name = 'WhatsApp VBS lure kof.vbs (Hive Pro / Securelist, Jun 2026)' }
+  @{ Sha = '4a1b69a8ab51378c1e36c5d9944c4a345e0502cb8cfe2ab7fd9a9496553b02c6'; Size = 31554; Name = 'WhatsApp VBS lure zip_bloy.vbs (Hive Pro / Securelist, Jun 2026)' }
   @{ Sha = '3fb74a2ca0526e34eafa9060f4a548d6c60b79966f4ff9facf47098a3a0391e3'; Size = 6899; Name = 'WhatsApp VBS stage 2 spsx.vbs' }
   @{ Sha = 'c26a0e6c06cfaff5680d6ce03a1028dfe04259f0c568904dc6e3d6764a9951b1'; Size = 1193; Name = 'WhatsApp VBS stage 2 run.vbs' }
   @{ Sha = '3d1a86ad729817d85377f59c3d5dcc67ba59af9824ae64aea8e626f6a4956d52'; Size = 1592; Name = 'ManageEngine silent installer setup1.vbs' }
