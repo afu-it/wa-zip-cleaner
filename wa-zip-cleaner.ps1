@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.07.40'
+$Version = '2026.11.07.41'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -398,7 +398,11 @@ $RmmTools = [ordered]@{
   'Tactical RMM' = '^tacticalrmm'; 'Remote Utilities' = '^rut(serv|view)'; 'Ammyy Admin' = '^ammyy'; 'AeroAdmin' = '^aeroadmin'
   'Supremo' = '^supremo'; 'Zoho Assist' = '^(zaservice|zmagent)'; 'NetSupport' = '\\netsupport\\'; 'Action1' = '\\windows\\action1\\'
   'Ping32' = '^nsecrts'; 'AnyViewer' = '^anyviewer'; 'AweSun (AweRay)' = '^(awesun|aweray_remote)'
+  # Phishing e-mails install these first, then ScreenConnect (Microsoft Security Blog, 29 Sep 2026).
+  'MSP360 RMM' = '^rmm\.agent(\.launcher)?\.exe$'; 'Faronics Deploy' = '^faronicsdeployagent'
 }
+# ScreenConnect relay servers of the MSP360 / Faronics phishing e-mails (Microsoft Security Blog, 29 Sep 2026).
+$RmmC2Domains = '(?i)(^|\.)(adswre\.cfd|trews\.cfd|adsaw\.cfd|swedcorry\.stefneyv\.com|ojsuyw\.niyari\.org|bunstar\.harej\.si|sdfghj\.rd-team\.ru)$'
 # Chinese remote-control and staff-monitoring vendors, matched by the company that signed the program, so a
 # renamed copy is still found. Only vendors whose products are remote control or spying; big Chinese brands
 # (WeChat, WPS, Huorong, Lenovo, Xiaomi) are not here. Signer names and sources are in IOCS.md.
@@ -974,6 +978,9 @@ function Scan-Processes {
   # The DNS cache shows which servers this PC looked up recently.
   foreach ($d in Get-DnsClientCache -ErrorAction SilentlyContinue | Where-Object { $_.Entry -match $C2Domains } | Select-Object -ExpandProperty Entry -Unique) {
     Add-Finding 'Info' 'WARN' "Attacker server looked up: $d" 'This PC contacted a Silver Fox server recently (Kaspersky list). Treat the PC as infected: change passwords from your phone and consider reinstalling Windows.'
+  }
+  foreach ($d in Get-DnsClientCache -ErrorAction SilentlyContinue | Where-Object { $_.Entry -match $RmmC2Domains } | Select-Object -ExpandProperty Entry -Unique) {
+    Add-Finding 'Info' 'WARN' "Attacker server looked up: $d" 'This PC contacted a remote-control server used by phishing e-mails (Microsoft, Sep 2026). Treat the PC as controlled by someone else: uninstall ScreenConnect/MSP360 unless your IT installed them, and change passwords from your phone.'
   }
   foreach ($proc in Get-Process -ErrorAction SilentlyContinue) {
     try { $mods = $proc.Modules } catch { continue }

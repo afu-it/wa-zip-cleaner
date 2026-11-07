@@ -175,6 +175,9 @@ $vul = New-Object byte[] 4101; (New-Object Random 4).NextBytes($vul); [IO.File]:
   "$((Get-FileHash "$drvDir\wazlolv.sys").Hash.ToLower()),vulnerable,test-vulnerable.sys") | Set-Content -Encoding ASCII "$env:TEMP\test-lol.csv"
 $env:WAZIP_TEST_LOLDRIVERS = "$env:TEMP\test-lol.csv"
 & sc.exe create WazRmmTest start= demand binPath= "C:\Program Files (x86)\AnyDesk\AnyDesk.exe --service" | Out-Null
+# MSP360 and Faronics Deploy agents from phishing e-mails (Microsoft, Sep 2026).
+& sc.exe create WazMsp360Test start= demand binPath= "`"C:\Program Files\RMM Agent\RMM.Agent.exe`"" | Out-Null
+& sc.exe create WazFaronicsTest start= demand binPath= "`"C:\Program Files\Faronics\Deploy\FaronicsDeployAgent.exe`"" | Out-Null
 # UltraViewer is always removed (AFU, Nov 2026): planted folder, service and Apps entry.
 $uvDir = 'C:\Program Files (x86)\UltraViewer'
 New-Item -ItemType Directory $uvDir -Force | Out-Null
@@ -237,6 +240,8 @@ Check (-not ($r.All | Where-Object { $_.Target -match 'ext4\.vhdx' })) 'WSL ext4
 Check (Has $r 'Service' 'HIGH' '^WazLolMal$' 'LOLDrivers') 'LOLDrivers malicious driver service is HIGH'
 Check (Has $r 'Service' 'WARN' '^WazLolVuln$' 'vulnerable') 'LOLDrivers vulnerable driver service is WARN'
 Check (Has $r 'Info' 'WARN' 'Remote-control program: AnyDesk') 'remote-control program (AnyDesk) is WARN'
+Check (Has $r 'Info' 'WARN' 'Remote-control program: MSP360 RMM') 'MSP360 RMM agent is WARN'
+Check (Has $r 'Info' 'WARN' 'Remote-control program: Faronics Deploy') 'Faronics Deploy agent is WARN'
 Check (Has $r 'Service' 'HIGH' '^WazUvTest$' 'UltraViewer') 'UltraViewer service is HIGH'
 Check (Has $r 'File' 'HIGH' 'UltraViewer$' 'UltraViewer') 'UltraViewer folder is HIGH'
 Check (Has $r 'RegKey' 'HIGH' 'WazUvTest$' 'UltraViewer') 'UltraViewer Apps entry is HIGH'
@@ -960,6 +965,7 @@ Write-Host '=== .bat launchers ===' -ForegroundColor Cyan
 # Clear WARN-only leftovers so a clean result reads BERSIH.
 & sc.exe delete MEUemsTest | Out-Null; & sc.exe delete OpswatLegitTest | Out-Null
 & sc.exe delete WazLolVuln | Out-Null; & sc.exe delete WazRmmTest | Out-Null
+& sc.exe delete WazMsp360Test | Out-Null; & sc.exe delete WazFaronicsTest | Out-Null
 Remove-Item "$drvDir\wazlolv.sys" -Force -ErrorAction SilentlyContinue
 Remove-Item Env:\WAZIP_TEST_LOLDRIVERS
 Set-ItemProperty -LiteralPath $wuKey -Name Start -Value 3
