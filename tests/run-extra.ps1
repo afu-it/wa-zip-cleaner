@@ -561,6 +561,10 @@ $vlcBad = "$dl\PDF_R6LWXF"; $vlcOk = "$dl\vlc-portable"
 New-Item -ItemType Directory -Force -Path $vlcBad, $vlcOk | Out-Null
 Set-Content "$vlcBad\PDF_R6LWXF_20261009152217.exe" 'dummy'; Set-Content "$vlcBad\libvlc.dll" 'dummy'
 Set-Content "$vlcOk\vlc.exe" 'dummy'; Set-Content "$vlcOk\libvlc.dll" 'dummy'
+# WeChat's video player plugin ships libvlc.dll on its own (WAZ-4DX9C report, Nov 2026).
+$vlcWc = "$env:APPDATA\Tencent\xwechat\XPlugin\Plugins\WeChatPlayer\5067\extracted"
+New-Item -ItemType Directory -Force -Path $vlcWc | Out-Null; Set-Content "$vlcWc\libvlc.dll" 'dummy'
+$vlcLone = "$dl\libvlc-alone"; New-Item -ItemType Directory -Force -Path $vlcLone | Out-Null; Set-Content "$vlcLone\libvlc.dll" 'dummy'
 Set-Content "$dl\arphaDump.dll" 'dummy'
 $tk = "$env:LOCALAPPDATA\Toolkit"; New-Item -ItemType Directory -Force -Path $tk | Out-Null; Set-Content "$tk\msvbvm60.dll" 'dummy'
 New-Item -ItemType Directory -Force -Path "$env:SystemDrive\cool" | Out-Null; Set-Content "$env:SystemDrive\cool\UEMSAgent.mst" 'dummy'
@@ -575,6 +579,8 @@ $r19 = Scan "$env:TEMP\x19.json"
 foreach ($n in $myNames) { Check (Has $r19 'File' 'HIGH' ([regex]::Escape($n) + '$')) "MyCERT lure name $n is HIGH" }
 Check (Has $r19 'File' 'HIGH' 'PDF_R6LWXF\\libvlc\.dll$') 'libvlc.dll next to a renamed program is HIGH'
 Check (-not ($r19.All | Where-Object { $_.Target -match 'vlc-portable\\libvlc\.dll$' })) 'libvlc.dll next to vlc.exe is not reported'
+Check (-not ($r19.All | Where-Object { $_.Target -match 'WeChatPlayer\\.*libvlc\.dll$' })) 'WeChat player plugin libvlc.dll is not reported'
+Check (-not ($r19.All | Where-Object { $_.Target -match 'libvlc-alone\\libvlc\.dll$' })) 'libvlc.dll with no program beside it is not reported'
 Check (Has $r19 'File' 'HIGH' 'Downloads\\arphaDump\.dll$') 'arphaDump.dll outside Program Files is HIGH'
 Check (Has $r19 'File' 'HIGH' 'Toolkit\\msvbvm60\.dll$') 'msvbvm60.dll in LocalAppData\Toolkit is HIGH'
 Check (Has $r19 'File' 'HIGH' '^[A-Z]:\\cool$') 'C:\cool ManageEngine kit folder is HIGH'
@@ -664,6 +670,10 @@ New-Item -ItemType Directory -Force -Path $ocDir | Out-Null
 Set-Content -LiteralPath "$ocDir\OAgent.ini" -Value '[AgentConfig]', 'SIP=B6297C1B' -Encoding ASCII
 $r25 = Scan "$env:TEMP\x25.json" -Owner Office
 Check (Has $r25 'Info' 'HIGH' '^IP-guard' '27\.124\.41\.182') 'IP-guard pointing at an attacker server is HIGH even on an office PC'
+# 134.122.155.190 is not on the list but sits next to attacker servers .135/.148/.183/.188.
+Set-Content -LiteralPath "$ocDir\OAgent.ini" -Value '[AgentConfig]', 'SIP=BE9B7A86' -Encoding ASCII
+$r25b = Scan "$env:TEMP\x25b.json" -Owner Office
+Check (Has $r25b 'Info' 'HIGH' '^IP-guard' '134\.122\.155\.190') 'IP-guard server in an attacker /24 is HIGH even on an office PC'
 Set-Content -LiteralPath "$ocDir\OAgent.ini" -Value '[AgentConfig]', 'SIP=0A00000A' -Encoding ASCII
 $r26 = Scan "$env:TEMP\x26.json" -Owner Office
 Check (Has $r26 'Info' 'WARN' '^IP-guard' 'IT team') 'IP-guard with a company server is WARN on an office PC'

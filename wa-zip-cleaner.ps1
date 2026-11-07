@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.07.41'
+$Version = '2026.11.07.42'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -369,7 +369,8 @@ $OverlordRegex = '(?i)\\Explorer\\thumbcache_[^\\]+\\|\\AppData\\Roaming\\Micros
 $ExclProcRegex = '(?i)^(QtsUpdater|svchost|rundll32|powershell|cmd|wscript|cscript|mshta|regsvr32|explorer)\.exe$'
 # Known attacker servers (C2). A process talking to one of these is the malware.
 # Kaspersky (Apr 2026): ValleyRAT and ABCDoor servers from the Silver Fox tax campaign.
-$C2Ips = @('103.59.101.28', '85.137.60.92', '103.97.131.121', '149.104.24.197', '143.92.61.212', '134.122.128.120', '134.122.155.183', '38.207.172.161', '45.64.52.252', '45.207.219.46', '134.122.155.135', '134.122.155.148', '14.128.53.155', '45.202.1.249', '108.187.37.85', '108.187.42.63', '207.56.138.28', '45.118.133.203', '154.82.81.205', '154.82.81.192', '108.187.41.221',
+$C2Ips = @('134.122.155.188',  # IP-guard server on an office PC with the attacker's ManageEngine (WAZ-4DX9C report, Nov 2026)
+            '103.59.101.28', '85.137.60.92', '103.97.131.121', '149.104.24.197', '143.92.61.212', '134.122.128.120', '134.122.155.183', '38.207.172.161', '45.64.52.252', '45.207.219.46', '134.122.155.135', '134.122.155.148', '14.128.53.155', '45.202.1.249', '108.187.37.85', '108.187.42.63', '207.56.138.28', '45.118.133.203', '154.82.81.205', '154.82.81.192', '108.187.41.221',
             '103.20.195.147', '45.207.231.94', '45.207.231.107', '160.124.9.103', '109.176.30.141',
             '202.61.160.208', '202.61.160.202', '202.61.160.201', '202.61.160.160', '202.61.160.137', '38.55.151.63', '61.18.208.27',
             '202.61.160.203', '202.61.160.145', '137.220.205.167', '137.220.205.162', '137.220.224.63', '103.140.154.117', '206.238.68.33', '43.224.224.151',
@@ -1441,8 +1442,11 @@ function Scan-Files {
           Add-Finding 'File' $sev $f.FullName 'rime.dll outside Program Files (DLL sideloading).'
         }
         # MyCERT MA-1493: signed VLC / ArphaSDK / UltraViewer programs renamed as documents load these DLLs from their own folder.
+        # Needs a program beside it to load it; WeChat's own video player plugin ships libvlc.dll (WAZ-4DX9C, Nov 2026).
         if ($f.Name -ieq 'libvlc.dll' -and $f.DirectoryName -notmatch '\\Program Files( \(x86\))?\\' -and
-            -not (Test-Path -LiteralPath (Join-Path $f.DirectoryName 'vlc.exe'))) {
+            $f.DirectoryName -notmatch '(?i)\\Tencent\\(xwechat|WeChat)[^\\]*\\XPlugin\\' -and
+            -not (Test-Path -LiteralPath (Join-Path $f.DirectoryName 'vlc.exe')) -and
+            @(Get-ChildItem -LiteralPath $f.DirectoryName -Filter *.exe -File -Force -ErrorAction SilentlyContinue).Count) {
           Add-Finding 'File' 'HIGH' $f.FullName 'libvlc.dll next to a renamed program instead of vlc.exe (DLL sideloading, MyCERT MA-1493).'; return }
         if ($f.Name -ieq 'arphaDump.dll' -and $f.DirectoryName -notmatch '\\Program Files( \(x86\))?\\') {
           Add-Finding 'File' 'HIGH' $f.FullName 'ARPHADUMP.DLL outside Program Files (installs the attacker ManageEngine agent, MyCERT MA-1491/1493).'; return }
@@ -1706,7 +1710,10 @@ function Scan-IpGuard {
     $line = @(Get-Content -LiteralPath $ini -ErrorAction SilentlyContinue | Where-Object { $_ -match '^\s*SIP\s*=\s*[0-9A-Fa-f]{8}\s*$' })[0]
     if ($line) { $h = ($line -split '=')[1].Trim(); $sip = (6, 4, 2, 0 | ForEach-Object { [Convert]::ToInt32($h.Substring($_, 2), 16) }) -join '.'; break }
   }
-  $bad = $sip -and ($C2Ips -contains $sip)
+  # A company runs its IP-guard server inside the office; one in the same /24 as a known attacker server is the
+  # attacker's (134.122.155.188 next to .135/.148/.183 on the WAZ-4DX9C office PC, Nov 2026).
+  $net = if ($sip) { $sip -replace '\.\d+$', '.' } else { $null }
+  $bad = $sip -and (($C2Ips -contains $sip) -or @($C2Ips | Where-Object { $_.StartsWith($net) }).Count)
   $found = " Found: $($hits -join ', ')."
   if ($Owner -eq 'Office' -and -not $bad) {
     $srv = if ($sip) { " Its server is $sip." } else { '' }
