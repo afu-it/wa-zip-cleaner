@@ -1158,7 +1158,7 @@ function Start-SampleInbox($out, $port) {
       $limit = 20000
       $c = $w.Result
       $ms = New-Object IO.MemoryStream; $c.Request.InputStream.CopyTo($ms)
-      Add-Content -LiteralPath $out -Value ("{0}|{1}|{2}|{3}" -f $c.Request.Url.AbsolutePath, $c.Request.Headers['X-Sha256'], $c.Request.Headers['X-File-Ext'], $ms.Length)
+      Add-Content -LiteralPath $out -Value ("{0}|{1}|{2}|{3}|{4}" -f $c.Request.Url.AbsolutePath, $c.Request.Headers['X-Sha256'], $c.Request.Headers['X-File-Ext'], $ms.Length, $c.Request.Headers['X-Sample-Kind'])
       $b = [Text.Encoding]::ASCII.GetBytes('{"ok":true}')
       $c.Response.ContentType = 'application/json'; $c.Response.ContentLength64 = $b.Length; $c.Response.OutputStream.Write($b, 0, $b.Length); $c.Response.Close()
     }
@@ -1202,6 +1202,43 @@ Stop-Job $sJob -ErrorAction SilentlyContinue; Remove-Job $sJob -Force -ErrorActi
 Check (-not (Test-Path -LiteralPath $sKit2)) 'second kit quarantined'
 Check ($x53 -match 'tiada sampel dihantar' -and -not (Test-Path $sGot)) 'answer other than Y sends no sample'
 Check (-not (Test-Path -LiteralPath "$sq\samples-pending.txt")) 'pending sample list cleared after a no'
+# Third run: suspicious program files the tool leaves in place (a driver installed while the antivirus killer was
+# active, a file Windows Defender detected) are offered too, as copies (WAJJE report, Nov 2026).
+$susDir = "$env:ProgramData\WazSuspect"
+New-Item -ItemType Directory -Force -Path $susDir | Out-Null
+$susDrv = "$susDir\wazsusdrv.sys"; $susDef = "$susDir\IS.dll"; $susDoc = "$susDir\readme.docx"
+Set-Content $susDrv 'suspect driver stand-in'; Set-Content $susDef 'defender detected stand-in'; Set-Content $susDoc 'document stand-in'
+& sc.exe create WazGoneNear type= kernel start= demand binPath= ($goneLib + '\5=!=[)](gone') | Out-Null
+& sc.exe delete WazGoneNear | Out-Null
+& sc.exe create WazSusDrv type= kernel start= demand binPath= $susDrv | Out-Null
+& sc.exe create WazSusMs start= demand binPath= "$env:SystemRoot\System32\svchost.exe -k WazSusTest" | Out-Null
+$drvSha = (Get-FileHash -LiteralPath $susDrv -Algorithm SHA256).Hash.ToLower()
+$defSha = (Get-FileHash -LiteralPath $susDef -Algorithm SHA256).Hash.ToLower()
+$docSha = (Get-FileHash -LiteralPath $susDoc -Algorithm SHA256).Hash.ToLower()
+$msSha = (Get-FileHash -LiteralPath "$env:SystemRoot\System32\svchost.exe" -Algorithm SHA256).Hash.ToLower()
+$oldDefDet = $env:WAZIP_TEST_DEFDET
+$env:WAZIP_TEST_DEFDET = "Trojan:Win32/Bearfoos.A!ml|file:_$susDef;file:_$susDoc"
+Remove-Item -LiteralPath $sGot -Force -ErrorAction SilentlyContinue
+$sJob = Start-SampleInbox $sGot 8797
+Start-Sleep 5
+$env:WAZIP_TEST_SAMPLE_URL = 'http://127.0.0.1:8797/sample'
+$env:WAZIP_TEST_SAMPLE_ANSWER = 'Y'
+$r54 = Scan "$env:TEMP\x54.json" -Fix -Root $sq -Out "$env:TEMP\x54.out"
+$x54 = Get-Content -Raw "$env:TEMP\x54.out"
+Wait-Job $sJob -Timeout 60 | Out-Null; Stop-Job $sJob -ErrorAction SilentlyContinue; Remove-Job $sJob -Force -ErrorAction SilentlyContinue
+$got = @(if (Test-Path $sGot) { Get-Content -LiteralPath $sGot })
+$gotSha = @($got | ForEach-Object { ($_ -split '\|')[1] })
+Write-Host "suspect samples received: $($got -join '; ')"
+Check ($x54 -match 'mencurigakan') "suspicious files offered ($(([regex]::Matches($x54, 'sampel[^\r\n]*')).Value -join ' / '))"
+Check ($gotSha -contains $drvSha) 'driver installed near the antivirus killer sent as a suspect sample'
+Check ($gotSha -contains $defSha) 'file Windows Defender detected sent as a suspect sample'
+Check (@($got | Where-Object { ($_ -split '\|')[1] -in $drvSha, $defSha -and ($_ -split '\|')[4] -ne 'suspect' }).Count -eq 0) 'suspect samples marked as suspect'
+Check (-not ($gotSha -contains $msSha)) 'Microsoft-signed service program not sent'
+Check (-not ($gotSha -contains $docSha)) 'document Defender detected not sent'
+Check ((Test-Path -LiteralPath $susDrv) -and (Test-Path -LiteralPath $susDef)) 'suspect files left in place (only a copy is sent)'
+& sc.exe delete WazSusDrv | Out-Null; & sc.exe delete WazSusMs | Out-Null
+$env:WAZIP_TEST_DEFDET = $oldDefDet
+Remove-Item -LiteralPath $susDir -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item Env:\WAZIP_TEST_SAMPLE_URL, Env:\WAZIP_TEST_SAMPLE_ANSWER
 Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$env:LOCALAPPDATA\{437711d0-7b49-7cbc-e129-df3297aa000*" } | Stop-Process -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $sKit, $sKit2, $sLure, $sq -Recurse -Force -ErrorAction SilentlyContinue

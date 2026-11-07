@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.06.38'
+$Version = '2026.11.07.39'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -465,6 +465,8 @@ function Add-StepError([string]$what) { $script:StepErr.Add($what) }
 $script:HideUnits = @()
 $script:ProcCache = $null
 $script:BadSvcHist = @()
+# Suspicious program files left in place (not quarantined), offered as samples: Prio 0 Defender-detected, 1 warning, 2 installed near the antivirus killer.
+$script:Suspects = New-Object System.Collections.Generic.List[object]
 $script:MeNearBad = $null
 $script:PiiFileNames = @{}
 $MeRegKeys = 'HKLM:\SOFTWARE\ManageEngine', 'HKLM:\SOFTWARE\WOW6432Node\ManageEngine', 'HKLM:\SOFTWARE\AdventNet', 'HKLM:\SOFTWARE\WOW6432Node\AdventNet'
@@ -897,6 +899,21 @@ function Scan-ServiceHistory {
       Add-Finding 'Info' 'WARN' "Service installed from a malware hiding place: $($b.Name)" "Windows records show $p was installed as a service $when (the antivirus killer of Winos/ValleyRAT). The file is gone now; treat this PC as infected."
     }
   }
+  # Other services installed within a day of the antivirus killer: kept as suspects for the opt-in sample upload
+  # (a driver rewdmaca.sys appeared mid-infection on the WAJJE report PC, Nov 2026, and nothing looked at it).
+  if ($script:BadSvcHist.Count) {
+    foreach ($e in $ev) {
+      $nm = [string]$e.Properties[0].Value; $img = [string]$e.Properties[1].Value
+      if ("$nm $img" -match $rx) { continue }
+      $p = Get-ImageFile $img
+      if (-not $p -or $bad.Contains($p.ToLower())) { continue }
+      foreach ($b in $script:BadSvcHist) {
+        if ($e.TimeCreated -ge $b.First.AddHours(-24) -and $e.TimeCreated -le $b.Last.AddHours(24)) {
+          $script:Suspects.Add([pscustomobject]@{ Path = $p; Prio = 2; When = $e.TimeCreated }); break
+        }
+      }
+    }
+  }
   # ManageEngine installed within an hour of that service: the attacker's (94V6P, 2F44T/UYRPQ reports, Nov 2026).
   foreach ($b in $script:BadSvcHist) {
     foreach ($t in $meTimes) {
@@ -1228,6 +1245,12 @@ function Scan-DefenderHistory {
     Add-Finding 'Info' 'WARN' "Defender detected: $t" "Windows Defender found this $($det[$t].Count) time(s), last on $($det[$t].Last): $($det[$t].Path)"
   }
   Find-DefenderLureZip $defPaths
+  foreach ($dp in $defPaths) {
+    foreach ($one in @(([string]$dp[1]) -split ';')) {
+      $one = $one.Trim() -replace '^\w+:_', ''
+      if ($one -match '^[A-Za-z]:\\') { $script:Suspects.Add([pscustomobject]@{ Path = $one; Prio = 0; When = (Get-Date) }) }
+    }
+  }
   if ($rtp) { Add-Finding 'Info' 'WARN' 'Defender real-time protection was turned off' "Last on $($rtp[0]) ($($rtp.Count) time(s) since $($HistorySince.ToString('yyyy-MM-dd')))." }
 }
 
@@ -2623,12 +2646,47 @@ function Get-SampleFiles([string[]]$manifests) {
   }
   $out
 }
+# Suspicious program files the tool did not remove: copied as they are (the original stays), at most 10,
+# Defender-detected first, then warnings, then services installed near the antivirus killer; unsigned before signed.
+function Get-SuspectFiles($skip) {
+  $cand = New-Object System.Collections.Generic.List[object]
+  foreach ($x in $script:Suspects) { $cand.Add($x) }
+  foreach ($f in $Findings | Where-Object { $_.Severity -eq 'WARN' }) {
+    foreach ($v in @($f.Target, $(if ($f.Extra -is [hashtable]) { $f.Extra.Image; $f.Extra.Path }))) {
+      if ($v -is [string] -and $v -match '^[A-Za-z]:\\') { $cand.Add([pscustomobject]@{ Path = $v; Prio = 1; When = (Get-Date) }) }
+    }
+  }
+  $rows = New-Object System.Collections.Generic.List[object]
+  $seenPath = @{}
+  foreach ($c in $cand) {
+    $p = [string]$c.Path; $k = $p.ToLower()
+    if ($seenPath[$k]) { continue }
+    $seenPath[$k] = $true
+    if ($p.StartsWith($QuarantineRoot, [StringComparison]::OrdinalIgnoreCase)) { continue }
+    if (-not (Test-Path -LiteralPath $p -PathType Leaf) -or -not (Test-SampleName $p)) { continue }
+    $fi = Get-Item -LiteralPath $p -Force -ErrorAction SilentlyContinue
+    if (-not $fi -or $fi.Length -le 0 -or $fi.Length -gt 50MB) { continue }
+    if (Test-MicrosoftSigned $p) { continue }
+    $sig = Get-AuthenticodeSignature -LiteralPath $p -ErrorAction SilentlyContinue
+    $rows.Add([pscustomobject]@{ Fi = $fi; Prio = $c.Prio; Signed = [int]($sig -and $sig.Status -eq 'Valid'); When = $c.When })
+  }
+  $out = New-Object System.Collections.Generic.List[object]
+  foreach ($r in @($rows | Sort-Object Prio, Signed, @{ Expression = 'When'; Descending = $true })) {
+    $sha = try { (Get-FileHash -LiteralPath $r.Fi.FullName -Algorithm SHA256 -ErrorAction Stop).Hash.ToLower() } catch { $null }
+    if (-not $sha -or $skip[$sha]) { continue }
+    $skip[$sha] = $true
+    $out.Add([pscustomobject]@{ Path = $r.Fi.FullName; Sha = $sha; Ext = $r.Fi.Extension.ToLower(); Size = $r.Fi.Length; Suspect = $true })
+    if ($out.Count -ge 10) { break }
+  }
+  $out
+}
 function Send-WazSample($s) {
   try {
     [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
     $h = @{ 'X-Sha256' = $s.Sha }
     if ($s.Ext -match '^\.[a-z0-9]{1,6}$') { $h['X-File-Ext'] = $s.Ext }
     if ($script:LastReportId) { $h['X-Report-Id'] = $script:LastReportId }
+    if ($s.Suspect) { $h['X-Sample-Kind'] = 'suspect' }
     $r = Invoke-WebRequest -Uri $SampleUrl -Method Post -InFile $s.Path -Headers $h -ContentType 'application/octet-stream' -UseBasicParsing -TimeoutSec 300 -ErrorAction Stop
     $c = $r.Content
     if ($c -is [byte[]]) { $c = [Text.Encoding]::UTF8.GetString($c) }
@@ -2637,18 +2695,26 @@ function Send-WazSample($s) {
 }
 function Invoke-SampleOffer {
   $list = Join-Path $QuarantineRoot 'samples-pending.txt'
-  # Safe Mode has no internet: the list stays for the next normal run.
-  if ($SafeAuto -or -not (Test-Path -LiteralPath $list)) { return }
+  # Safe Mode has no internet: the list stays for the next normal run, which also looks for suspects again.
+  if ($SafeAuto) { return }
   $test = $env:WAZIP_TEST_SAMPLE_URL
   if ($env:WAZIP_NO_PROMPT -and -not $test) { return }
-  $files = @(Get-SampleFiles @(Get-Content -LiteralPath $list -ErrorAction SilentlyContinue))
-  if (-not $files.Count) { Remove-Item -LiteralPath $list -Force -ErrorAction SilentlyContinue; return }
+  $files = @(if (Test-Path -LiteralPath $list) { Get-SampleFiles @(Get-Content -LiteralPath $list -ErrorAction SilentlyContinue) })
+  $skip = @{}; foreach ($f in $files) { $skip[$f.Sha] = $true }
+  $sus = @(Get-SuspectFiles $skip)
+  if (-not ($files.Count + $sus.Count)) { Remove-Item -LiteralPath $list -Force -ErrorAction SilentlyContinue; return }
   Show-Head 'SAMPEL VIRUS' 'MALWARE SAMPLES'
   Write-Host ''
-  Say "Tool ni dah kuarantin $($files.Count) fail virus. Hantar fail virus tu (BUKAN dokumen anda) untuk dianalisis? Ia disemak di VirusTotal supaya antivirus lain pun boleh kenal virus ni." `
-      "This tool quarantined $($files.Count) malware file(s). Send those malware files (NOT your documents) for analysis? They are checked on VirusTotal so other antivirus programs learn to catch this malware too." White
-  Say 'Cuma fail program virus yang dah dikuarantin dihantar. Dokumen, gambar, ZIP dan fail dalam Downloads/Desktop/Documents TIDAK dihantar.' `
-      'Only quarantined malware program files are sent. Documents, pictures, ZIPs and files from Downloads/Desktop/Documents are NOT sent.' Gray
+  if ($files.Count) {
+    Say "Tool ni dah kuarantin $($files.Count) fail virus. Hantar fail virus tu (BUKAN dokumen anda) untuk dianalisis? Ia disemak di VirusTotal supaya antivirus lain pun boleh kenal virus ni." `
+        "This tool quarantined $($files.Count) malware file(s). Send those malware files (NOT your documents) for analysis? They are checked on VirusTotal so other antivirus programs learn to catch this malware too." White
+  }
+  if ($sus.Count) {
+    Say "Ada juga $($sus.Count) fail program yang mencurigakan (BUKAN dokumen anda). Salinan je dihantar untuk disemak di VirusTotal; fail asal tak diusik." `
+        "There are also $($sus.Count) suspicious program file(s) (NOT your documents). Only a copy is sent to be checked on VirusTotal; the original file is not touched." White
+  }
+  Say 'Cuma fail program dihantar. Dokumen, gambar, ZIP dan fail dalam Downloads/Desktop/Documents TIDAK dihantar.' `
+      'Only program files are sent. Documents, pictures, ZIPs and files from Downloads/Desktop/Documents are NOT sent.' Gray
   try { $Host.UI.RawUI.FlushInputBuffer() } catch {}
   Write-Host '  Taip Y dan Enter untuk hantar, atau Enter je untuk tak hantar : ' -ForegroundColor Green -NoNewline
   if ($test) { $ans = if ($env:WAZIP_TEST_SAMPLE_ANSWER) { $env:WAZIP_TEST_SAMPLE_ANSWER } else { 'Y' }; Write-Host $ans } else { $ans = ([string](Read-Host)).Trim() }
@@ -2657,10 +2723,12 @@ function Invoke-SampleOffer {
     Say 'OK, tiada sampel dihantar.' 'OK, no samples sent.' DarkGray; return
   }
   $bad = 0
-  foreach ($f in $files) {
+  foreach ($f in @($files) + @($sus)) {
     $tag = $f.Sha.Substring(0, 12)
-    if (Send-WazSample $f) { Say "  OK  sampel $tag ($($f.Ext), $($f.Size) bait)" "  OK  sample $tag ($($f.Ext), $($f.Size) bytes)" Green }
-    else { $bad++; Say "  GAGAL hantar sampel $tag (internet?)" "  FAILED to send sample $tag (internet?)" Yellow }
+    $kind = if ($f.Suspect) { ' mencurigakan' } else { '' }
+    $kindEn = if ($f.Suspect) { ' suspicious' } else { '' }
+    if (Send-WazSample $f) { Say "  OK  sampel$kind $tag ($($f.Ext), $($f.Size) bait)" "  OK $kindEn sample $tag ($($f.Ext), $($f.Size) bytes)" Green }
+    else { if (-not $f.Suspect) { $bad++ }; Say "  GAGAL hantar sampel $tag (internet?)" "  FAILED to send sample $tag (internet?)" Yellow }
   }
   if ($bad) { Say 'Sampel yang gagal akan ditanya lagi bila tool dijalankan semula.' 'Failed samples are offered again next time the tool runs.' DarkGray }
   else { Remove-Item -LiteralPath $list -Force -ErrorAction SilentlyContinue; Say 'Terima kasih! Sampel dihantar.' 'Thank you! Samples sent.' Green }
