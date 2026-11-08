@@ -20,6 +20,10 @@ function Scan($report, [switch]$Fix) {
   @{ Code = $code; High = @($items | Where-Object Severity -eq 'HIGH'); All = $items }
 }
 
+Write-Host '=== 0. Short launcher run.ps1 parses ===' -ForegroundColor Cyan
+$pe = $null; $null = [System.Management.Automation.Language.Parser]::ParseFile((Join-Path (Split-Path $PSScriptRoot -Parent) 'run.ps1'), [ref]$null, [ref]$pe)
+Check (@($pe).Count -eq 0) "run.ps1 has no syntax errors ($(@($pe | ForEach-Object { $_.Message }) -join '; '))"
+
 Write-Host '=== 1. Clean machine ===' -ForegroundColor Cyan
 $r = Scan "$env:TEMP\r1.json"
 Check ($r.High.Count -eq 0) "clean machine has no HIGH findings (got $($r.High.Count): $(($r.High | ForEach-Object Target) -join '; '))"
