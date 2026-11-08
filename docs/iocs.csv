@@ -85,3 +85,4 @@ sha256,be532be5beac3c7656654628cc557e546aea3ee47c0046428a53d23ac58875d1,WhatsApp
 sha256,c30408b75ebc58d15f2766db15e3789dbf2909b0d71c99a13499e25270c275ee,WhatsApp VBS lure 6oy.vbs (Hive Pro TA2026174 / Securelist)
 sha256,28292b9822d83e28c0a5bb3befdd5b188be351314e9b3a1c2740702722999cfa,WhatsApp VBS lure kof.vbs (Hive Pro TA2026174 / Securelist)
 sha256,4a1b69a8ab51378c1e36c5d9944c4a345e0502cb8cfe2ab7fd9a9496553b02c6,WhatsApp VBS lure zip_bloy.vbs (Hive Pro TA2026174 / Securelist)
+sha256,92f68fc7f6d0f544a750bf67b4903d1a4062d1372b7f98ab5c2f698eb61359bb,UEMSAgent.msi 6.0.3 (genuine signed ManageEngine installer) dropped by the WhatsApp lures; bad outside the ManageEngine folder (MyCERT MA-1491)
