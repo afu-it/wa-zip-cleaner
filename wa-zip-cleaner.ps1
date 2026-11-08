@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.07.42'
+$Version = '2026.11.08.43'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -508,6 +508,8 @@ $script:BadSvcHist = @()
 # Suspicious program files left in place (not quarantined), offered as samples: Prio 0 Defender-detected, 1 warning, 2 installed near the antivirus killer.
 $script:Suspects = New-Object System.Collections.Generic.List[object]
 $script:MeNearBad = $null
+$script:ActiveKiller = $false
+$script:LogonScripts = @()
 $script:PiiFileNames = @{}
 $MeRegKeys = 'HKLM:\SOFTWARE\ManageEngine', 'HKLM:\SOFTWARE\WOW6432Node\ManageEngine', 'HKLM:\SOFTWARE\AdventNet', 'HKLM:\SOFTWARE\WOW6432Node\AdventNet'
 $SvcLeft = @()
@@ -636,7 +638,7 @@ function Resolve-ImagePath([string]$img) {
 function Get-ImageFile([string]$img) {
   $img = "$img".Trim()
   if ($img.StartsWith('"')) { $e = $img.IndexOf('"', 1); if ($e -gt 0) { $img = $img.Substring(1, $e - 1) } }
-  elseif ($img -match '^(.+?\.(exe|sys|dll|dat|bin|tmp))(\s|$)') { $img = $Matches[1] }
+  elseif ($img -match '^(.+?\.(exe|sys|dll|dat|bin|tmp|bat|cmd|vbs|vbe|js|ps1))(\s|$)') { $img = $Matches[1] }
   Resolve-ImagePath $img
 }
 # A service or driver file in a Winos/ValleyRAT hiding place: Public\Libraries, a folder named with symbols, or a
@@ -935,6 +937,11 @@ function Scan-ServiceHistory {
     if ($u -and (Test-Path -LiteralPath $u)) { Add-HideUnit $u "installed as service $($b.Name) $when"; if ($script:HideUnits -contains $u) { continue } }
     if (Test-Path -LiteralPath $p -PathType Leaf) {
       Add-Finding 'File' 'HIGH' $p "Program installed as a service ($($b.Name), $when) from a malware hiding place (Public\Libraries, a folder named with symbols, or a driver with no file extension): antivirus killer."
+    } elseif ($b.Last -ge (Get-Date).AddHours(-48)) {
+      # Still being reinstalled in waves while its folder is gone at scan time: the program that drops it is on this
+      # PC and was not found (WAZ-SHR9Y, Nov 2026: four waves in two days, the last six minutes before the scan).
+      $script:ActiveKiller = $true
+      Add-Finding 'Info' 'HIGH' "Antivirus killer still active: $($b.Name)" "Windows records show $p was installed as a service $when, last on $($b.Last.ToString('yyyy-MM-dd HH:mm')). It deletes itself after each run, and the program that brings it back is still on this PC (not found by this tool). Disconnect the internet, change bank and email passwords from your phone, back up your documents and reinstall Windows. Send the report (type Y) so the program can be found."
     } else {
       Add-Finding 'Info' 'WARN' "Service installed from a malware hiding place: $($b.Name)" "Windows records show $p was installed as a service $when (the antivirus killer of Winos/ValleyRAT). The file is gone now; treat this PC as infected."
     }
@@ -1079,8 +1086,17 @@ function Scan-Persistence {
   foreach ($hive in Get-UserHives) {
     $logon = [string](Get-ItemProperty -LiteralPath "$hive\Environment" -ErrorAction SilentlyContinue).UserInitMprLogonScript
     if ($logon) {
-      $sev = if ($logon -match $PersistRegex) { 'HIGH' } else { 'WARN' }
+      # A script in Public, ProgramData, Temp or AppData is not something an IT team sets up (WAZ-DYTEK, Nov 2026:
+      # C:\Users\Public\Documents\1.bat, the WhatsApp VBS campaign's folder).
+      $userDir = $logon -match '(?i)\\Users\\Public\\|\\ProgramData\\|\\Temp\\|\\AppData\\'
+      $sev = if ($logon -match $PersistRegex -or $userDir) { 'HIGH' } else { 'WARN' }
       Add-Finding 'RegValue' $sev "$hive\Environment|UserInitMprLogonScript" "Logon script runs at every sign-in: $logon"
+      $lf = Get-ImageFile $logon
+      if ($userDir -and $lf -and (Test-Path -LiteralPath $lf -PathType Leaf)) {
+        Add-Finding 'File' 'HIGH' $lf 'Script started at every sign-in from a user or data folder (logon script).'
+        # Kept now: -Fix moves the file before the report is written.
+        $script:LogonScripts += ,@($lf, @(Get-Content -LiteralPath $lf -TotalCount 20 -ErrorAction SilentlyContinue))
+      }
     }
     if (Test-Path -LiteralPath "$hive\Software\CarEmu") { Add-Finding 'RegKey' 'HIGH' "$hive\Software\CarEmu" 'ABCDoor backdoor settings (Silver Fox).' }
     # Triage (Oct 2026, MicroPoint chain): a per-user CLSID with Shell\Manage\command runs the malware elevated
@@ -2495,6 +2511,38 @@ function Get-ReportHash([string]$path) {
   } catch {}
   $null
 }
+# Everything set to start by itself, for the report (and as samples when an antivirus killer is still active):
+# the WAZ-SHR9Y PC kept reinstalling one and none of the usual places showed what started it (Nov 2026).
+function Get-AutoStarts {
+  $keys = @('HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run', 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce',
+            'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Run', 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\RunOnce',
+            'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer\Run')
+  foreach ($h in Get-UserHives) { $keys += "$h\Software\Microsoft\Windows\CurrentVersion\Run", "$h\Software\Microsoft\Windows\CurrentVersion\RunOnce", "$h\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer\Run" }
+  foreach ($k in $keys) {
+    $it = Get-Item -LiteralPath $k -ErrorAction SilentlyContinue
+    if (-not $it) { continue }
+    $short = $k -replace '^Registry::HKEY_USERS\\[^\\]+', 'HKU\<user>' -replace '^HKLM:\\SOFTWARE\\', 'HKLM\'
+    foreach ($n in $it.GetValueNames()) { [pscustomobject]@{ Where = $short; Name = $n; Cmd = [string]$it.GetValue($n) } }
+  }
+  $wl = Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -ErrorAction SilentlyContinue
+  foreach ($n in 'Shell', 'Userinit') { if ($wl.$n) { [pscustomobject]@{ Where = 'Winlogon'; Name = $n; Cmd = [string]$wl.$n } } }
+  $dirs = @("$env:ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp")
+  foreach ($u in Get-ChildItem "$env:SystemDrive\Users" -Directory -Force -ErrorAction SilentlyContinue) { $dirs += Join-Path $u.FullName 'AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup' }
+  foreach ($d in $dirs) {
+    foreach ($f in Get-ChildItem -LiteralPath $d -File -Force -ErrorAction SilentlyContinue | Where-Object { $_.Name -ne 'desktop.ini' }) {
+      $t = $f.FullName
+      if ($f.Extension -ieq '.lnk') { try { $l = (New-Object -ComObject WScript.Shell).CreateShortcut($f.FullName); $t = "$($l.TargetPath) $($l.Arguments)".Trim() } catch {} }
+      [pscustomobject]@{ Where = 'Startup folder'; Name = $f.Name; Cmd = $t }
+    }
+  }
+  $win = [regex]::Escape($env:SystemRoot)
+  foreach ($s in Get-CimInstance Win32_Service -ErrorAction SilentlyContinue) {
+    $pn = [string]$s.PathName
+    if (-not $pn -or $s.StartMode -notin 'Auto', 'Boot', 'System') { continue }
+    if ((Get-ImageFile $pn) -match "^(?i)$win\\") { continue }
+    [pscustomobject]@{ Where = "Service ($($s.StartMode))"; Name = $s.Name; Cmd = $pn }
+  }
+}
 # What was installed or set to start in the last 60 days: the same records we used to pull by hand from
 # victim PCs to see how and when the attacker got in (services, MSI installs, non-Microsoft tasks, Defender hits).
 function Get-ReportTimeline {
@@ -2528,6 +2576,12 @@ function Get-ReportTimeline {
     if ($au -match '^[^\\]+\\[^\\]+$' -and $au -notmatch '^(?i)(NT AUTHORITY|BUILTIN|NT SERVICE|Window Manager|Font Driver Host)\\') { $au = '<host>\<user>' }
     elseif ($au -match '^(?i)(LAPTOP|DESKTOP|PC|WIN)-[A-Z0-9]+$') { $au = '<host>' }
     $null = $out.AppendLine(('{0}{1} | {2} | {3} | {4}' -f $t.TaskPath, $t.TaskName, $au, $t.Date, $t.Txt.Trim()))
+  }
+  $null = $out.AppendLine(''); $null = $out.AppendLine('== Auto-start entries (Run keys, Winlogon, Startup folders, services outside Windows)')
+  foreach ($a in @(Get-AutoStarts | Select-Object -First 300)) { $null = $out.AppendLine(('{0} | {1} | {2}' -f $a.Where, $a.Name, $a.Cmd)) }
+  foreach ($ls in $script:LogonScripts) {
+    $null = $out.AppendLine(''); $null = $out.AppendLine("== Logon script $($ls[0]) (first 20 lines)")
+    foreach ($l in @($ls[1])) { $l = [string]$l; $null = $out.AppendLine($l.Substring(0, [Math]::Min(300, $l.Length))) }
   }
   $null = $out.AppendLine(''); $null = $out.AppendLine('== Windows Defender detections, last 60 days')
   foreach ($e in @(try { Get-WinEvent -FilterHashtable @{ LogName = 'Microsoft-Windows-Windows Defender/Operational'; Id = 1116, 1117; StartTime = $since } -MaxEvents 200 -ErrorAction Stop } catch {})) {
@@ -2700,6 +2754,10 @@ function Get-SampleFiles([string[]]$manifests) {
 function Get-SuspectFiles($skip) {
   $cand = New-Object System.Collections.Generic.List[object]
   foreach ($x in $script:Suspects) { $cand.Add($x) }
+  # Antivirus killer still coming back: every program set to start by itself is a candidate (Microsoft-signed ones drop out below).
+  if ($script:ActiveKiller) {
+    foreach ($a in @(Get-AutoStarts)) { $p = Get-ImageFile $a.Cmd; if ($p -match '^[A-Za-z]:\\') { $cand.Add([pscustomobject]@{ Path = $p; Prio = 3; When = (Get-Date) }) } }
+  }
   foreach ($f in $Findings | Where-Object { $_.Severity -eq 'WARN' }) {
     foreach ($v in @($f.Target, $(if ($f.Extra -is [hashtable]) { $f.Extra.Image; $f.Extra.Path }))) {
       if ($v -is [string] -and $v -match '^[A-Za-z]:\\') { $cand.Add([pscustomobject]@{ Path = $v; Prio = 1; When = (Get-Date) }) }

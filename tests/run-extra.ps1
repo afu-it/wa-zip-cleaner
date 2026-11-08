@@ -1043,7 +1043,7 @@ $goneLib = 'C:\Users\Public\Libraries\9&]!])^}[!!]%[#~##Gone'
 & sc.exe delete WazArdrvGone | Out-Null
 Start-Sleep 2
 $rT = Scan "$env:TEMP\xt1.json" -Owner Office
-Check (Has $rT 'Info' 'WARN' 'Service installed from a malware hiding place: WazArdrvGone') 'service once installed from a hiding place (file gone) is a warning'
+Check (Has $rT 'Info' 'HIGH' 'Antivirus killer still active: WazArdrvGone') 'service installed from a hiding place in the last 48 hours (file gone) is HIGH'
 Check (Has $rT 'Info' 'HIGH' 'ManageEngine' 'within an hour') "office ManageEngine installed within an hour of the antivirus killer is HIGH ($(@($rT.All | Where-Object { $_.Target -match 'ManageEngine' } | ForEach-Object { "$($_.Severity) $($_.Detail)" }) -join '; '))"
 Remove-MePlant 'MEOfficeTest4'
 
@@ -1080,6 +1080,10 @@ $zRar = "$dl\Arsip kerja.rar"; Set-Content $zRar 'dummy'
 foreach ($z in $zDoc, $zVhd, $zRar) { Set-Content -LiteralPath $z -Stream Zone.Identifier -Value $zoneW }
 $locked9 = "$dl\Click here to view9.zip"; Set-Content $locked9 'dummy'
 $locker9 = Start-Encoded "`$f=[IO.File]::Open('$locked9','Open','Read','None'); Start-Sleep 3600"
+# WAZ-DYTEK (Nov 2026): logon script in Public\Documents
+$logonBat = 'C:\Users\Public\Documents\wazlogon1.bat'
+Set-Content -LiteralPath $logonBat -Value '@echo wazlogontest'
+New-ItemProperty -Path 'HKCU:\Environment' -Name 'UserInitMprLogonScript' -Value $logonBat -Force | Out-Null
 Start-Sleep 2
 $env:WAZIP_TEST_TIMELINE = "$env:TEMP\waz-timeline.txt"
 $r41 = Scan "$env:TEMP\x41.json"
@@ -1096,8 +1100,16 @@ Check (Has $r41 'File' 'WARN' 'Arsip kerja\.rar$' 'cannot look inside') 'WhatsAp
 $tl = if (Test-Path "$env:TEMP\waz-timeline.txt") { Get-Content -Raw "$env:TEMP\waz-timeline.txt" } else { '' }
 Check ($tl -match 'x3 \| WazArdrvHist') "repeated service installs are one timeline line ($(([regex]::Matches($tl, '[^\r\n]*WazArdrvHist[^\r\n]*') | ForEach-Object { $_.Value }) -join ' / '))"
 Check ($tl -match 'WazPrivacyPolicyTest \| <host>\\<user>' -and $tl -notmatch 'WAZOLDPC') 'task author PC name is hidden in the timeline'
+Check (Has $r41 'RegValue' 'HIGH' 'UserInitMprLogonScript$') 'logon script in Public\Documents is HIGH'
+Check (Has $r41 'File' 'HIGH' 'wazlogon1\.bat$' 'sign-in') 'logon script file in Public\Documents is HIGH'
+Check ($tl -match '== Logon script' -and $tl -match 'wazlogontest') 'timeline shows the first lines of the logon script'
+Check ($tl -match '== Auto-start entries') 'timeline lists auto-start entries'
+Check (Has $r41 'Info' 'HIGH' 'Antivirus killer still active: WazArdrvGone') 'antivirus killer installed in the last 48 hours (file gone) is HIGH'
 $r42 = Scan "$env:TEMP\x42.json" -Fix
 Check (-not (Test-Path -LiteralPath $libU)) 'Public\Libraries hiding folder quarantined whole'
+Check (-not (Test-Path -LiteralPath $logonBat)) 'logon script file quarantined'
+Remove-ItemProperty -Path 'HKCU:\Environment' -Name 'UserInitMprLogonScript' -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $logonBat -Force -ErrorAction SilentlyContinue
 Check (-not (Test-Path -LiteralPath $pdU)) 'ProgramData hiding folder quarantined whole (files with any extension)'
 Check (-not (Get-Process -Id $pingP.Id -ErrorAction SilentlyContinue)) 'program running from the hiding folder stopped'
 Check (-not (Get-ScheduledTask -TaskName 'WazPrivacyPolicyTest' -ErrorAction SilentlyContinue)) 'task pointing into the hiding folder removed'
