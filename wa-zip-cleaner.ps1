@@ -2902,10 +2902,11 @@ $meOther = @($Findings | Where-Object { $_.Severity -eq 'HIGH' -and -not $_.Extr
 $meInfected = $false
 if ($me) {
   $meInfected = -not $script:MeAttacker -and ($meOther.Count -gt 0 -or $script:MeNearBad)
-  if ($meInfected -and $meOther.Count) {
-    $me | ForEach-Object { $_.Detail = "Remote-management agent on a PC where other malware was found ($($meOther.Count) item(s), for example $($meOther[0].Kind): $($meOther[0].Target)). Other malware found on this PC, so this ManageEngine is almost certainly the attacker's. This tool will force-remove it." }
-  } elseif ($meInfected) {
+  # The hour match names the attacker's install itself, so it wins over a generic "other malware" line.
+  if ($meInfected -and $script:MeNearBad) {
     $me | ForEach-Object { $_.Detail = "Remote-management agent installed within an hour of a program from a malware hiding place being installed as a service ($($script:MeNearBad)). Other malware found on this PC, so this ManageEngine is almost certainly the attacker's. This tool will force-remove it." }
+  } elseif ($meInfected) {
+    $me | ForEach-Object { $_.Detail = "Remote-management agent on a PC where other malware was found ($($meOther.Count) item(s), for example $($meOther[0].Kind): $($meOther[0].Target)). Other malware found on this PC, so this ManageEngine is almost certainly the attacker's. This tool will force-remove it." }
   }
   $meRemove = [bool]$RemoveManageEngine -or $Owner -eq 'Personal' -or $script:MeAttacker -or $meInfected
   if (-not $meRemove -and $Fix -and -not $Owner -and -not $env:WAZIP_NO_PROMPT) {
