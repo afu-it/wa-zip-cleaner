@@ -177,7 +177,7 @@ $env:WAZIP_TEST_LOLDRIVERS = "$env:TEMP\test-lol.csv"
 & sc.exe create WazRmmTest start= demand binPath= "C:\Program Files (x86)\AnyDesk\AnyDesk.exe --service" | Out-Null
 # MSP360 and Faronics Deploy agents from phishing e-mails (Microsoft, Sep 2026).
 & sc.exe create WazMsp360Test start= demand binPath= "`"C:\Program Files\RMM Agent\RMM.Agent.exe`"" | Out-Null
-& sc.exe create WazCrdTest start= demand binPath= "`"C:\Program Files (x86)\Google\Chrome Remote Desktop\157.0.1.1\remoting_host.exe`" --type=daemon" | Out-Null
+& sc.exe create WazCrdTest start= demand binPath= "`"C:\Program Files (x86)\Google\Chrome Remote Desktop\157.0.1.1\remoting_host.exe`"" | Out-Null
 & sc.exe create WazFaronicsTest start= demand binPath= "`"C:\Program Files\Faronics\Deploy\FaronicsDeployAgent.exe`"" | Out-Null
 # UltraViewer is always removed (AFU, Nov 2026): planted folder, service and Apps entry.
 $uvDir = 'C:\Program Files (x86)\UltraViewer'
