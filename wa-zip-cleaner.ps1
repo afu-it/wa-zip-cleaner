@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.08.43'
+$Version = '2026.11.09.44'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -401,6 +401,8 @@ $RmmTools = [ordered]@{
   'Ping32' = '^nsecrts'; 'AnyViewer' = '^anyviewer'; 'AweSun (AweRay)' = '^(awesun|aweray_remote)'
   # Phishing e-mails install these first, then ScreenConnect (Microsoft Security Blog, 29 Sep 2026).
   'MSP360 RMM' = '^rmm\.agent(\.launcher)?\.exe$'; 'Faronics Deploy' = '^faronicsdeployagent'
+  # Y5JSV report (Nov 2026): installed three times in a week and not listed with the others.
+  'Chrome Remote Desktop' = '\\chrome remote desktop\\'
 }
 # ScreenConnect relay servers of the MSP360 / Faronics phishing e-mails (Microsoft Security Blog, 29 Sep 2026).
 $RmmC2Domains = '(?i)(^|\.)(adswre\.cfd|trews\.cfd|adsaw\.cfd|swedcorry\.stefneyv\.com|ojsuyw\.niyari\.org|bunstar\.harej\.si|sdfghj\.rd-team\.ru)$'
@@ -1971,7 +1973,19 @@ function Scan-Browsers {
     foreach ($pf in 'Secure Preferences', 'Preferences') {
       $file = Join-Path $p.Path $pf
       if (-not (Test-Path -LiteralPath $file)) { continue }
-      $json = try { Get-Content -Raw -LiteralPath $file -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop } catch { $null }
+      $raw = try { [IO.File]::ReadAllText($file) } catch { $null }
+      if (-not $raw) { continue }
+      $json = try { $raw | ConvertFrom-Json -ErrorAction Stop } catch { $null }
+      if (-not $json) {
+        # Windows PowerShell 5.1 cannot read some large Chrome Preferences files (Y5JSV report, Nov 2026: three
+        # profiles skipped). Fall back to the raw text: a store extension's path is relative ("<id>/1.0_0"),
+        # one loaded from a folder is a full path. Chrome's own built-in ones live under Program Files.
+        foreach ($ep in @([regex]::Matches($raw, '"path"\s*:\s*"([A-Za-z]:\\\\[^"]+)"') | ForEach-Object { $_.Groups[1].Value -replace '\\\\', '\' } | Select-Object -Unique)) {
+          if ($ep -match '(?i)^[A-Z]:\\Program Files' -or -not (Test-Path -LiteralPath (Join-Path $ep 'manifest.json'))) { continue }
+          Add-Finding 'Info' 'WARN' "$($p.Browser) extension $(Split-Path $ep -Leaf)" "Extension loaded from a folder, not the web store: $ep. Remove it in $($p.Browser) > Extensions unless you added it yourself."
+        }
+        continue
+      }
       if (-not $json.extensions.settings) { continue }
       foreach ($e in $json.extensions.settings.PSObject.Properties) {
         if ($e.Value.location -eq 4 -and $e.Value.path) {

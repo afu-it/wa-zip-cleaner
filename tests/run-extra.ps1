@@ -177,6 +177,7 @@ $env:WAZIP_TEST_LOLDRIVERS = "$env:TEMP\test-lol.csv"
 & sc.exe create WazRmmTest start= demand binPath= "C:\Program Files (x86)\AnyDesk\AnyDesk.exe --service" | Out-Null
 # MSP360 and Faronics Deploy agents from phishing e-mails (Microsoft, Sep 2026).
 & sc.exe create WazMsp360Test start= demand binPath= "`"C:\Program Files\RMM Agent\RMM.Agent.exe`"" | Out-Null
+& sc.exe create WazCrdTest start= demand binPath= "`"C:\Program Files (x86)\Google\Chrome Remote Desktop\157.0.1.1\remoting_host.exe`" --type=daemon" | Out-Null
 & sc.exe create WazFaronicsTest start= demand binPath= "`"C:\Program Files\Faronics\Deploy\FaronicsDeployAgent.exe`"" | Out-Null
 # UltraViewer is always removed (AFU, Nov 2026): planted folder, service and Apps entry.
 $uvDir = 'C:\Program Files (x86)\UltraViewer'
@@ -205,6 +206,11 @@ $s.Save()
 $prof = "$env:LOCALAPPDATA\Google\Chrome\User Data\Profile 7"
 New-Item -ItemType Directory -Force -Path $prof | Out-Null
 '{"extensions":{"settings":{"ponmlkjihgfedcbaponmlkjihgfedcba":{"location":4,"path":"C:\\Users\\Public\\ext"}}}}' | Set-Content -Encoding ASCII "$prof\Secure Preferences"
+# Y5JSV (Nov 2026): Windows PowerShell could not read the Preferences file; the folder-loaded extension must still show.
+$prof8 = "$env:LOCALAPPDATA\Google\Chrome\User Data\Profile 8"
+New-Item -ItemType Directory -Force -Path $prof8, 'C:\Users\Public\wazext8' | Out-Null
+'{}' | Set-Content -Encoding ASCII 'C:\Users\Public\wazext8\manifest.json'
+'{"extensions":{"settings":{"abcdefghijklmnopabcdefghijklmnop":{"location":4,"path":"C:\\Users\\Public\\wazext8"}}}, broken' | Set-Content -Encoding ASCII "$prof8\Preferences"
 
 Write-Host '=== Scan ===' -ForegroundColor Cyan
 $r = Scan "$env:TEMP\x1.json"
@@ -241,6 +247,8 @@ Check (Has $r 'Service' 'HIGH' '^WazLolMal$' 'LOLDrivers') 'LOLDrivers malicious
 Check (Has $r 'Service' 'WARN' '^WazLolVuln$' 'vulnerable') 'LOLDrivers vulnerable driver service is WARN'
 Check (Has $r 'Info' 'WARN' 'Remote-control program: AnyDesk') 'remote-control program (AnyDesk) is WARN'
 Check (Has $r 'Info' 'WARN' 'Remote-control program: MSP360 RMM') 'MSP360 RMM agent is WARN'
+Check (Has $r 'Info' 'WARN' 'Remote-control program: Chrome Remote Desktop') 'Chrome Remote Desktop is WARN'
+Check (Has $r 'Info' 'WARN' 'Chrome extension wazext8' 'from a folder') 'folder-loaded extension found when Preferences cannot be parsed'
 Check (Has $r 'Info' 'WARN' 'Remote-control program: Faronics Deploy') 'Faronics Deploy agent is WARN'
 Check (Has $r 'Service' 'HIGH' '^WazUvTest$' 'UltraViewer') 'UltraViewer service is HIGH'
 Check (Has $r 'File' 'HIGH' 'UltraViewer$' 'UltraViewer') 'UltraViewer folder is HIGH'
@@ -976,7 +984,7 @@ Write-Host '=== .bat launchers ===' -ForegroundColor Cyan
 # Clear WARN-only leftovers so a clean result reads BERSIH.
 & sc.exe delete MEUemsTest | Out-Null; & sc.exe delete OpswatLegitTest | Out-Null
 & sc.exe delete WazLolVuln | Out-Null; & sc.exe delete WazRmmTest | Out-Null
-& sc.exe delete WazMsp360Test | Out-Null; & sc.exe delete WazFaronicsTest | Out-Null
+& sc.exe delete WazCrdTest | Out-Null; & sc.exe delete WazMsp360Test | Out-Null; & sc.exe delete WazFaronicsTest | Out-Null
 Remove-Item "$drvDir\wazlolv.sys" -Force -ErrorAction SilentlyContinue
 Remove-Item Env:\WAZIP_TEST_LOLDRIVERS
 Set-ItemProperty -LiteralPath $wuKey -Name Start -Value 3
