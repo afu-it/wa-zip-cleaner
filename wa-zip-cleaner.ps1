@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.10.47'
+$Version = '2026.11.10.48'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -592,6 +592,15 @@ $NameIndex = @{}
 # Size 0 means only the hash is known (Get-FileHash on a victim PC): match those by file name instead.
 foreach ($k in $KnownBad + $AbusedLegit) { if ([long]$k.Size) { $SizeIndex[[long]$k.Size] = $true } elseif ($k.File) { $NameIndex[$k.File.ToLower()] = $true } }
 
+# When the tool last cleaned this PC. A killer that stopped coming back before then is history, not active:
+# WAZ-625V3 (Nov 2026) was told to reinstall Windows after the clean-up had already stopped 1,669 reinstalls.
+function Get-LastFixTime {
+  $t = [datetime]::MinValue
+  $lf = Join-Path $QuarantineRoot 'last-fix.txt'
+  if (Test-Path -LiteralPath $lf) { [void][datetime]::TryParse((Get-Content -Raw -LiteralPath $lf).Trim(), [ref]$t) }
+  $t
+}
+
 # Every file under a folder, walked with a loop instead of Get-ChildItem -Recurse. Windows PowerShell 5.1
 # follows folder links (junctions, symlinks), so a link that points back up the tree made it recurse until
 # "call depth overflow" stopped the whole file scan (victim report, 4 Nov 2026). Links are not followed here.
@@ -942,7 +951,7 @@ function Scan-ServiceHistory {
     if ($u -and (Test-Path -LiteralPath $u)) { Add-HideUnit $u "installed as service $($b.Name) $when"; if ($script:HideUnits -contains $u) { continue } }
     if (Test-Path -LiteralPath $p -PathType Leaf) {
       Add-Finding 'File' 'HIGH' $p "Program installed as a service ($($b.Name), $when) from a malware hiding place (Public\Libraries, a folder named with symbols, or a driver with no file extension): antivirus killer."
-    } elseif ($b.Last -ge (Get-Date).AddHours(-48)) {
+    } elseif ($b.Last -ge (Get-Date).AddHours(-48) -and $b.Last -gt (Get-LastFixTime)) {
       # Still being reinstalled in waves while its folder is gone at scan time: the program that drops it is on this
       # PC and was not found (WAZ-SHR9Y, Nov 2026: four waves in two days, the last six minutes before the scan).
       $script:ActiveKiller = $true
@@ -1453,6 +1462,9 @@ function Scan-Files {
         if (($f.Extension -ieq '.dll' -or $f.Name -ieq 'sc.exe') -and $f.Length -gt 150KB -and $f.Length -lt 1MB -and $f.FullName -match '(?i)\\(ProgramData|Users\\Public)\\' -and [string]$f.VersionInfo.OriginalFilename -match '(?i)^(curl|bitsadmin)\.exe') {
           Add-Finding 'File' 'HIGH' $f.FullName 'curl or bitsadmin renamed to a Windows DLL name (WhatsApp VBS campaign downloader).'; return }
         if (Test-ScriptLure $f) { Add-Finding 'File' 'HIGH' $f.FullName 'Script disguised as a document (WhatsApp VBS campaign).'; return }
+        # Antivirus-killer drivers dropped in Temp as KV<8 hex>.sys (WAZ-AZVRM, Nov 2026; KV37F60000.sys in IOCS.md).
+        if ($f.Name -match '^KV[0-9A-F]{8}\.sys$' -and $f.FullName -match '(?i)\\Temp\\') {
+          Add-Finding 'File' 'HIGH' $f.FullName 'Antivirus-killer driver left in the Temp folder by the WhatsApp malware.'; return }
         if ($f.Extension -ieq '.sys' -and ($lol = Get-LolMatch $f.FullName)) {
           $sev = if ($lol.kind -eq 'malicious') { 'HIGH' } else { 'WARN' }
           Add-Finding 'File' $sev $f.FullName "Driver listed by LOLDrivers ($($lol.kind)): $($lol.name). Attackers use these to switch off antivirus."; return }

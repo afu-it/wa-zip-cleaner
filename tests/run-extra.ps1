@@ -1139,6 +1139,13 @@ Unregister-ScheduledTask -TaskName 'WazPrivacyPolicyTest' -Confirm:$false -Error
 & sc.exe delete Wazq1jlk5t | Out-Null
 Remove-Item -LiteralPath $libU, $pdU -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $drv1, $drv2, $zDoc, $zVhd, $zRar, $locked9 -Force -ErrorAction SilentlyContinue
+# After a clean-up the killer that stopped coming back is history, not active (WAZ-625V3); KV<hex>.sys in Temp (WAZ-AZVRM).
+$kvDrv = "$env:TEMP\KV1A2B3C4D.sys"; Set-Content -LiteralPath $kvDrv 'killer driver stand-in'
+$r43 = Scan "$env:TEMP\x43.json"
+Check (Has $r43 'Info' 'WARN' 'Service installed from a malware hiding place: WazArdrvGone') 'killer installed before the last clean-up is a warning, not still active'
+Check (-not (Has $r43 'Info' 'HIGH' 'Antivirus killer still active: WazArdrvGone')) 'killer installed before the last clean-up is not reported as still active'
+Check (Has $r43 'File' 'HIGH' 'KV1A2B3C4D\.sys$') 'KV<hex>.sys driver in Temp is HIGH'
+Remove-Item -LiteralPath $kvDrv -Force -ErrorAction SilentlyContinue
 
 Write-Host '=== Loader in a {GUID} folder under AppData\Local re-drops everything (6S85A report, Nov 2026) ===' -ForegroundColor Cyan
 $gDir = Join-Path $env:LOCALAPPDATA '{437711d0-7b49-7cbc-e129-df32973225aa}'
