@@ -575,6 +575,7 @@ New-Item -ItemType Directory -Force -Path $vlcWc | Out-Null; Set-Content "$vlcWc
 $vlcLone = "$dl\libvlc-alone"; New-Item -ItemType Directory -Force -Path $vlcLone | Out-Null; Set-Content "$vlcLone\libvlc.dll" 'dummy'
 Set-Content "$dl\arphaDump.dll" 'dummy'
 $tk = "$env:LOCALAPPDATA\Toolkit"; New-Item -ItemType Directory -Force -Path $tk | Out-Null; Set-Content "$tk\msvbvm60.dll" 'dummy'
+$ctr = "$env:ProgramData\Microsoft\Windows\Containers\Layers\waztest"; New-Item -ItemType Directory -Force -Path "$ctr\Files\Windows\SysWOW64" | Out-Null; Set-Content "$ctr\Files\Windows\SysWOW64\msvbvm60.dll" 'dummy'
 New-Item -ItemType Directory -Force -Path "$env:SystemDrive\cool" | Out-Null; Set-Content "$env:SystemDrive\cool\UEMSAgent.mst" 'dummy'
 $meCa = $null
 try {
@@ -591,6 +592,7 @@ Check (-not ($r19.All | Where-Object { $_.Target -match 'WeChatPlayer\\.*libvlc\
 Check (-not ($r19.All | Where-Object { $_.Target -match 'libvlc-alone\\libvlc\.dll$' })) 'libvlc.dll with no program beside it is not reported'
 Check (Has $r19 'File' 'HIGH' 'Downloads\\arphaDump\.dll$') 'arphaDump.dll outside Program Files is HIGH'
 Check (Has $r19 'File' 'HIGH' 'Toolkit\\msvbvm60\.dll$') 'msvbvm60.dll in LocalAppData\Toolkit is HIGH'
+Check (-not ($r19.All | Where-Object { $_.Target -match '\\Containers\\Layers\\' })) 'Windows Sandbox container layers are not scanned'
 Check (Has $r19 'File' 'HIGH' '^[A-Z]:\\cool$') 'C:\cool ManageEngine kit folder is HIGH'
 if ($meCa) { Check (Has $r19 'Cert' 'HIGH' $meCa) 'ManageEngineCA root certificate is HIGH' } else { Write-Host 'SKIP ManageEngineCA: could not plant a test certificate' -ForegroundColor Yellow }
 $r20 = Scan "$env:TEMP\x20.json" -Fix
@@ -598,7 +600,7 @@ Check (-not ($myNames | Where-Object { Test-Path -LiteralPath "$dl\$_" })) 'MyCE
 Check (-not (Test-Path "$vlcBad\libvlc.dll") -and (Test-Path "$vlcOk\libvlc.dll")) 'only the sideload libvlc.dll removed'
 Check (-not (Test-Path "$env:SystemDrive\cool")) 'C:\cool quarantined'
 if ($meCa) { Check (-not (Test-Path "Cert:\LocalMachine\Root\$meCa")) 'ManageEngineCA root certificate removed' }
-Remove-Item -LiteralPath $vlcBad, $vlcOk, $tk, "$env:SystemDrive\cool" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $vlcBad, $vlcOk, $tk, $ctr, "$env:SystemDrive\cool" -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath "$dl\arphaDump.dll", "$env:TEMP\meca.cer" -Force -ErrorAction SilentlyContinue
 foreach ($n in $myNames) { Remove-Item -LiteralPath "$dl\$n" -Force -ErrorAction SilentlyContinue }
 if ($meCa) { Remove-Item -LiteralPath "Cert:\LocalMachine\Root\$meCa" -ErrorAction SilentlyContinue }

@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.09.44'
+$Version = '2026.11.10.45'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -600,7 +600,8 @@ function Get-TreeFiles([string]$Root) {
     $d = $stack.Pop()
     $items = try { $d.GetFileSystemInfos() } catch { @() }
     foreach ($i in $items) {
-      if ($i -is [IO.DirectoryInfo]) { if (-not ($i.Attributes -band [IO.FileAttributes]::ReparsePoint)) { $stack.Push($i) } }
+      # Windows Sandbox / container base layers hold a copied Windows (msvbvm60.dll, drivers): WAZ-955XG, Nov 2026.
+      if ($i -is [IO.DirectoryInfo]) { if (-not ($i.Attributes -band [IO.FileAttributes]::ReparsePoint) -and $i.FullName -notmatch '(?i)\\ProgramData\\Microsoft\\Windows\\Containers$') { $stack.Push($i) } }
       else { $i }
     }
   }
