@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.10.45'
+$Version = '2026.11.10.46'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -541,6 +541,8 @@ function Add-Finding($Kind, $Severity, $Target, $Detail, $Extra = $null) {
 $WarnHelp = @(
   ,@('downloaded from WhatsApp Web', 'Fail ni dimuat turun dari WhatsApp Web. Malware ZIP WhatsApp sampai dengan cara ni.', 'Kalau anda tak minta fail ni atau tak kenal pengirim: padam dia. Kalau dah buka dan ada program atau VHD di dalam, jalankan tool ni dan taip Y.')
   ,@('Malware program ran', 'Rekod Windows tunjuk program malware ni pernah jalan di PC ni. Failnya mungkin dah dipadam, tapi PC ni pernah dijangkiti.', 'Jalankan tool ni dan taip Y untuk bersihkan. Tukar kata laluan bank dan emel guna telefon. Kalau tak pasti, backup dokumen dan format PC.')
+  # History only: the killer file is gone. It matched 'driver' below and told victims to uninstall a program (WAZ-69CW8, Nov 2026).
+  ,@('Service installed from a malware hiding place', 'Rekod lama: virus pernah pasang pembunuh antivirus di PC ni (tarikh di bawah). Fail tu dah tiada sekarang.', 'Kalau tiada merah [HIGH] lain, virus dah dibuang. Hidupkan Windows Update kalau dimatikan, dan tukar kata laluan bank dan emel guna telefon.')
   ,@('Defender detected', 'Windows Defender pernah jumpa virus di PC ni dalam 30 hari lepas.', 'Kalau nama virus tu ada ValleyRAT, Winos, Rozena atau Trojan: anggap PC pernah dijangkiti. Jalankan tool ni dan taip Y, kemudian tukar kata laluan guna telefon.')
   ,@('real-time protection was turned off', 'Perlindungan antivirus pernah dimatikan. Malware buat ni sebelum pasang dirinya.', 'Pastikan dia hidup semula: Windows Security > Virus & threat protection > Manage settings > Real-time protection: On. Lepas tu buat Full scan.')
   ,@('Defender exclusion added', 'Ada program suruh antivirus abaikan folder atau program ni. Malware buat ni supaya dia tak diperiksa.', 'Kalau bukan anda yang tambah: Windows Security > Virus & threat protection > Manage settings > Exclusions > Remove. Tool ni dah buang yang dia kenal sebagai jahat.')
