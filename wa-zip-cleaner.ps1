@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.10.46'
+$Version = '2026.11.10.47'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -2733,9 +2733,10 @@ function Test-SampleName([string]$orig) {
   if ($leaf -match $SampleNever) { return $false }
   $ext = [IO.Path]::GetExtension($leaf).ToLower()
   if ($SampleExt -contains $ext) { return $true }
-  # No usable extension (e.g. "3#.8"): only inside a symbol, {GUID} or Temp\hs<hex> hiding folder.
+  # No usable extension (e.g. "3#.8"): only inside a symbol, {GUID} or Temp\hs<hex> hiding folder, or the
+  # antivirus killer itself (System32\drivers\1jlk5tbaaa, WAZ-7WGFZ, Nov 2026: quarantined but never sent).
   $dir = Split-Path $orig -Parent
-  if ($dir -match '(?i)\\\{[0-9a-f-]{36}\}(\\|$)|\\Temp\\hs[0-9a-f]{4,}(\\|$)|\\Public\\Libraries\\') { return $true }
+  if ($dir -match '(?i)\\\{[0-9a-f-]{36}\}(\\|$)|\\Temp\\hs[0-9a-f]{4,}(\\|$)|\\Public\\Libraries\\|\\System32\\drivers$') { return $true }
   ($dir -replace '^.*\\', '') -match '([!@#$%^&()+,;=\[\]{}~`'']).*([!@#$%^&()+,;=\[\]{}~`'']).*([!@#$%^&()+,;=\[\]{}~`''])'
 }
 function Get-SampleFiles([string[]]$manifests) {

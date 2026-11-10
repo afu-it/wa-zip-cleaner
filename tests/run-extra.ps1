@@ -1208,6 +1208,10 @@ $sKit = New-SampleKit 'aa0001'
 $sLure = Join-Path $dl 'Notis Denda Sample 2026.exe'
 Set-Content -LiteralPath $sLure 'lure program stand-in from Downloads'
 $lureSha = (Get-FileHash -LiteralPath $sLure -Algorithm SHA256).Hash.ToLower()
+# Antivirus killer driver with no file extension in System32\drivers (WAZ-7WGFZ, Nov 2026).
+$kDrv = "$env:SystemRoot\System32\drivers\wazk1lr"; Set-Content -LiteralPath $kDrv 'antivirus killer stand-in'
+$kSha = (Get-FileHash -LiteralPath $kDrv -Algorithm SHA256).Hash.ToLower()
+& sc.exe create WazK1lr type= kernel start= demand binPath= $kDrv | Out-Null
 $sGot = "$env:TEMP\waz-samples-got.txt"; Remove-Item -LiteralPath $sGot -Force -ErrorAction SilentlyContinue
 $sJob = Start-SampleInbox $sGot 8798
 Start-Sleep 5
@@ -1224,6 +1228,8 @@ Check (-not (Test-Path -LiteralPath $sLure)) 'Downloads lure program quarantined
 Check ($x52 -match 'SAMPEL VIRUS' -and $x52 -match 'BUKAN dokumen') 'sample question asked, saying documents are not sent'
 Check (($gotExt -contains '.dll') -and ($gotExt -contains '.sys') -and ($gotExt -contains '.dat') -and ($gotExt -contains '.exe')) "quarantined .exe/.dll/.sys/.dat sent ($($gotExt -join ','))"
 Check (-not ($gotExt | Where-Object { $_ -match '^\.(docx|zip)$' })) 'no document or zip sent'
+Check ((@($got | ForEach-Object { ($_ -split '\|')[1] }) -contains $kSha)) 'quarantined antivirus killer with no file extension sent'
+& sc.exe delete WazK1lr | Out-Null; Remove-Item -LiteralPath $kDrv -Force -ErrorAction SilentlyContinue
 Check (-not ($got | Where-Object { ($_ -split '\|')[1] -eq $lureSha })) 'quarantined program from Downloads not sent'
 Check (@($got | Where-Object { ($_ -split '\|')[0] -ne '/sample' }).Count -eq 0 -and @($got | Where-Object { [int](($_ -split '\|')[3]) -le 0 }).Count -eq 0) 'every sample posted to /sample with its bytes'
 Check ($x52 -match 'OK  sampel [0-9a-f]{12}') 'each sent sample shown with its sha256 start'
