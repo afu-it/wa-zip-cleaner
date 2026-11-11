@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.11.70'
+$Version = '2026.11.11.71'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -874,8 +874,8 @@ function Test-ToolDriver([string]$img, [string]$svcName) {
   # nothing to judge or remove; it was shown as HIGH and the victim hunted for a file that is not there (Nov 2026).
   if (-not (Test-Path -LiteralPath $p -PathType Leaf)) {
     if (-not $svcName) { return $false }
-    $st = try { [string](New-Object System.ServiceProcess.ServiceController $svcName).Status } catch { '' }
-    return $st -eq 'Stopped'
+    # sc.exe reports kernel drivers too; state 1 is STOPPED in every Windows language.
+    return [bool](@(& sc.exe query $svcName 2>$null) -match '^\s*STATE\s+:\s+1\s')
   }
   if (Get-LolMatch $p) { return $false }
   (Get-AuthenticodeSignature -LiteralPath $p -ErrorAction SilentlyContinue).Status -eq 'Valid'
