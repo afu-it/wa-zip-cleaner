@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.11.53'
+$Version = '2026.11.11.54'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -528,6 +528,9 @@ function Test-ServicePendingDelete($name) {
 }
 function Add-Finding($Kind, $Severity, $Target, $Detail, $Extra = $null) {
   $key = "$Kind|$Target"
+  # Never a Windows program: cmd.exe was marked for quarantine and a real Windows task deleted with it (WAZ-V8NC2, Nov 2026).
+  if ($Kind -eq 'File' -and "$Target".StartsWith($env:SystemRoot, [StringComparison]::OrdinalIgnoreCase) -and
+      (Test-Path -LiteralPath $Target -PathType Leaf) -and (Test-MicrosoftSigned $Target)) { return }
   if ($Findings | Where-Object { "$($_.Kind)|$($_.Target)" -eq $key }) { return }
   # Which program started a bad process, for the opt-in report (a fake FilmoraTray kept coming back, Nov 2026).
   if ($Kind -eq 'Process' -and $Extra -is [hashtable] -and $Extra.Pid) {
@@ -1123,6 +1126,11 @@ function Scan-Persistence {
       $sev = if ($logon -match $PersistRegex -or $userDir) { 'HIGH' } else { 'WARN' }
       Add-Finding 'RegValue' $sev "$hive\Environment|UserInitMprLogonScript" "Logon script runs at every sign-in: $logon"
       $lf = Get-ImageFile $logon
+      # cmd.exe /c start "" "<AppData>\x.exe" (WAZ-V8NC2, Nov 2026): the program it starts is the target, never cmd.exe.
+      if ($lf -and $lf.StartsWith($env:SystemRoot, [StringComparison]::OrdinalIgnoreCase)) {
+        $lf = @([regex]::Matches($logon, '(?i)[A-Z]:\\[^"*?<>|]+?\.(exe|bat|cmd|vbs|vbe|js|ps1|dll)\b') | ForEach-Object { $_.Value } |
+          Where-Object { -not $_.StartsWith($env:SystemRoot, [StringComparison]::OrdinalIgnoreCase) } | Select-Object -First 1)[0]
+      }
       if ($userDir -and $lf -and (Test-Path -LiteralPath $lf -PathType Leaf)) {
         Add-Finding 'File' 'HIGH' $lf 'Script started at every sign-in from a user or data folder (logon script).'
         # Kept now: -Fix moves the file before the report is written.

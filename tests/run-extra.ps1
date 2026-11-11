@@ -1159,7 +1159,15 @@ Remove-Item -LiteralPath $libU, $pdU -Recurse -Force -ErrorAction SilentlyContin
 Remove-Item -LiteralPath $drv1, $drv2, $zDoc, $zVhd, $zRar, $zEmpty, $locked9 -Force -ErrorAction SilentlyContinue
 # After a clean-up the killer that stopped coming back is history, not active (WAZ-625V3); KV<hex>.sys in Temp (WAZ-AZVRM).
 $kvDrv = "$env:TEMP\KV1A2B3C4D.sys"; Set-Content -LiteralPath $kvDrv 'killer driver stand-in'
+# Logon script wrapped in cmd.exe /c start (WAZ-V8NC2): the started program is the target, cmd.exe is never touched.
+$lgDir = "$env:APPDATA\e30f73f9-wazlogon"; New-Item -ItemType Directory -Force -Path $lgDir | Out-Null; Set-Content "$lgDir\kquhowaz.exe" 'dummy'
+Set-ItemProperty -Path 'HKCU:\Environment' -Name 'UserInitMprLogonScript' -Value "`"$env:SystemRoot\system32\cmd.exe`" /c start /b `"`" `"$lgDir\kquhowaz.exe`""
 $r43 = Scan "$env:TEMP\x43.json"
+Check (Has $r43 'File' 'HIGH' 'kquhowaz\.exe$') 'program started by a cmd.exe logon script is HIGH'
+Check (-not ($r43.All | Where-Object { $_.Target -match '(?i)\\system32\\cmd\.exe$' })) 'cmd.exe itself is never reported'
+Check (-not ($r43.All | Where-Object { $_.Kind -eq 'Task' -and $_.Target -match '^\\Microsoft\\Windows\\' })) 'no Windows task is reported as starting malware'
+Remove-ItemProperty -Path 'HKCU:\Environment' -Name 'UserInitMprLogonScript' -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $lgDir -Recurse -Force -ErrorAction SilentlyContinue
 Check (Has $r43 'Info' 'WARN' 'Service installed from a malware hiding place: WazArdrvGone') 'killer installed before the last clean-up is a warning, not still active'
 Check (-not (Has $r43 'Info' 'HIGH' 'Antivirus killer still active: WazArdrvGone')) 'killer installed before the last clean-up is not reported as still active'
 Check (Has $r43 'File' 'HIGH' 'KV1A2B3C4D\.sys$') 'KV<hex>.sys driver in Temp is HIGH'
