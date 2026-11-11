@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.11.51'
+$Version = '2026.11.11.52'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -2990,7 +2990,10 @@ if ($me -and $meRemove -and $script:MeTimes.Count) {
     $p = Get-ImageFile $e.Img
     if (-not $p -or $nearSeen[$p.ToLower()] -or -not (Test-Path -LiteralPath $p -PathType Leaf)) { continue }
     $nearSeen[$p.ToLower()] = $true
-    if ($Findings | Where-Object { "$($_.Target)" -ieq $p }) { continue }
+    # Anything already reported (the service itself, its file, its image) is left to that finding, so a HIGH
+    # driver file is still quarantined (CI, Nov 2026: a warning here took the file's slot and blocked removal).
+    if ($Findings | Where-Object { "$($_.Target)" -ieq $p -or "$($_.Target)" -ieq $e.Name -or ($_.Extra -is [hashtable] -and "$($_.Extra.Image)" -ieq $p) }) { continue }
+    if ($p -match '(?i)\\System32\\drivers\\' -and $p -match '(?i)\.sys$') { continue }
     $sig = Get-AuthenticodeSignature -LiteralPath $p -ErrorAction SilentlyContinue
     if ($sig -and $sig.Status -eq 'Valid' -and [string]$sig.SignerCertificate.Subject -match '(?i)O="?(Microsoft Corporation|Zoho Corporation)') { continue }
     $min = [int][math]::Round(($e.Time - $mt[0]).TotalMinutes)
