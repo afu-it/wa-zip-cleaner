@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.11.65'
+$Version = '2026.11.11.66'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -2371,7 +2371,13 @@ function Invoke-Fix($qdir) {
         'RegKey' {
           $reg = Join-Path $qdir "reg-$i.reg"
           & reg.exe export (ConvertTo-RegExePath $f.Target) $reg /y | Out-Null
-          Remove-Item -LiteralPath $f.Target -Recurse -Force -ErrorAction Stop
+          try { Remove-Item -LiteralPath $f.Target -Recurse -Force -ErrorAction Stop }
+          catch {
+            # WAZ-BRKSM (Nov 2026): ManageEngine and AdventNet keys refused ("subkey does not exist", "unauthorized").
+            # Retry deepest first with the admin delete; done when the key is gone.
+            if ("$($f.Target)" -match '^HKLM:\\') { try { Remove-RegKeyAdmin $f.Target } catch {} }
+            if (Test-Path -LiteralPath $f.Target) { throw }
+          }
           $log.Add(@{ Kind = 'Reg'; Target = $f.Target; Backup = $reg })
         }
         'Service' {
@@ -3013,14 +3019,16 @@ $meOther = @($Findings | Where-Object { $_.Severity -eq 'HIGH' -and -not $_.Extr
 $meInfected = $false
 # Leftovers (the protected MEARW parts) of an agent an earlier clean-up here already removed as the attacker's: the
 # main agent service is gone, so nothing says "company". R5T2B and 7F9EF (Nov 2026) kept them after Safe Mode.
-$meLeft = $false
+# Not $meLeft: PowerShell names ignore case, and $MeLeft is the list of ManageEngine parts a clean-up could not
+# remove. Overwriting it with $false crashed the clean-up and claimed ManageEngine was gone (WAZ-BRKSM, Nov 2026).
+$meRemovedBefore = $false
 # A deleted service can stay listed until restart, so the agent counts only while its program file is there.
 if ($me -and -not (Get-CimInstance Win32_Service -ErrorAction SilentlyContinue | Where-Object { "$($_.PathName)" -match '(?i)\\dcagentservice\.exe' -and (Test-Path -LiteralPath (Get-ImageFile $_.PathName) -PathType Leaf) })) {
-  $meLeft = [bool](Get-ChildItem -LiteralPath $QuarantineRoot -Recurse -Filter manifest.json -ErrorAction SilentlyContinue |
+  $meRemovedBefore = [bool](Get-ChildItem -LiteralPath $QuarantineRoot -Recurse -Filter manifest.json -ErrorAction SilentlyContinue |
     Where-Object { $_.LastWriteTime -gt (Get-Date).AddDays(-30) -and (Select-String -LiteralPath $_.FullName -Pattern 'ManageEngine|AdventNet' -Quiet) })
 }
 if ($me) {
-  $meInfected = -not $script:MeAttacker -and ($meOther.Count -gt 0 -or $script:MeNearBad -or $meLeft)
+  $meInfected = -not $script:MeAttacker -and ($meOther.Count -gt 0 -or $script:MeNearBad -or $meRemovedBefore)
   # The hour match names the attacker's install itself, so it wins over a generic "other malware" line.
   if ($meInfected -and $script:MeNearBad) {
     $me | ForEach-Object { $_.Detail = "Remote-management agent installed within an hour of a program from a malware hiding place being installed as a service ($($script:MeNearBad)). Other malware found on this PC, so this ManageEngine is almost certainly the attacker's. This tool will force-remove it." }
