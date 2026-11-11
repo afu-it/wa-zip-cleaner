@@ -184,6 +184,8 @@ Copy-Item -LiteralPath "$drvDir\null.sys" -Destination "$env:TEMP\HWiNFO64A_999.
 & sc.exe create HWiNFO_999 type= kernel start= demand binPath= "$env:TEMP\HWiNFO64A_999.SYS" | Out-Null
 Copy-Item -LiteralPath "$drvDir\null.sys" -Destination "$env:TEMP\GPU-Z-v99.sys" -Force
 & sc.exe create GPU-Z-v99 type= kernel start= demand binPath= "$env:TEMP\GPU-Z-v99.sys" | Out-Null
+# HWiNFO closed: its driver file is gone, only the stopped service entry is left.
+& sc.exe create HWiNFO_998 type= kernel start= demand binPath= "$env:SystemRoot\Temp\HWiNFO_x64_998.sys" | Out-Null
 & sc.exe create WazRmmTest start= demand binPath= "C:\Program Files (x86)\AnyDesk\AnyDesk.exe --service" | Out-Null
 # MSP360 and Faronics Deploy agents from phishing e-mails (Microsoft, Sep 2026).
 & sc.exe create WazMsp360Test start= demand binPath= "`"C:\Program Files\RMM Agent\RMM.Agent.exe`"" | Out-Null
@@ -262,7 +264,8 @@ $hwSig = (Get-AuthenticodeSignature -LiteralPath "$env:TEMP\HWiNFO64A_999.SYS").
 if ($hwSig -eq 'Valid') { Check (-not (Has $r 'Service' 'HIGH' '^HWiNFO_999$')) 'signed HWiNFO driver in Temp is not an antivirus killer'
   Check (-not (Has $r 'Service' 'HIGH' '^GPU-Z-v99$')) 'signed GPU-Z driver in Temp is not an antivirus killer' }
 else { Write-Host "SKIP HWiNFO: test copy signature is $hwSig" -ForegroundColor Yellow }
-& sc.exe delete HWiNFO_999 | Out-Null; & sc.exe delete GPU-Z-v99 | Out-Null
+Check (-not (Has $r 'Service' 'HIGH' '^HWiNFO_998$')) 'HWiNFO service left after its driver file was deleted is not an antivirus killer'
+& sc.exe delete HWiNFO_999 | Out-Null; & sc.exe delete GPU-Z-v99 | Out-Null; & sc.exe delete HWiNFO_998 | Out-Null
 Remove-Item -LiteralPath "$env:APPDATA\Microsoft\test-vulnerable3.sys" -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath "$env:TEMP\WazEmbeddedDrv.sys", "$env:TEMP\test-vulnerable2.sys", "$env:TEMP\HWiNFO64A_999.SYS", "$env:TEMP\GPU-Z-v99.sys" -Force -ErrorAction SilentlyContinue
 Check (Has $r 'Info' 'WARN' 'Remote-control program: AnyDesk') 'remote-control program (AnyDesk) is WARN'

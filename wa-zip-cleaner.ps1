@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.11.69'
+$Version = '2026.11.11.70'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -865,12 +865,19 @@ function Get-LolMatch([string]$path) {
 
 # HWiNFO (hardware monitor) loads its own signed driver from Temp as HWiNFO64A_<n>.SYS, service HWiNFO_<n>.
 # WAZ-N5DZS (Nov 2026) had it removed as an antivirus killer. A LOLDrivers-listed or unsigned file never counts.
-function Test-ToolDriver([string]$img) {
+function Test-ToolDriver([string]$img, [string]$svcName) {
   $p = ($img.Trim().Trim('"') -replace '^\\\?\?\\', '')
   # HWiNFO and GPU-Z unpack their own driver to Temp each run: HWiNFO64A_216.SYS, HWiNFO_x64_216.sys, GPU-Z-v8.sys
   # (WAZ-8PVNC, Nov 2026). Only a validly signed copy that LOLDrivers does not list is let through.
   if ((Split-Path $p -Leaf) -notmatch '(?i)^(HWiNFO(32|64)[A-Z]?_\d+|HWiNFO_x(64|86)_\d+|GPU-Z-v\d+)\.SYS$') { return $false }
-  if (-not (Test-Path -LiteralPath $p -PathType Leaf) -or (Get-LolMatch $p)) { return $false }
+  # HWiNFO deletes its driver when it closes but leaves the service entry. With no file and nothing loaded there is
+  # nothing to judge or remove; it was shown as HIGH and the victim hunted for a file that is not there (Nov 2026).
+  if (-not (Test-Path -LiteralPath $p -PathType Leaf)) {
+    if (-not $svcName) { return $false }
+    $st = try { [string](New-Object System.ServiceProcess.ServiceController $svcName).Status } catch { '' }
+    return $st -eq 'Stopped'
+  }
+  if (Get-LolMatch $p) { return $false }
   (Get-AuthenticodeSignature -LiteralPath $p -ErrorAction SilentlyContinue).Status -eq 'Valid'
 }
 
@@ -928,7 +935,7 @@ function Scan-Services {
     elseif (($name -eq 'ardrv' -or $img -match '\\ardrv\.sys') -and $img -notmatch 'OPSWAT') { $hit = 'ardrv.sys outside OPSWAT folder (abused to kill antivirus).' }
     elseif ($img -match $PersistRegex -and $img -notmatch 'OPSWAT') { $hit = "Service points at malware path: $img" }
     # Triage (Oct 2026, SSM/SOA lures): a driver loaded straight out of a Temp folder is the antivirus killer.
-    elseif (($name -eq 'EmbeddedDriverService' -or $img -match '(?i)\\Temp\\[^\\]+\.sys"?$') -and -not (Test-ToolDriver $img)) { $hit = "Driver loaded from a Temp folder (antivirus killer): $img" }
+    elseif (($name -eq 'EmbeddedDriverService' -or $img -match '(?i)\\Temp\\[^\\]+\.sys"?$') -and -not (Test-ToolDriver $img $name)) { $hit = "Driver loaded from a Temp folder (antivirus killer): $img" }
     # Opt-in report (Nov 2026, MicroPoint chain renamed Virtual_Linux): service MSDRIVER1005 loads ProgramData\<folder>\Security_Module.dat.
     elseif ($img -match '(?i)\\(ProgramData|Users|AppData)\\[^"]*\.(dat|bin|tmp|log|jpg|png|txt)"?$') { $hit = "Service or driver loaded from a data file (antivirus killer, ValleyRAT MicroPoint chain): $img" }
     elseif ($name -match '^(TCLService|Cndom6)$' -and $img -notmatch '(?i)\\Program Files') { $hit = "Silver Fox service (Chinese security reports): $img" }
