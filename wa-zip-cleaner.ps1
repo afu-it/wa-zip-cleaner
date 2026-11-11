@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.11.57'
+$Version = '2026.11.11.58'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -341,6 +341,8 @@ $AbusedLegit = @(
   # Opt-in report (Nov 2026): dropped in Temp as pex7772.tmp and KV37F60000.sys and loaded as services PEx7772 / BOOTREPAIR.
   @{ Sha = 'f130c20c0e4f1bf184514efc658c4bdcccba4816204426ef0eead0ff77acc516'; Size = 17744;   Name = 'ardrv.sys build 2 (OPSWAT, abused as AV killer; VirusTotal 7/75)'; Vendor = 'OPSWAT' }
   # Opt-in samples (Nov 2026): reinstalled 1,669 times from a ProgramData symbol folder (WAZ-EUMT3); MonProcess.sys from a PC with KV<hex>.sys killers in Temp (WAZ-WH8DA).
+  # Opt-in sample (WAZ-LLW58, Nov 2026): service RCFlCtrl from C:\Users\Public\<symbols>\<n>.992, reinstalled 1,191 times.
+  @{ Sha = '04bdcd0c70fb07e1c551be3078cf0e82cf53dd4dba3752b74e5db4a715933d16'; Size = 107160;  Name = 'RCFlCtrl.sys (SGA Solutions RedCastle driver signed 2019, abused as AV killer; VirusTotal 0/75)'; Vendor = 'SGA Solutions' }
   # Opt-in sample (WAZ-KBXTR, Nov 2026): service ardrv from C:\Users\Public\<symbols>\847#}#.362.
   @{ Sha = '0b4c5a2d24810748de8ce6fb3d6a3e8acd0305272d6425fa054632410d23ec80'; Size = 17744;   Name = 'ardrv.sys build 4 (OPSWAT AppRemover driver signed 2017, abused as AV killer; VirusTotal 7/75)'; Vendor = 'OPSWAT' }
   @{ Sha = '9f326ede322930a7d5e149fa8720802b0623c1972dc54e41a2a73608fb6810dd'; Size = 17224;   Name = 'ardrv.sys build 3 (OPSWAT AppRemover driver, abused as AV killer; VirusTotal 5/75)'; Vendor = 'OPSWAT' }
