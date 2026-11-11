@@ -1277,6 +1277,10 @@ $ffWa = "$env:APPDATA\Mozilla\Firefox\Profiles\waz1.default-release\storage\defa
 New-Item -ItemType Directory -Force -Path "$ffWa\idb" | Out-Null
 Set-Content -LiteralPath "$ffWa\.metadata-v2" 'https://web.whatsapp.com metadata stand-in'
 Set-Content -LiteralPath "$ffWa\idb\waz-blob" 'whatsapp data stand-in'
+# Inno Setup uninstall log next to a program: never a sample (WAZ-JPV34, Nov 2026).
+$innoDir = "$env:ProgramData\WazInnoTest"; New-Item -ItemType Directory -Force -Path $innoDir | Out-Null
+Set-Content -LiteralPath "$innoDir\unins000.dat" ('Inno Setup Uninstall Log (b) stand-in ' + ('x' * 20000))
+$innoSha = (Get-FileHash -LiteralPath "$innoDir\unins000.dat" -Algorithm SHA256).Hash.ToLower()
 $ffSha = @("$ffWa\.metadata-v2", "$ffWa\idb\waz-blob" | ForEach-Object { (Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash.ToLower() })
 $sGot = "$env:TEMP\waz-samples-got.txt"; Remove-Item -LiteralPath $sGot -Force -ErrorAction SilentlyContinue
 $sJob = Start-SampleInbox $sGot 8798
@@ -1295,6 +1299,8 @@ Check ($x52 -match 'SAMPEL VIRUS' -and $x52 -match 'BUKAN dokumen') 'sample ques
 Check (($gotExt -contains '.dll') -and ($gotExt -contains '.sys') -and ($gotExt -contains '.dat') -and ($gotExt -contains '.exe')) "quarantined .exe/.dll/.sys/.dat sent ($($gotExt -join ','))"
 Check (-not ($gotExt | Where-Object { $_ -match '^\.(docx|zip)$' })) 'no document or zip sent'
 Check (-not (@($got | ForEach-Object { ($_ -split '\|')[1] }) | Where-Object { $ffSha -contains $_ })) 'Firefox WhatsApp Web files never sent as samples'
+Check (-not (@($got | ForEach-Object { ($_ -split '\|')[1] }) | Where-Object { $_ -eq $innoSha })) 'installer uninstall log never sent as a sample'
+Remove-Item -LiteralPath $innoDir -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath "$env:APPDATA\Mozilla\Firefox\Profiles\waz1.default-release" -Recurse -Force -ErrorAction SilentlyContinue
 Check ((@($got | ForEach-Object { ($_ -split '\|')[1] }) -contains $kSha)) 'quarantined antivirus killer with no file extension sent'
 & sc.exe delete WazK1lr | Out-Null; Remove-Item -LiteralPath $kDrv -Force -ErrorAction SilentlyContinue
