@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.11.56'
+$Version = '2026.11.11.57'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -141,7 +141,6 @@ $KnownBad = @(
   @{ Sha = 'c163f979d5dec3a40b7f14ef03b4ca9af62d785c615568f1e08de5af321f4386'; Size = 638313;   Name = 'Hidden+System hs_rt32_*.dll in Temp (opt-in report, Nov 2026; not on VirusTotal)' }
   @{ Sha = '18db96354a00c1be908e4f3faebe7ab51e83d7e3342124bb7cacc5dbf7856d1a'; Size = 18713;    Name = 'Encrypted payload eneio64.dat (opt-in report, Nov 2026; not on VirusTotal)' }
   @{ Sha = '2c77d954eb79cc5b038b024d84848360d496b51c85ac8e97399d70d1bc3d0413'; Size = 1288192; Name = 'ValleyRAT dropper, becomes WinCombo.exe (MicroPoint chain, Oct 2026)' }
-  @{ Sha = '9f326ede322930a7d5e149fa8720802b0623c1972dc54e41a2a73608fb6810dd'; Size = 17224; Name = 'Unknown file dropped with ZyArk.sys (crClient chain, Oct 2026)' }
   @{ Sha = '701d51b7be8b034c860bf97847bd59a87dca8481c4625328813746964995b626'; Size = 16603648; Name = 'TCLBANKER loader (Elastic, Oct 2026)' }
   @{ Sha = '8a174aa70a4396547045aef6c69eb0259bae1706880f4375af71085eeb537059'; Size = 3844096; Name = 'TCLBANKER payload (Elastic, Oct 2026)' }
   @{ Sha = '668f932433a24bbae89d60b24eee4a24808fc741f62c5a3043bb7c9152342f40'; Size = 3845120; Name = 'TCLBANKER payload (Elastic, Oct 2026)' }
@@ -342,6 +341,8 @@ $AbusedLegit = @(
   # Opt-in report (Nov 2026): dropped in Temp as pex7772.tmp and KV37F60000.sys and loaded as services PEx7772 / BOOTREPAIR.
   @{ Sha = 'f130c20c0e4f1bf184514efc658c4bdcccba4816204426ef0eead0ff77acc516'; Size = 17744;   Name = 'ardrv.sys build 2 (OPSWAT, abused as AV killer; VirusTotal 7/75)'; Vendor = 'OPSWAT' }
   # Opt-in samples (Nov 2026): reinstalled 1,669 times from a ProgramData symbol folder (WAZ-EUMT3); MonProcess.sys from a PC with KV<hex>.sys killers in Temp (WAZ-WH8DA).
+  # Opt-in sample (WAZ-KBXTR, Nov 2026): service ardrv from C:\Users\Public\<symbols>\847#}#.362.
+  @{ Sha = '0b4c5a2d24810748de8ce6fb3d6a3e8acd0305272d6425fa054632410d23ec80'; Size = 17744;   Name = 'ardrv.sys build 4 (OPSWAT AppRemover driver signed 2017, abused as AV killer; VirusTotal 7/75)'; Vendor = 'OPSWAT' }
   @{ Sha = '9f326ede322930a7d5e149fa8720802b0623c1972dc54e41a2a73608fb6810dd'; Size = 17224;   Name = 'ardrv.sys build 3 (OPSWAT AppRemover driver, abused as AV killer; VirusTotal 5/75)'; Vendor = 'OPSWAT' }
   @{ Sha = '72d0b5615b996cbb01b1ca139e627079094f734da48a0435ffd8480a25d0a258'; Size = 57576;   Name = 'MonProcess.sys (vulnerable Honor driver abused as AV killer; VirusTotal 24/75)'; Vendor = 'Honor' }
   @{ Sha = 'eb57b6db9b6876a51c7bc05ef011adcf0909a7351da8a329d6a1aee52a286459'; Size = 30320;   Name = 'BootRepair.sys (vulnerable Lenovo driver abused as AV killer; VirusTotal 9/75)'; Vendor = 'Lenovo' }
