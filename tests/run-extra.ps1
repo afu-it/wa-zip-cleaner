@@ -11,6 +11,9 @@ $fail = 0
 $env:WAZIP_NO_PROMPT = '1'
 # Never reboot the runner into Safe Mode: the tool writes its decision here instead.
 $safeDry = "$env:TEMP\waz-safeauto.txt"
+# Runners can ship with UAC off; switched off it is now always HIGH, so start every check from the Windows default.
+$uacK = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+Set-ItemProperty -LiteralPath $uacK -Name ConsentPromptBehaviorAdmin -Value 5 -Type DWord; Set-ItemProperty -LiteralPath $uacK -Name EnableLUA -Value 1 -Type DWord
 $env:WAZIP_TEST_SAFEAUTO_DRY = $safeDry
 $env:WAZIP_TIMING = '1'
 Get-MpComputerStatus -ErrorAction SilentlyContinue | Format-List RealTimeProtectionEnabled, AMRunningMode, OnAccessProtectionEnabled
@@ -813,12 +816,20 @@ $uacDir = Join-Path $env:LOCALAPPDATA '0A1B2C3D4E5F6071'
 New-Item -ItemType Directory -Force -Path $uacDir | Out-Null
 Set-Content "$uacDir\CrashHunter_PC3.dll" 'dummy'
 $r28 = Scan "$env:TEMP\x28.json"
-Check (Has $r28 'Info' 'WARN' '^Admin permission prompt') 'UAC switched off is reported on an infected PC'
+Check (Has $r28 'Info' 'HIGH' '^Admin permission prompt' 'other signs of attack') 'UAC switched off on an infected PC is HIGH'
 $r29 = Scan "$env:TEMP\x29.json" -Fix
 Check ((Get-ItemProperty -LiteralPath $uacKey).ConsentPromptBehaviorAdmin -eq 5) '-Fix turns the admin prompt (UAC) back on'
 if ($null -ne $uacOld) { Set-ItemProperty -LiteralPath $uacKey -Name ConsentPromptBehaviorAdmin -Value $uacOld -Type DWord }
 else { Remove-ItemProperty -LiteralPath $uacKey -Name ConsentPromptBehaviorAdmin -ErrorAction SilentlyContinue }
 Remove-Item -LiteralPath $uacDir -Recurse -Force -ErrorAction SilentlyContinue
+# UAC off with nothing else: still HIGH so Y turns it back on (AFU, Nov 2026), but not called an infection.
+Set-ItemProperty -LiteralPath $uacKey -Name ConsentPromptBehaviorAdmin -Value 0 -Type DWord
+$r29b = Scan "$env:TEMP\x29b.json"
+$uacF = @($r29b.All | Where-Object { $_.Target -match '^Admin permission prompt' })
+Check ($uacF.Count -eq 1 -and $uacF[0].Severity -eq 'HIGH') "UAC switched off on its own is HIGH ($($uacF[0].Detail))"
+$r29c = Scan "$env:TEMP\x29c.json" -Fix
+Check ((Get-ItemProperty -LiteralPath $uacKey).ConsentPromptBehaviorAdmin -eq 5) '-Fix turns UAC back on when it was the only finding'
+Set-ItemProperty -LiteralPath $uacKey -Name ConsentPromptBehaviorAdmin -Value 5 -Type DWord
 
 Write-Host '=== Programs inside a folder Defender is told to skip (Caches / Toolkit report, Nov 2026) ===' -ForegroundColor Cyan
 $exDir = 'C:\Users\Public\WazExclScan'

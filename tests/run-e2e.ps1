@@ -6,6 +6,9 @@ $tool = Join-Path $root 'wa-zip-cleaner.ps1'
 $q = 'C:\WAZipQuarantineTest'
 $fail = 0
 $env:WAZIP_NO_PROMPT = '1'
+# Runners can ship with UAC off; switched off it is always HIGH, so start from the Windows default.
+$uacK = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+Set-ItemProperty -LiteralPath $uacK -Name ConsentPromptBehaviorAdmin -Value 5 -Type DWord; Set-ItemProperty -LiteralPath $uacK -Name EnableLUA -Value 1 -Type DWord
 $env:WAZIP_TEST_SAFEAUTO_DRY = "$env:TEMP\waz-safeauto-e2e.txt"
 function Check($ok, $msg) {
   if ($ok) { Write-Host "PASS $msg" -ForegroundColor Green } else { Write-Host "FAIL $msg" -ForegroundColor Red; $script:fail++ }

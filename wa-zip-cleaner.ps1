@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.11.62'
+$Version = '2026.11.11.63'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -1677,10 +1677,6 @@ function Scan-ManageEngine {
       Add-Finding 'File' 'HIGH' $d 'ManageEngine install kit left by the WhatsApp disk-image lure (MyCERT MA-1491/1493).'; $script:MeAttacker = $true
     }
   }
-  # Both the VBS campaign and the MicroPoint ValleyRAT chain switch this off; only worth saying on an infected PC.
-  if (($hits.Count -or ($Findings | Where-Object { $_.Severity -eq 'HIGH' -and -not $_.Extra.Tidy })) -and (Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -ErrorAction SilentlyContinue).ConsentPromptBehaviorAdmin -eq 0) {
-    Add-Finding 'Info' 'WARN' 'Admin permission prompt is switched off' 'The WhatsApp VBS campaign and ValleyRAT switch this off before installing their programs. Typing Y turns it back on (restart afterwards). Or by hand: search UAC > Change User Account Control settings > move the slider up one step.'
-  }
   if ($hits.Count) {
     $d = if ($script:MeAttacker) { 'Remote-management agent connected to a known attacker server (WhatsApp VBS campaign). This tool will force-remove it.' } else { switch ($Owner) {
       'Office'   { 'Remote-management agent found. Company IT often installs it; ask your IT team to confirm. This tool leaves it alone on an office PC.' }
@@ -3078,6 +3074,21 @@ if ($meRemove -or -not $me) {
 }
 
 if ($IpgHigh) { Add-IpGuardRemoval }
+
+# Admin permission prompt (UAC) switched off. The VBS campaign and the MicroPoint ValleyRAT chain do this; IT staff
+# and owners sometimes do too (129 opt-in reports, Nov 2026: 5 with UAC off, 2 with Winos). AFU: it is always turned
+# back on. With any other sign (malware, a remote-control program, a Defender exclusion, ManageEngine) the PC counts
+# as infected; on its own it is a setting to fix (Tidy), not proof of malware.
+$uacPol = Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -ErrorAction SilentlyContinue
+if ($uacPol -and ($uacPol.ConsentPromptBehaviorAdmin -eq 0 -or $uacPol.EnableLUA -eq 0)) {
+  $uacSign = @($Findings | Where-Object { ($_.Severity -eq 'HIGH' -and -not $_.Extra.Tidy -and $_.Kind -ne 'WaSession') -or $_.Kind -eq 'DefExcl' -or
+    "$($_.Target)" -match '^Remote-control program:|ManageEngine' } | Select-Object -First 1)
+  if ($uacSign.Count) {
+    Add-Finding 'Info' 'HIGH' 'Admin permission prompt is switched off' "Switched off on a PC that also shows other signs of attack ($($uacSign[0].Target)). The WhatsApp VBS campaign and ValleyRAT switch it off before installing their programs. Typing Y turns it back on (restart afterwards)."
+  } else {
+    Add-Finding 'Info' 'HIGH' 'Admin permission prompt is switched off' 'Programs can install themselves without asking. Not a sign of malware by itself (IT staff sometimes switch it off), but this tool always turns it back on: type Y (restart afterwards).' @{ Tidy = $true }
+  }
+}
 
 # A WhatsApp Web zip alone is tidied away, but it is not a sign of infection.
 if ($Findings | Where-Object { $_.Severity -eq 'HIGH' -and -not $_.Extra.Tidy }) { Add-WhatsAppWebSessions }
