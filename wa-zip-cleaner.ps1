@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.11.50'
+$Version = '2026.11.11.51'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -512,6 +512,7 @@ $script:ProcCache = $null
 $script:BadSvcHist = @()
 # Suspicious program files left in place (not quarantined), offered as samples: Prio 0 Defender-detected, 1 warning, 2 installed near the antivirus killer.
 $script:Suspects = New-Object System.Collections.Generic.List[object]
+$script:MeTimes = @(); $script:SvcEvents = @()
 $script:MeNearBad = $null
 $script:ActiveKiller = $false
 $script:LogonScripts = @()
@@ -546,6 +547,7 @@ $WarnHelp = @(
   ,@('Malware program ran', 'Rekod Windows tunjuk program malware ni pernah jalan di PC ni. Failnya mungkin dah dipadam, tapi PC ni pernah dijangkiti.', 'Jalankan tool ni dan taip Y untuk bersihkan. Tukar kata laluan bank dan emel guna telefon. Kalau tak pasti, backup dokumen dan format PC.')
   # History only: the killer file is gone. It matched 'driver' below and told victims to uninstall a program (WAZ-69CW8, Nov 2026).
   ,@('Service installed from a malware hiding place', 'Rekod lama: virus pernah pasang pembunuh antivirus di PC ni (tarikh di bawah). Fail tu dah tiada sekarang.', 'Kalau tiada merah [HIGH] lain, virus dah dibuang. Hidupkan Windows Update kalau dimatikan, dan tukar kata laluan bank dan emel guna telefon.')
+  ,@('the attacker''s ManageEngine', 'Program ni dipasang hampir serentak dengan ManageEngine penggodam. Mungkin sebahagian serangan yang sama.', 'Taip Y bila tool tanya untuk hantar sampel supaya kami boleh semak. Kalau anda atau IT tak kenal program ni: Settings > Apps > Uninstall.')
   ,@('Defender detected', 'Windows Defender pernah jumpa virus di PC ni dalam 30 hari lepas.', 'Kalau nama virus tu ada ValleyRAT, Winos, Rozena atau Trojan: anggap PC pernah dijangkiti. Jalankan tool ni dan taip Y, kemudian tukar kata laluan guna telefon.')
   ,@('real-time protection was turned off', 'Perlindungan antivirus pernah dimatikan. Malware buat ni sebelum pasang dirinya.', 'Pastikan dia hidup semula: Windows Security > Virus & threat protection > Manage settings > Real-time protection: On. Lepas tu buat Full scan.')
   ,@('Defender exclusion added', 'Ada program suruh antivirus abaikan folder atau program ni. Malware buat ni supaya dia tak diperiksa.', 'Kalau bukan anda yang tambah: Windows Security > Virus & threat protection > Manage settings > Exclusions > Remove. Tool ni dah buang yang dia kenal sebagai jahat.')
@@ -954,6 +956,9 @@ function Scan-ServiceHistory {
   foreach ($e in @(try { Get-WinEvent -FilterHashtable @{ LogName = 'Application'; ProviderName = 'MsiInstaller'; Id = 1033, 11707; StartTime = $since } -MaxEvents 500 -ErrorAction Stop } catch {})) {
     if ("$($e.Message)" -match $rx) { $meTimes += $e.TimeCreated }
   }
+  $script:MeTimes = $meTimes
+  $script:SvcEvents = @(foreach ($e in $ev) { $nm = [string]$e.Properties[0].Value; $img = [string]$e.Properties[1].Value
+    if ("$nm $img" -notmatch $rx) { [pscustomobject]@{ Name = $nm; Img = $img; Time = $e.TimeCreated } } })
   foreach ($b in $bad.Values) {
     $p = $b.Path
     if ((Test-Path -LiteralPath $p -PathType Leaf) -and (Test-MicrosoftSigned $p)) { continue }
@@ -2974,6 +2979,26 @@ if ($me) {
     if ($RemoveManageEngine) { $Fix = $true }
   }
 }
+# Programs installed as services within an hour of the attacker's ManageEngine: part of the same attack until proven
+# otherwise. Shown as a warning and offered as a sample (WAZ-4X583, Nov 2026: C:\dcy\Client\safety.exe two minutes
+# after the agent, unknown anywhere online, and nothing looked at it).
+if ($me -and $meRemove -and $script:MeTimes.Count) {
+  $nearSeen = @{}
+  foreach ($e in $script:SvcEvents) {
+    $mt = @($script:MeTimes | Where-Object { [math]::Abs(($e.Time - $_).TotalMinutes) -le 60 } | Select-Object -First 1)
+    if (-not $mt.Count) { continue }
+    $p = Get-ImageFile $e.Img
+    if (-not $p -or $nearSeen[$p.ToLower()] -or -not (Test-Path -LiteralPath $p -PathType Leaf)) { continue }
+    $nearSeen[$p.ToLower()] = $true
+    if ($Findings | Where-Object { "$($_.Target)" -ieq $p }) { continue }
+    $sig = Get-AuthenticodeSignature -LiteralPath $p -ErrorAction SilentlyContinue
+    if ($sig -and $sig.Status -eq 'Valid' -and [string]$sig.SignerCertificate.Subject -match '(?i)O="?(Microsoft Corporation|Zoho Corporation)') { continue }
+    $min = [int][math]::Round(($e.Time - $mt[0]).TotalMinutes)
+    $rel = if ($min -ge 0) { "$min minute(s) after" } else { "$(-$min) minute(s) before" }
+    Add-Finding 'File' 'WARN' $p "Program installed as service $($e.Name) on $($e.Time.ToString('yyyy-MM-dd HH:mm')), $rel the attacker's ManageEngine. It may be part of the same attack; not removed, a copy can be sent for checking."
+  }
+}
+
 # MyCERT MA-1491: the lures plant a ManageEngineCA root certificate so the attacker's server looks trusted.
 # Removed with the agent, or when no agent is left to need it; kept for an office agent that stays.
 if ($meRemove -or -not $me) {

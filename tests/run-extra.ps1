@@ -1059,6 +1059,9 @@ Remove-MePlant 'MEAskTest'
 
 Write-Host '=== ManageEngine installed within an hour of an antivirus killer (94V6P/UYRPQ reports, Nov 2026) ===' -ForegroundColor Cyan
 New-MePlant 'MEOfficeTest4'
+# A program installed as a service right after the attacker's ManageEngine (WAZ-4X583, C:\dcy\Client\safety.exe).
+New-Item -ItemType Directory -Force -Path 'C:\wazdcy\Client' | Out-Null; Set-Content 'C:\wazdcy\Client\safety.exe' 'unknown program stand-in'
+& sc.exe create WazNearMe start= demand binPath= 'C:\wazdcy\Client\safety.exe' | Out-Null
 $goneLib = 'C:\Users\Public\Libraries\9&]!])^}[!!]%[#~##Gone'
 & sc.exe create WazArdrvGone type= kernel start= demand binPath= ($goneLib + '\4=!=[)](gone') | Out-Null
 & sc.exe delete WazArdrvGone | Out-Null
@@ -1066,6 +1069,8 @@ Start-Sleep 2
 $rT = Scan "$env:TEMP\xt1.json" -Owner Office
 Check (Has $rT 'Info' 'HIGH' 'Antivirus killer still active: WazArdrvGone') 'service installed from a hiding place in the last 48 hours (file gone) is HIGH'
 Check (Has $rT 'Info' 'HIGH' 'ManageEngine' 'within an hour') "office ManageEngine installed within an hour of the antivirus killer is HIGH ($(@($rT.All | Where-Object { $_.Target -match 'ManageEngine' } | ForEach-Object { "$($_.Severity) $($_.Detail)" }) -join '; '))"
+Check (Has $rT 'File' 'WARN' 'wazdcy\\Client\\safety\.exe$' "attacker's ManageEngine") 'service installed within an hour of the attacker ManageEngine is a warning'
+& sc.exe delete WazNearMe | Out-Null; Remove-Item -LiteralPath 'C:\wazdcy' -Recurse -Force -ErrorAction SilentlyContinue
 Remove-MePlant 'MEOfficeTest4'
 
 Write-Host '=== Hiding folders, service-install history, linked task, zips (opt-in reports, Nov 2026) ===' -ForegroundColor Cyan
