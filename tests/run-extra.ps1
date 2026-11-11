@@ -1255,6 +1255,12 @@ $lureSha = (Get-FileHash -LiteralPath $sLure -Algorithm SHA256).Hash.ToLower()
 $kDrv = "$env:SystemRoot\System32\drivers\wazk1lr"; Set-Content -LiteralPath $kDrv 'antivirus killer stand-in'
 $kSha = (Get-FileHash -LiteralPath $kDrv -Algorithm SHA256).Hash.ToLower()
 & sc.exe create WazK1lr type= kernel start= demand binPath= $kDrv | Out-Null
+# Firefox WhatsApp Web storage: the '+' signs in its folder name must not make its files samples (Nov 2026).
+$ffWa = "$env:APPDATA\Mozilla\Firefox\Profiles\waz1.default-release\storage\default\https+++web.whatsapp.com"
+New-Item -ItemType Directory -Force -Path "$ffWa\idb" | Out-Null
+Set-Content -LiteralPath "$ffWa\.metadata-v2" 'https://web.whatsapp.com metadata stand-in'
+Set-Content -LiteralPath "$ffWa\idb\waz-blob" 'whatsapp data stand-in'
+$ffSha = @("$ffWa\.metadata-v2", "$ffWa\idb\waz-blob" | ForEach-Object { (Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash.ToLower() })
 $sGot = "$env:TEMP\waz-samples-got.txt"; Remove-Item -LiteralPath $sGot -Force -ErrorAction SilentlyContinue
 $sJob = Start-SampleInbox $sGot 8798
 Start-Sleep 5
@@ -1271,6 +1277,8 @@ Check (-not (Test-Path -LiteralPath $sLure)) 'Downloads lure program quarantined
 Check ($x52 -match 'SAMPEL VIRUS' -and $x52 -match 'BUKAN dokumen') 'sample question asked, saying documents are not sent'
 Check (($gotExt -contains '.dll') -and ($gotExt -contains '.sys') -and ($gotExt -contains '.dat') -and ($gotExt -contains '.exe')) "quarantined .exe/.dll/.sys/.dat sent ($($gotExt -join ','))"
 Check (-not ($gotExt | Where-Object { $_ -match '^\.(docx|zip)$' })) 'no document or zip sent'
+Check (-not (@($got | ForEach-Object { ($_ -split '\|')[1] }) | Where-Object { $ffSha -contains $_ })) 'Firefox WhatsApp Web files never sent as samples'
+Remove-Item -LiteralPath "$env:APPDATA\Mozilla\Firefox\Profiles\waz1.default-release" -Recurse -Force -ErrorAction SilentlyContinue
 Check ((@($got | ForEach-Object { ($_ -split '\|')[1] }) -contains $kSha)) 'quarantined antivirus killer with no file extension sent'
 & sc.exe delete WazK1lr | Out-Null; Remove-Item -LiteralPath $kDrv -Force -ErrorAction SilentlyContinue
 Check (-not ($got | Where-Object { ($_ -split '\|')[1] -eq $lureSha })) 'quarantined program from Downloads not sent'

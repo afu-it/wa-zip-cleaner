@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.11.58'
+$Version = '2026.11.11.59'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -2775,6 +2775,9 @@ $SampleNever = '(?i)\.(zip|rar|7z|gz|tar|cab|docx?|xlsx?|pptx?|pdf|rtf|txt|csv|o
 $script:LastReportId = $null
 function Test-SampleName([string]$orig) {
   if ($orig -match '(?i)\\(Downloads|Desktop|Documents|OneDrive[^\\]*|Pictures|Videos)\\') { return $false }
+  # Browser data is never a sample: Firefox keeps WhatsApp Web in storage\default\https+++web.whatsapp.com, whose
+  # '+' signs looked like a symbol-named hiding folder, so its .metadata-v2 file was sent (Nov 2026).
+  if ($orig -match '(?i)\\User Data\\|\\Mozilla\\Firefox\\|\\IndexedDB\\|\\storage\\default\\|whatsapp\.com|\.indexeddb\.') { return $false }
   $leaf = Split-Path $orig -Leaf
   if ($leaf -match $SampleNever) { return $false }
   $ext = [IO.Path]::GetExtension($leaf).ToLower()
