@@ -1010,6 +1010,19 @@ Remove-Item Env:\WAZIP_TEST_C2, Env:\WAZIP_TEST_CNSIGNER
 }
 
 if (InPart 1) {
+Write-Host '=== Defender event naming our quarantine copy and a live copy elsewhere (WAZ-2JS5E, Nov 2026) ===' -ForegroundColor Cyan
+$dlDir = "$env:TEMP\WazDefLive"
+New-Item -ItemType Directory -Force -Path $dlDir | Out-Null
+Set-Content -LiteralPath "$dlDir\CtxMUi.dll" 'live copy stand-in'
+$env:WAZIP_TEST_DEFEVT = "Trojan:Script/WazLiveCopy|file:_$q\20261111-1\x.quarantine\ctxmuI.dll; file:_$dlDir\CtxMUi.dll`nTrojan:Script/WazGoneCopy|file:_$q\20261111-1\y.quarantine\a.dll; file:_C:\WazNoSuchDir\a.dll"
+$rD = Scan "$env:TEMP\xdl.json"
+Check (Has $rD 'Info' 'WARN' 'Defender detected: Trojan:Script/WazLiveCopy' 'CtxMUi\.dll') 'live copy in the same Defender event as our quarantine copy is still reported'
+Check (-not (Has $rD 'Info' 'WARN' 'WazGoneCopy')) 'event naming only our quarantine copy and a gone file stays quiet'
+Remove-Item Env:\WAZIP_TEST_DEFEVT
+Remove-Item -LiteralPath $dlDir -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+if (InPart 1) {
 Write-Host '=== .bat launchers ===' -ForegroundColor Cyan
 # Clear WARN-only leftovers so a clean result reads BERSIH.
 & sc.exe delete MEUemsTest | Out-Null; & sc.exe delete OpswatLegitTest | Out-Null

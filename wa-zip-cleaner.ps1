@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.11.68'
+$Version = '2026.11.11.69'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -1366,20 +1366,37 @@ function Scan-DefenderHistory {
   $ev = @(try { Get-WinEvent -FilterHashtable @{ LogName = 'Microsoft-Windows-Windows Defender/Operational'; Id = 1116, 1117, 5001, 5007; StartTime = $HistorySince } -MaxEvents 500 -ErrorAction Stop } catch { })
   $det = [ordered]@{}; $rtp = @(); $defPaths = @()
   if ($env:WAZIP_TEST_DEFDET) { $tt, $tp = $env:WAZIP_TEST_DEFDET -split '\|', 2; $defPaths += ,@($tt, $tp) }
-  foreach ($e in $ev) {
+  $recs = @(foreach ($e in $ev) {
     $d = @{}
     try { foreach ($n in ([xml]$e.ToXml()).Event.EventData.Data) { $d[[string]$n.Name] = [string]$n.'#text' } } catch { continue }
-    $when = $e.TimeCreated.ToString('yyyy-MM-dd')
-    if ($e.Id -in 1116, 1117) {
+    [pscustomobject]@{ Id = $e.Id; When = $e.TimeCreated.ToString('yyyy-MM-dd'); D = $d }
+  })
+  if ($env:WAZIP_TEST_DEFEVT) {
+    foreach ($x in $env:WAZIP_TEST_DEFEVT -split "`n") {
+      $tt, $tp = $x -split '\|', 2
+      $recs += [pscustomobject]@{ Id = 1116; When = (Get-Date).ToString('yyyy-MM-dd'); D = @{ 'Threat Name' = $tt; 'Path' = $tp } }
+    }
+  }
+  foreach ($r in $recs) {
+    $d = $r.D; $when = $r.When
+    if ($r.Id -in 1116, 1117) {
       $t = $d['Threat Name']; if (-not $t) { continue }
       # Defender flagging this tool's own quarantine copy is not a new infection. It kept a cleaned PC showing a red
-      # trojan warning, and the victim scanned again five times (WAZ-74CAK, Nov 2026).
-      if ($d['Path'] -and $d['Path'].IndexOf("$QuarantineRoot\", [StringComparison]::OrdinalIgnoreCase) -ge 0) { continue }
+      # trojan warning, and the victim scanned again five times (WAZ-74CAK, Nov 2026). The same event can also list a
+      # live copy elsewhere (D:\CtxMUi.dll, WAZ-2JS5E), so drop only the quarantine copy and paths already gone.
+      if ($d['Path'] -and $d['Path'].IndexOf("$QuarantineRoot\", [StringComparison]::OrdinalIgnoreCase) -ge 0) {
+        $live = @(foreach ($one in @($d['Path'] -split ';')) {
+          $lp = $one.Trim() -replace '^\w+:_', ''
+          if ($lp -and $lp.IndexOf("$QuarantineRoot\", [StringComparison]::OrdinalIgnoreCase) -lt 0 -and (Test-Path -LiteralPath $lp)) { "file:_$lp" }
+        })
+        if (-not $live.Count) { continue }
+        $d['Path'] = $live -join '; '
+      }
       if (-not $det.Contains($t)) { $det[$t] = @{ Count = 0; Last = $when; Path = ($d['Path'] -replace '^\w+:_', '') } }
       $det[$t].Count++
       $defPaths += ,@($t, $d['Path'])
-    } elseif ($e.Id -eq 5001) { $rtp += $when }
-    elseif ($e.Id -eq 5007 -and -not $d['Old Value'] -and $d['New Value'] -match '(?i)\\Exclusions\\(Paths|Processes|Extensions)\\(.+?) = ') {
+    } elseif ($r.Id -eq 5001) { $rtp += $when }
+    elseif ($r.Id -eq 5007 -and -not $d['Old Value'] -and $d['New Value'] -match '(?i)\\Exclusions\\(Paths|Processes|Extensions)\\(.+?) = ') {
       Add-Finding 'Info' 'WARN' "Defender exclusion added: $($Matches[2])" "Added on $when. If it is no longer in the exclusion list, it was removed since."
     }
   }
