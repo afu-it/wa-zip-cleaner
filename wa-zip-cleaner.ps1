@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.11.49'
+$Version = '2026.11.11.50'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -827,6 +827,15 @@ function Get-LolMatch([string]$path) {
   if ($h) { $LolDrivers[$h.ToLower()] }
 }
 
+# HWiNFO (hardware monitor) loads its own signed driver from Temp as HWiNFO64A_<n>.SYS, service HWiNFO_<n>.
+# WAZ-N5DZS (Nov 2026) had it removed as an antivirus killer. A LOLDrivers-listed or unsigned file never counts.
+function Test-ToolDriver([string]$img) {
+  $p = ($img.Trim().Trim('"') -replace '^\\\?\?\\', '')
+  if ((Split-Path $p -Leaf) -notmatch '(?i)^HWiNFO(32|64)[A-Z]?_\d+\.SYS$') { return $false }
+  if (-not (Test-Path -LiteralPath $p -PathType Leaf) -or (Get-LolMatch $p)) { return $false }
+  (Get-AuthenticodeSignature -LiteralPath $p -ErrorAction SilentlyContinue).Status -eq 'Valid'
+}
+
 function ConvertTo-RegExePath([string]$psPath) {
   $p = $psPath -replace '^Registry::', '' -replace '^Microsoft\.PowerShell\.Core\\Registry::', ''
   $p = $p -replace '^HKEY_USERS', 'HKU' -replace '^HKEY_LOCAL_MACHINE', 'HKLM' -replace '^HKEY_CURRENT_USER', 'HKCU'
@@ -881,7 +890,7 @@ function Scan-Services {
     elseif (($name -eq 'ardrv' -or $img -match '\\ardrv\.sys') -and $img -notmatch 'OPSWAT') { $hit = 'ardrv.sys outside OPSWAT folder (abused to kill antivirus).' }
     elseif ($img -match $PersistRegex -and $img -notmatch 'OPSWAT') { $hit = "Service points at malware path: $img" }
     # Triage (Oct 2026, SSM/SOA lures): a driver loaded straight out of a Temp folder is the antivirus killer.
-    elseif ($name -eq 'EmbeddedDriverService' -or $img -match '(?i)\\Temp\\[^\\]+\.sys"?$') { $hit = "Driver loaded from a Temp folder (antivirus killer): $img" }
+    elseif (($name -eq 'EmbeddedDriverService' -or $img -match '(?i)\\Temp\\[^\\]+\.sys"?$') -and -not (Test-ToolDriver $img)) { $hit = "Driver loaded from a Temp folder (antivirus killer): $img" }
     # Opt-in report (Nov 2026, MicroPoint chain renamed Virtual_Linux): service MSDRIVER1005 loads ProgramData\<folder>\Security_Module.dat.
     elseif ($img -match '(?i)\\(ProgramData|Users|AppData)\\[^"]*\.(dat|bin|tmp|log|jpg|png|txt)"?$') { $hit = "Service or driver loaded from a data file (antivirus killer, ValleyRAT MicroPoint chain): $img" }
     elseif ($name -match '^(TCLService|Cndom6)$' -and $img -notmatch '(?i)\\Program Files') { $hit = "Silver Fox service (Chinese security reports): $img" }
@@ -1470,6 +1479,10 @@ function Scan-Files {
           Add-Finding 'File' 'HIGH' $f.FullName 'Antivirus-killer driver left in the Temp folder by the WhatsApp malware.'; return }
         if ($f.Extension -ieq '.sys' -and ($lol = Get-LolMatch $f.FullName)) {
           $sev = if ($lol.kind -eq 'malicious') { 'HIGH' } else { 'WARN' }
+          # Renamed vulnerable driver left in Temp: stprocessmonitor.sys as EmbeddedDriverService.sys (WAZ-P9WPT, Nov 2026).
+          $lb = ([IO.Path]::GetFileNameWithoutExtension([string]$lol.name) -replace '\d+$', '').ToLower()
+          if ($sev -eq 'WARN' -and $f.FullName -match '(?i)\\Temp\\' -and $lb.Length -ge 3 -and $f.Name.ToLower() -notlike "*$lb*" -and -not (Test-ToolDriver $f.FullName)) {
+            Add-Finding 'File' 'HIGH' $f.FullName "Renamed vulnerable driver ($($lol.name), LOLDrivers) left in a Temp folder by the WhatsApp malware to switch off antivirus."; return }
           Add-Finding 'File' $sev $f.FullName "Driver listed by LOLDrivers ($($lol.kind)): $($lol.name). Attackers use these to switch off antivirus."; return }
         if ($f.Name -match '(?i)^(eneio64|plcc3a)\.dat$') { Add-Finding 'File' 'HIGH' $f.FullName 'Encrypted payload from the October 2026 WhatsApp ZIP wave.'; return }
         if ($f.Name -match '^dd_vcredist_x86_.*_vcRuntimeMinimum_x86\.exe$') { Add-Finding 'File' 'HIGH' $f.FullName 'Fake Visual C++ installer (Winos4.0 next stage).'; return }

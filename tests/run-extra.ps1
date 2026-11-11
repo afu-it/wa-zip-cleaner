@@ -174,6 +174,10 @@ $vul = New-Object byte[] 4101; (New-Object Random 4).NextBytes($vul); [IO.File]:
   "$((Get-FileHash "$drvDir\wazlolm.sys").Hash.ToLower()),malicious,test-malicious.sys",
   "$((Get-FileHash "$drvDir\wazlolv.sys").Hash.ToLower()),vulnerable,test-vulnerable.sys") | Set-Content -Encoding ASCII "$env:TEMP\test-lol.csv"
 $env:WAZIP_TEST_LOLDRIVERS = "$env:TEMP\test-lol.csv"
+# Vulnerable driver renamed in Temp (WAZ-P9WPT) vs one keeping its name; HWiNFO's signed Temp driver (WAZ-N5DZS).
+[IO.File]::WriteAllBytes("$env:TEMP\WazEmbeddedDrv.sys", $vul); [IO.File]::WriteAllBytes("$env:TEMP\test-vulnerable2.sys", $vul)
+Copy-Item -LiteralPath "$drvDir\null.sys" -Destination "$env:TEMP\HWiNFO64A_999.SYS" -Force
+& sc.exe create HWiNFO_999 type= kernel start= demand binPath= "$env:TEMP\HWiNFO64A_999.SYS" | Out-Null
 & sc.exe create WazRmmTest start= demand binPath= "C:\Program Files (x86)\AnyDesk\AnyDesk.exe --service" | Out-Null
 # MSP360 and Faronics Deploy agents from phishing e-mails (Microsoft, Sep 2026).
 & sc.exe create WazMsp360Test start= demand binPath= "`"C:\Program Files\RMM Agent\RMM.Agent.exe`"" | Out-Null
@@ -245,6 +249,13 @@ Check (Has $r 'File' 'WARN' 'Downloads\\Other\.vhdx$') 'other VHD in user folder
 Check (-not ($r.All | Where-Object { $_.Target -match 'ext4\.vhdx' })) 'WSL ext4.vhdx ignored'
 Check (Has $r 'Service' 'HIGH' '^WazLolMal$' 'LOLDrivers') 'LOLDrivers malicious driver service is HIGH'
 Check (Has $r 'Service' 'WARN' '^WazLolVuln$' 'vulnerable') 'LOLDrivers vulnerable driver service is WARN'
+Check (Has $r 'File' 'HIGH' 'WazEmbeddedDrv\.sys$' 'Renamed vulnerable driver') 'renamed vulnerable driver in Temp is HIGH'
+Check (Has $r 'File' 'WARN' 'test-vulnerable2\.sys$') 'vulnerable driver in Temp keeping its own name stays WARN'
+$hwSig = (Get-AuthenticodeSignature -LiteralPath "$env:TEMP\HWiNFO64A_999.SYS").Status
+if ($hwSig -eq 'Valid') { Check (-not (Has $r 'Service' 'HIGH' '^HWiNFO_999$')) 'signed HWiNFO driver in Temp is not an antivirus killer' }
+else { Write-Host "SKIP HWiNFO: test copy signature is $hwSig" -ForegroundColor Yellow }
+& sc.exe delete HWiNFO_999 | Out-Null
+Remove-Item -LiteralPath "$env:TEMP\WazEmbeddedDrv.sys", "$env:TEMP\test-vulnerable2.sys", "$env:TEMP\HWiNFO64A_999.SYS" -Force -ErrorAction SilentlyContinue
 Check (Has $r 'Info' 'WARN' 'Remote-control program: AnyDesk') 'remote-control program (AnyDesk) is WARN'
 Check (Has $r 'Info' 'WARN' 'Remote-control program: MSP360 RMM') 'MSP360 RMM agent is WARN'
 Check (Has $r 'Info' 'WARN' 'Remote-control program: Chrome Remote Desktop') 'Chrome Remote Desktop is WARN'
