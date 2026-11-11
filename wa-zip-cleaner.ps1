@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.11.60'
+$Version = '2026.11.11.61'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -475,10 +475,30 @@ function Show-Tag([string]$text, [string]$fg, [string]$bg) {
   Write-Host ' ' -NoNewline
   Write-Host " $text " -ForegroundColor $fg -BackgroundColor $bg
 }
+# Progress bar 0-100% at the top of the window while the scan runs (AFU, Nov 2026: victims could not tell the scan
+# was still moving during the long file step). Write-Progress stays out of the transcript, so scan.log is unchanged.
+# Each step owns a slice of the bar; the file step is most of the time, so it owns most of the bar.
+$ProgSlice = @(0, 4, 4, 6, 8, 8, 60, 5, 5)
+$script:Prog = @{ On = $false; Base = 0; Span = 0; Frac = 0.0; Step = ''; Sub = ''; Files = 0; Last = [Diagnostics.Stopwatch]::StartNew() }
+function Show-Prog([switch]$Force) {
+  $p = $script:Prog
+  if (-not $p.On -or (-not $Force -and $p.Last.ElapsedMilliseconds -lt 200)) { return }
+  $p.Last.Restart()
+  $pct = [int][Math]::Min(100, [Math]::Floor($p.Base + $p.Span * [Math]::Min(1.0, $p.Frac)))
+  $st = "$pct%  $($p.Step)"
+  if ($p.Sub) { $st += "  -  $($p.Sub)" }
+  if ($p.Files) { $st += "  ($($p.Files.ToString('N0')) fail / files)" }
+  try { Write-Progress -Id 1 -Activity 'Mengimbas PC (Scanning the PC)' -Status $st -PercentComplete $pct } catch {}
+}
+# Part of the current step done (0..1), with an optional folder name shown under the bar.
+function Set-Prog([double]$frac, [string]$sub) { $script:Prog.Frac = $frac; if ($PSBoundParameters.ContainsKey('sub')) { $script:Prog.Sub = $sub }; Show-Prog }
 # One scan step: label and dots on one line, then the result tag once the step finishes.
 function Invoke-Step([int]$n, [string]$ms, [scriptblock]$run) {
   $before = $Findings.Count
   $label = "  [$n/8] $ms"
+  $script:Prog.On = $true; $script:Prog.Base = ($ProgSlice[0..($n - 1)] | Measure-Object -Sum).Sum; $script:Prog.Span = $ProgSlice[$n]
+  $script:Prog.Frac = 0.0; $script:Prog.Sub = ''; $script:Prog.Files = 0; $script:Prog.Step = "Langkah $n/8: $ms"
+  Show-Prog -Force
   Write-Host $label -ForegroundColor Gray -NoNewline
   Write-Host (' ' + ('.' * [Math]::Max(3, 46 - $label.Length))) -ForegroundColor DarkGray -NoNewline
   $script:MidLine = $true
@@ -488,6 +508,8 @@ function Invoke-Step([int]$n, [string]$ms, [scriptblock]$run) {
   try {
     & $run 2>&1 | ForEach-Object { if ($_ -is [System.Management.Automation.ErrorRecord]) { Add-StepError ("$($_.Exception.Message)" -replace '\s+', ' ') } else { $_ } }
   } catch { Add-StepError ("$($_.Exception.Message)" -replace '\s+', ' ') }
+  $script:Prog.Frac = 1.0; $script:Prog.Sub = ''; Show-Prog -Force
+  if ($n -ge 8) { $script:Prog.On = $false; try { Write-Progress -Id 1 -Activity 'Mengimbas PC (Scanning the PC)' -Completed } catch {} }
   if (-not $script:MidLine) { Write-Host (' ' * 48) -NoNewline }
   $script:MidLine = $false
   $new = @($Findings | Select-Object -Skip $before)
@@ -624,6 +646,7 @@ function Get-TreeFiles([string]$Root) {
   while ($stack.Count) {
     $d = $stack.Pop()
     $items = try { $d.GetFileSystemInfos() } catch { @() }
+    if ($script:Prog.On) { $script:Prog.Files += $items.Count; Show-Prog }
     foreach ($i in $items) {
       # Windows Sandbox / container base layers hold a copied Windows (msvbvm60.dll, drivers): WAZ-955XG, Nov 2026.
       if ($i -is [IO.DirectoryInfo]) { if (-not ($i.Attributes -band [IO.FileAttributes]::ReparsePoint) -and $i.FullName -notmatch '(?i)\\ProgramData\\Microsoft\\Windows\\Containers$') { $stack.Push($i) } }
@@ -1409,7 +1432,9 @@ function Scan-Files {
   $exts = '\.(zip|rar|7z|vhd|vhdx|img|iso|dll|exe|scr|dat|cnf|sys|tar|vbs|vbe|js|wsf|lnk|msi|mst|key)$|^DCAgentServerInfo\.json$|^UX64$'
   $wsh = New-Object -ComObject WScript.Shell
   # WAZIP_TIMING=1 prints how long each folder takes (used to find slow folders on CI and real PCs).
-  foreach ($r in $roots | Where-Object { Test-Path -LiteralPath $_ }) {
+  $live = @($roots | Where-Object { Test-Path -LiteralPath $_ }); $ri = 0
+  foreach ($r in $live) {
+    Set-Prog ($ri / [Math]::Max(1, $live.Count)) ($r -replace '^[A-Za-z]:\\Users\\[^\\]+\\', '' -replace '^[A-Za-z]:\\', ''); $ri++
     $sw = [Diagnostics.Stopwatch]::StartNew(); $tn = 0
     Get-TreeFiles $r |
       Where-Object { $_.Name -match $exts } | ForEach-Object {

@@ -1452,6 +1452,7 @@ $rD = Scan "$env:TEMP\xd1.json" -Out "$env:TEMP\xd1.out"
 Remove-Item Env:\WAZIP_TEST_MPFAIL, Env:\WAZIP_TEST_STEPERR
 $xd = Get-Content -Raw "$env:TEMP\xd1.out"
 Check ($xd -match 'could not check\): test step error' -and $xd -notmatch '\[8/8\] Browser[^\r\n]*BERSIH') 'a step that hit an error is not shown as BERSIH'
+Check ($xd -match '\[6/8\] Fail' -and $xd -match '\[8/8\] Browser' -and $xd -notmatch 'Mengimbas PC \(Scanning') 'progress bar leaves the step lines and the saved output unchanged'
 if ($mpOk -and $regOk) { Check (Has $rD 'DefExcl' 'HIGH' 'QtsUpdater\.exe') 'Defender exclusions read from the registry when Get-MpPreference fails' }
 else { Write-Host "SKIP Defender registry fallback: exclusion added $mpOk, registry readable $regOk" -ForegroundColor Yellow }
 if ($vAtt) { Check (-not ($rD.All | Where-Object { $_.Kind -eq 'Vhd' -and $_.Target -eq $vhdV })) 'vendor virtual disk under Program Files is not flagged' }
