@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.11.63'
+$Version = '2026.11.11.64'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -1368,6 +1368,9 @@ function Scan-DefenderHistory {
     $when = $e.TimeCreated.ToString('yyyy-MM-dd')
     if ($e.Id -in 1116, 1117) {
       $t = $d['Threat Name']; if (-not $t) { continue }
+      # Defender flagging this tool's own quarantine copy is not a new infection. It kept a cleaned PC showing a red
+      # trojan warning, and the victim scanned again five times (WAZ-74CAK, Nov 2026).
+      if ($d['Path'] -and $d['Path'].IndexOf("$QuarantineRoot\", [StringComparison]::OrdinalIgnoreCase) -ge 0) { continue }
       if (-not $det.Contains($t)) { $det[$t] = @{ Count = 0; Last = $when; Path = ($d['Path'] -replace '^\w+:_', '') } }
       $det[$t].Count++
       $defPaths += ,@($t, $d['Path'])
