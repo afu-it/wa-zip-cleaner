@@ -1192,7 +1192,7 @@ Check (-not ($r43.All | Where-Object { $_.Target -match '(?i)\\system32\\cmd\.ex
 Check (-not ($r43.All | Where-Object { $_.Kind -eq 'Task' -and $_.Target -match '^\\Microsoft\\Windows\\' })) 'no Windows task is reported as starting malware'
 Remove-ItemProperty -Path 'HKCU:\Environment' -Name 'UserInitMprLogonScript' -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $lgDir -Recurse -Force -ErrorAction SilentlyContinue
-Check (Has $r43 'Info' 'WARN' 'Service installed from a malware hiding place: WazArdrvGone') 'killer installed before the last clean-up is a warning, not still active'
+Check (Has $r43 'Info' 'OLD' 'Service installed from a malware hiding place: WazArdrvGone' 'history only') 'killer installed before the last clean-up is an old record, not a warning'
 Check (-not (Has $r43 'Info' 'HIGH' 'Antivirus killer still active: WazArdrvGone')) 'killer installed before the last clean-up is not reported as still active'
 Check (Has $r43 'File' 'HIGH' 'KV1A2B3C4D\.sys$') 'KV<hex>.sys driver in Temp is HIGH'
 Remove-Item -LiteralPath $kvDrv -Force -ErrorAction SilentlyContinue

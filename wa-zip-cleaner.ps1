@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.11.64'
+$Version = '2026.11.11.65'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -512,7 +512,7 @@ function Invoke-Step([int]$n, [string]$ms, [scriptblock]$run) {
   if ($n -ge 8) { $script:Prog.On = $false; try { Write-Progress -Id 1 -Activity 'Mengimbas PC (Scanning the PC)' -Completed } catch {} }
   if (-not $script:MidLine) { Write-Host (' ' * 48) -NoNewline }
   $script:MidLine = $false
-  $new = @($Findings | Select-Object -Skip $before)
+  $new = @($Findings | Select-Object -Skip $before | Where-Object Severity -ne 'OLD')
   $h = @($new | Where-Object Severity -eq 'HIGH').Count
   if ($h) { Show-Tag "BAHAYA $h" White DarkRed }
   elseif ($new.Count) { Show-Tag "PERIKSA $($new.Count)" Black DarkYellow }
@@ -1012,6 +1012,10 @@ function Scan-ServiceHistory {
       # under two hours, the last one a minute before the scan). Only Safe Mode stops it before it re-drops everything.
       if ($b.N -ge 5 -and $b.Last -ge (Get-Date).AddHours(-6)) { $script:KillerWaves = $true }
       Add-Finding 'Info' 'HIGH' "Antivirus killer still active: $($b.Name)" "Windows records show $p was installed as a service $when, last on $($b.Last.ToString('yyyy-MM-dd HH:mm')). It deletes itself after each run, and the program that brings it back is still on this PC (not found by this tool). Disconnect the internet, change bank and email passwords from your phone, back up your documents and reinstall Windows. Send the report (type Y) so the program can be found."
+    } elseif ($b.Last -le (Get-LastFixTime)) {
+      # Before the last clean-up by this tool: history only, nothing left to remove (AFU, Nov 2026: a cleaned PC kept
+      # a yellow warning that could never go away, and the victim scanned again five times).
+      Add-Finding 'Info' 'OLD' "Service installed from a malware hiding place: $($b.Name)" "Windows records show $p was installed as a service $when, before the last clean-up by this tool. The file and the service are gone; this is history only."
     } else {
       Add-Finding 'Info' 'WARN' "Service installed from a malware hiding place: $($b.Name)" "Windows records show $p was installed as a service $when (the antivirus killer of Winos/ValleyRAT). The file is gone now; treat this PC as infected."
     }
@@ -3103,17 +3107,26 @@ if ($ReportPath) {
 $high = @($Findings | Where-Object Severity -eq 'HIGH')
 $infected = @($high | Where-Object { -not $_.Extra.Tidy })
 $warn = @($Findings | Where-Object Severity -eq 'WARN')
+# History from before the last clean-up: shown in grey, never a warning (nothing left to remove).
+$oldRec = @($Findings | Where-Object Severity -eq 'OLD')
+function Show-OldRecords {
+  if (-not $oldRec.Count) { return }
+  Write-Host ''
+  Say '  Rekod lama sebelum pembersihan (tiada tindakan perlu):' '  Old records from before the clean-up (nothing to do):' DarkGray
+  foreach ($f in $oldRec) { Write-Host ("   - {0}" -f $f.Target) -ForegroundColor DarkGray }
+}
 Show-Head 'KEPUTUSAN' 'RESULT'
 Write-Host ''
-if (-not $Findings.Count) {
+if (-not ($high.Count + $warn.Count)) {
   Write-Host '      ' -NoNewline; Show-Tag 'PC BERSIH' Black DarkGreen
+  Show-OldRecords
   Write-Host ''
   if ($script:NotChecked.Count) {
     Say "Tiada tanda malware ZIP WhatsApp dijumpai, tapi $($script:NotChecked.Count) semakan tak dapat dibuat (lihat 'tak dapat semak' di atas). Restart PC dan jalankan tool ni sekali lagi." "No signs of the WhatsApp ZIP malware found, but $($script:NotChecked.Count) check(s) could not run (see 'could not check' above). Restart the PC and run this tool again." Yellow
   } else { Say 'BERSIH: tiada tanda malware ZIP WhatsApp dijumpai.' 'CLEAN: no signs of the WhatsApp ZIP malware found.' Green }
   Stop-Transcript | Out-Null; Invoke-ReportOffer; exit 0
 }
-foreach ($f in $Findings) {
+foreach ($f in $Findings | Where-Object Severity -ne 'OLD') {
   if ($f.Severity -eq 'HIGH') { $c = 'Red'; $fg = 'White'; $bg = 'DarkRed'; $t = 'BAHAYA' } else { $c = 'Yellow'; $fg = 'Black'; $bg = 'DarkYellow'; $t = 'AMARAN' }
   Write-Host '  ' -NoNewline
   Write-Host " $t " -ForegroundColor $fg -BackgroundColor $bg -NoNewline
@@ -3128,6 +3141,7 @@ Write-Host ''
 Write-Host '      ' -NoNewline
 if ($high.Count) { Show-Tag "$($high.Count) BAHAYA, $($warn.Count) AMARAN" White DarkRed } else { Show-Tag "$($warn.Count) AMARAN" Black DarkYellow }
 Say "      Jumpa: $($high.Count) bahaya, $($warn.Count) amaran." "      Found: $($high.Count) high, $($warn.Count) warnings." White
+Show-OldRecords
 Show-Head 'LANGKAH SETERUSNYA' 'NEXT STEPS'
 Write-Host ''
 
