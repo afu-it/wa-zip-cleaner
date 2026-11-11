@@ -1484,6 +1484,30 @@ Check ($po -match 'Rekonsiliasi Akun\.zip') 'lure file names are kept as evidenc
 Check ($po -match 'file-3-<file>\.zip\.quarantine') 'quarantine copies of hidden names are hidden too'
 Check ($po -match '<name>\\<name>' -and $po -notmatch [regex]::Escape($env:COMPUTERNAME) -and $po -notmatch '<<') 'account name after the PC name is hidden, with no doubled markers'
 Remove-Item -LiteralPath 'C:\Users\Dell', 'C:\Users\User' -Recurse -Force -ErrorAction SilentlyContinue
+
+# Last in this part: the service history it plants would make every later clean-up here go to Safe Mode.
+Write-Host '=== Loader folder straight in Public, antivirus killer reinstalled in waves (KBXTR/LLW58 reports, Nov 2026) ===' -ForegroundColor Cyan
+$qW = 'C:\WAZipQuarantineWaves'
+Remove-Item -LiteralPath $qW, $safeDry -Recurse -Force -ErrorAction SilentlyContinue
+$pubSym = 'C:\Users\Public\9~]=(.wazQ_'
+New-Item -ItemType Directory -Force -Path $pubSym | Out-Null
+Copy-Item -LiteralPath "$env:SystemRoot\System32\PING.EXE" -Destination "$pubSym\fingerprint.db.exe"
+Set-Content "$pubSym\847#}#.362" 'driver stand-in'
+$pP = [Diagnostics.Process]::Start("$pubSym\fingerprint.db.exe", '-n 900 127.0.0.1')
+$wavLib = 'C:\Users\Public\Libraries\9&]!])^}[!!]%[#~##Waves'
+foreach ($i in 1..5) {
+  & sc.exe create WazKillerWaves type= kernel start= demand binPath= ($wavLib + '\18_++%&(&.224') | Out-Null
+  & sc.exe delete WazKillerWaves | Out-Null
+}
+Start-Sleep 2
+$rW = Scan "$env:TEMP\xw1.json" -Fix -Root $qW
+$sd = if (Test-Path $safeDry) { Get-Content -Raw $safeDry } else { '' }
+Check (Has $rW 'File' 'HIGH' ([regex]::Escape($pubSym) + '$') 'Public or ProgramData folder named with symbols') 'symbol-named folder straight in Public is one hiding unit'
+Check (Has $rW 'Process' 'HIGH' 'fingerprint\.db\.exe' 'hiding folder') 'loader running from the Public folder is stopped'
+Check (-not (Test-Path -LiteralPath $pubSym)) 'whole Public symbol folder quarantined, driver file included'
+Check ($sd -match 'safeauto .*again and again') "antivirus killer reinstalled again and again goes to Safe Mode ($("$sd".Trim()))"
+Stop-Process -Id $pP.Id -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $pubSym, $qW, $safeDry -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 Write-Host ''

@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.11.59'
+$Version = '2026.11.11.60'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -437,6 +437,8 @@ $VbsLureRegex = '(?i)(?<![a-z])(Statement|Debt|Hutang|Outstanding|Balance Sheet|
 $DevPathRegex = '(?i)\\(node_modules|\.git|\.vscode|\.cursor|\.npm|site-packages|bower_components|vendor)\\|\\AppData\\Roaming\\(npm|Code|Cursor)\\|\\AppData\\Local\\Programs\\'
 # A folder name with six or more of these symbols is the Winos/ValleyRAT hiding place (victim reports, Nov 2026).
 $SymNameRegex = '([{}()\[\]@#!%&+=~,`''^$;][^\\]*){6}'
+# Folder straight under C:\Users\Public named with symbols, e.g. 4~=@}.QuB_ (KBXTR) or ~9_+`('{#,#@... (LLW58), Nov 2026.
+$PubSymRegex = '([{}()\[\]@#!%&+=~,`''^$;][^\\]*){4}'
 # Archive entries that make a WhatsApp zip dangerous: a program, a script or a disk image. Documents alone are not.
 $ArchRiskRegex = '(?i)\.(vhdx?|iso|img|vbs|vbe|js|jse|wsf|lnk|exe|msi|scr|bat|cmd|hta|ps1|com|pif)$'
 function Test-ScriptLure($f) {
@@ -518,6 +520,7 @@ $script:Suspects = New-Object System.Collections.Generic.List[object]
 $script:MeTimes = @(); $script:SvcEvents = @()
 $script:MeNearBad = $null
 $script:ActiveKiller = $false
+$script:KillerWaves = $false
 $script:LogonScripts = @()
 $script:PiiFileNames = @{}
 $MeRegKeys = 'HKLM:\SOFTWARE\ManageEngine', 'HKLM:\SOFTWARE\WOW6432Node\ManageEngine', 'HKLM:\SOFTWARE\AdventNet', 'HKLM:\SOFTWARE\WOW6432Node\AdventNet'
@@ -679,12 +682,14 @@ function Test-HideImage([string]$p) {
 # folders), or a symbol-named top folder under ProgramData.
 function Get-HideUnit([string]$p) {
   if (-not $p) { return $null }
-  foreach ($base in "$env:SystemDrive\Users\Public\Libraries\", "$env:ProgramData\") {
+  foreach ($base in "$env:SystemDrive\Users\Public\Libraries\", "$env:ProgramData\", "$env:SystemDrive\Users\Public\") {
     if (-not $p.StartsWith($base, [StringComparison]::OrdinalIgnoreCase)) { continue }
     $rest = $p.Substring($base.Length)
     $top = ($rest -split '\\')[0]
-    if (-not $top) { return $null }
-    if ($base -like '*\Libraries\' -or $top -match $SymNameRegex) { return (Join-Path $base.TrimEnd('\') $top) }
+    if (-not $top -or $rest -notmatch '\\') { continue }
+    if ($base -like '*\Libraries\') { return (Join-Path $base.TrimEnd('\') $top) }
+    if ($base -like '*\Public\' -and $top -match $PubSymRegex) { return (Join-Path $base.TrimEnd('\') $top) }
+    if ($base -notlike '*\Public\' -and $top -match $SymNameRegex) { return (Join-Path $base.TrimEnd('\') $top) }
   }
   $null
 }
@@ -721,7 +726,7 @@ function Add-HideUnit([string]$dir, [string]$why, [switch]$Rand) {
   $script:HideUnits += $dir
   $names = if ($null -eq $top) { 'could not look inside (access blocked)' } else { (@($files | Select-Object -First 3 | ForEach-Object { $_.Name }) -join ', ') + $(if ($files.Count -gt 3) { ", ... ($($files.Count)$(if ($files.Count -ge 50) { '+' }) files)" }) }
   $det = if ($Rand) { "Random-named folder that malware runs from (ValleyRAT loader folder, re-installs the antivirus killer after every clean-up). The whole folder goes to quarantine: $names." }
-         else { "Hidden folder in Public\Libraries or a ProgramData folder named with symbols (Winos/ValleyRAT hiding place). The whole folder goes to quarantine: $names." }
+         else { "Hidden folder in Public\Libraries, or a Public or ProgramData folder named with symbols (Winos/ValleyRAT hiding place). The whole folder goes to quarantine: $names." }
   if ($why) { $det += " Seen: $why." }
   Add-Finding 'File' 'HIGH' $dir $det @{ Unit = $true }
   foreach ($pr in Get-ProcCache) {
@@ -978,6 +983,9 @@ function Scan-ServiceHistory {
       # Still being reinstalled in waves while its folder is gone at scan time: the program that drops it is on this
       # PC and was not found (WAZ-SHR9Y, Nov 2026: four waves in two days, the last six minutes before the scan).
       $script:ActiveKiller = $true
+      # Reinstalled again and again in the last hours: the loader is running now (LLW58, Nov 2026: 1,191 installs in
+      # under two hours, the last one a minute before the scan). Only Safe Mode stops it before it re-drops everything.
+      if ($b.N -ge 5 -and $b.Last -ge (Get-Date).AddHours(-6)) { $script:KillerWaves = $true }
       Add-Finding 'Info' 'HIGH' "Antivirus killer still active: $($b.Name)" "Windows records show $p was installed as a service $when, last on $($b.Last.ToString('yyyy-MM-dd HH:mm')). It deletes itself after each run, and the program that brings it back is still on this PC (not found by this tool). Disconnect the internet, change bank and email passwords from your phone, back up your documents and reinstall Windows. Send the report (type Y) so the program can be found."
     } else {
       Add-Finding 'Info' 'WARN' "Service installed from a malware hiding place: $($b.Name)" "Windows records show $p was installed as a service $when (the antivirus killer of Winos/ValleyRAT). The file is gone now; treat this PC as infected."
@@ -1195,7 +1203,8 @@ function Scan-Persistence {
   # Public\Libraries holds only library shortcuts; any folder with files in it, and any ProgramData folder named
   # with symbols, is the Winos/ValleyRAT hiding place (PZUKK, 94V6P, 63WYJ, RA477, YXP2B reports, Nov 2026).
   foreach ($d in @(Get-ChildItem -LiteralPath "$env:SystemDrive\Users\Public\Libraries" -Directory -Force -ErrorAction SilentlyContinue) +
-                 @(Get-ChildItem -LiteralPath $env:ProgramData -Directory -Force -ErrorAction SilentlyContinue | Where-Object { $_.Name -match $SymNameRegex })) {
+                 @(Get-ChildItem -LiteralPath $env:ProgramData -Directory -Force -ErrorAction SilentlyContinue | Where-Object { $_.Name -match $SymNameRegex }) +
+                 @(Get-ChildItem -LiteralPath "$env:SystemDrive\Users\Public" -Directory -Force -ErrorAction SilentlyContinue | Where-Object { $_.Name -match $PubSymRegex })) {
     Add-HideUnit $d.FullName ''
   }
   Scan-DefenderExclusions
@@ -3098,6 +3107,7 @@ if ($Fix -and -not $SafeAuto -and $loaderHits.Count) {
   if ($prior) { $script:Recur = 'came back after an earlier clean-up' }
   elseif ($liveProc.Count -and $avKill.Count) { $script:Recur = 'loader running with an antivirus killer' }
 }
+if ($Fix -and -not $SafeAuto -and -not $script:Recur -and $script:KillerWaves) { $script:Recur = 'antivirus killer installed again and again' }
 if ($Fix -and $high.Count) {
   $qdir = Join-Path $QuarantineRoot $stamp
   $mf = @(Invoke-Fix $qdir)[-1]
@@ -3324,8 +3334,13 @@ if ($SafeAuto -and $IpgAgain) {
 } elseif ($Fix -and $script:Recur) {
   Show-Head 'SAFE MODE AUTO' 'AUTOMATIC SAFE MODE'
   Write-Host ''
-  Say 'Virus datang balik selepas dibersihkan. Tool akan restart ke Safe Mode untuk buang dia bila dia tak berjalan.' `
-      'The virus came back after cleaning. The tool restarts into Safe Mode to remove it while it is not running.' Yellow
+  if ($script:Recur -match 'again and again') {
+    Say 'Virus masih aktif: dia pasang semula pembunuh antivirus berulang kali. Tool akan restart ke Safe Mode untuk buang dia bila dia tak berjalan.' `
+        'The virus is still active: it keeps reinstalling the antivirus killer. The tool restarts into Safe Mode to remove it while it is not running.' Yellow
+  } else {
+    Say 'Virus datang balik selepas dibersihkan. Tool akan restart ke Safe Mode untuk buang dia bila dia tak berjalan.' `
+        'The virus came back after cleaning. The tool restarts into Safe Mode to remove it while it is not running.' Yellow
+  }
   Say 'JANGAN SENTUH APA-APA. Cuma taip PASSWORD akaun Windows (bukan PIN) bila Safe Mode minta.' `
       'DO NOT TOUCH ANYTHING. Only type your Windows account PASSWORD (not PIN) when Safe Mode asks.' Yellow
   Start-SafeAuto
