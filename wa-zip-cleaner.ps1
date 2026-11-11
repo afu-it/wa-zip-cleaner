@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.10.48'
+$Version = '2026.11.11.49'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -341,6 +341,9 @@ $AbusedLegit = @(
   @{ Sha = '1c5129b4d63f2d5252b5b02a0a7d655dac3b6eac23dd4ed92b4dd55f243387ff'; Size = 18248;   Name = 'ardrv.sys (OPSWAT, abused as AV killer)'; Vendor = 'OPSWAT' }
   # Opt-in report (Nov 2026): dropped in Temp as pex7772.tmp and KV37F60000.sys and loaded as services PEx7772 / BOOTREPAIR.
   @{ Sha = 'f130c20c0e4f1bf184514efc658c4bdcccba4816204426ef0eead0ff77acc516'; Size = 17744;   Name = 'ardrv.sys build 2 (OPSWAT, abused as AV killer; VirusTotal 7/75)'; Vendor = 'OPSWAT' }
+  # Opt-in samples (Nov 2026): reinstalled 1,669 times from a ProgramData symbol folder (WAZ-EUMT3); MonProcess.sys loaded from Temp (WAZ-WH8DA).
+  @{ Sha = '9f326ede322930a7d5e149fa8720802b0623c1972dc54e41a2a73608fb6810dd'; Size = 17224;   Name = 'ardrv.sys build 3 (OPSWAT AppRemover driver, abused as AV killer; VirusTotal 5/75)'; Vendor = 'OPSWAT' }
+  @{ Sha = '72d0b5615b996cbb01b1ca139e627079094f734da48a0435ffd8480a25d0a258'; Size = 57576;   Name = 'MonProcess.sys (vulnerable Honor driver abused as AV killer; VirusTotal 24/75)'; Vendor = 'Honor' }
   @{ Sha = 'eb57b6db9b6876a51c7bc05ef011adcf0909a7351da8a329d6a1aee52a286459'; Size = 30320;   Name = 'BootRepair.sys (vulnerable Lenovo driver abused as AV killer; VirusTotal 9/75)'; Vendor = 'Lenovo' }
   @{ Sha = 'c74f55247aa2c72001024bd977c869cb5adce6f8604a4d32329f015b73ae2a49'; Size = 1994600; Name = 'KafanInputService.exe (sideload host)';      Vendor = 'Kafan' }
   @{ Sha = 'f712c2a8b4abf2e299a2b480020333deb0f43364e9686cda78b1243c62e4830d'; Size = 102536;  Name = 'KuGou active_desktop_launcher.exe (sideload host)'; Vendor = 'KuGou' }
