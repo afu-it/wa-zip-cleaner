@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.11.55'
+$Version = '2026.11.11.56'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -2964,7 +2964,8 @@ $meInfected = $false
 # Leftovers (the protected MEARW parts) of an agent an earlier clean-up here already removed as the attacker's: the
 # main agent service is gone, so nothing says "company". R5T2B and 7F9EF (Nov 2026) kept them after Safe Mode.
 $meLeft = $false
-if ($me -and -not (Get-CimInstance Win32_Service -ErrorAction SilentlyContinue | Where-Object { "$($_.PathName)" -match '(?i)\\dcagentservice\.exe' })) {
+# A deleted service can stay listed until restart, so the agent counts only while its program file is there.
+if ($me -and -not (Get-CimInstance Win32_Service -ErrorAction SilentlyContinue | Where-Object { "$($_.PathName)" -match '(?i)\\dcagentservice\.exe' -and (Test-Path -LiteralPath (Get-ImageFile $_.PathName) -PathType Leaf) })) {
   $meLeft = [bool](Get-ChildItem -LiteralPath $QuarantineRoot -Recurse -Filter manifest.json -ErrorAction SilentlyContinue |
     Where-Object { $_.LastWriteTime -gt (Get-Date).AddDays(-30) -and (Select-String -LiteralPath $_.FullName -Pattern 'ManageEngine|AdventNet' -Quiet) })
 }
