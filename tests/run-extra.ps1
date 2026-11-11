@@ -1072,6 +1072,14 @@ Check (Has $rT 'Info' 'HIGH' 'ManageEngine' 'within an hour') "office ManageEngi
 Check (Has $rT 'File' 'WARN' 'wazdcy\\Client\\safety\.exe$' "attacker's ManageEngine") 'service installed within an hour of the attacker ManageEngine is a warning'
 & sc.exe delete WazNearMe | Out-Null; Remove-Item -LiteralPath 'C:\wazdcy' -Recurse -Force -ErrorAction SilentlyContinue
 Remove-MePlant 'MEOfficeTest4'
+# Leftover MEARW parts after an earlier clean-up removed the attacker's agent (R5T2B / 7F9EF, Nov 2026).
+New-Item -ItemType Directory -Force -Path "$meDir4\EDR\bin" | Out-Null; Set-Content "$meDir4\EDR\bin\MEARWService.exe" 'dummy'
+& sc.exe create MEARWLeftTest start= demand DisplayName= 'ManageEngine - EDR Service' binPath= "`"$meDir4\EDR\bin\MEARWService.exe`"" | Out-Null
+$leftQ = "$env:TEMP\wazq-left"; New-Item -ItemType Directory -Force -Path "$leftQ\20261111-000000" | Out-Null
+'[{"Target":"C:\\Program Files (x86)\\ManageEngine\\UEMS_Agent","Kind":"File"}]' | Set-Content -Encoding ASCII "$leftQ\20261111-000000\manifest.json"
+$rL = Scan "$env:TEMP\xl1.json" -Owner Office -Root $leftQ
+Check (Has $rL 'Info' 'HIGH' 'ManageEngine' 'already removed') 'office ManageEngine leftovers after an earlier removal are HIGH'
+& sc.exe delete MEARWLeftTest | Out-Null; Remove-MePlant 'MEARWLeftTest'; Remove-Item -LiteralPath $leftQ -Recurse -Force -ErrorAction SilentlyContinue
 
 Write-Host '=== Hiding folders, service-install history, linked task, zips (opt-in reports, Nov 2026) ===' -ForegroundColor Cyan
 $libU = 'C:\Users\Public\Libraries\1&]!])^}[!!]%[#~##41242331885'

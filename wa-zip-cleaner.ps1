@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.11.54'
+$Version = '2026.11.11.55'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -2961,13 +2961,22 @@ $meRemove = $false
 # WhatsApp Web login alone is not proof of infection, so those do not count.
 $meOther = @($Findings | Where-Object { $_.Severity -eq 'HIGH' -and -not $_.Extra.Tidy -and $_.Kind -ne 'WaSession' -and "$($_.Target)" -notmatch '(?i)\.(zip|rar|7z)$' -and "$($_.Target) $($_.Detail)" -notmatch 'ManageEngine' })
 $meInfected = $false
+# Leftovers (the protected MEARW parts) of an agent an earlier clean-up here already removed as the attacker's: the
+# main agent service is gone, so nothing says "company". R5T2B and 7F9EF (Nov 2026) kept them after Safe Mode.
+$meLeft = $false
+if ($me -and -not (Get-CimInstance Win32_Service -ErrorAction SilentlyContinue | Where-Object { "$($_.PathName)" -match '(?i)\\dcagentservice\.exe' })) {
+  $meLeft = [bool](Get-ChildItem -LiteralPath $QuarantineRoot -Recurse -Filter manifest.json -ErrorAction SilentlyContinue |
+    Where-Object { $_.LastWriteTime -gt (Get-Date).AddDays(-30) -and (Select-String -LiteralPath $_.FullName -Pattern 'ManageEngine|AdventNet' -Quiet) })
+}
 if ($me) {
-  $meInfected = -not $script:MeAttacker -and ($meOther.Count -gt 0 -or $script:MeNearBad)
+  $meInfected = -not $script:MeAttacker -and ($meOther.Count -gt 0 -or $script:MeNearBad -or $meLeft)
   # The hour match names the attacker's install itself, so it wins over a generic "other malware" line.
   if ($meInfected -and $script:MeNearBad) {
     $me | ForEach-Object { $_.Detail = "Remote-management agent installed within an hour of a program from a malware hiding place being installed as a service ($($script:MeNearBad)). Other malware found on this PC, so this ManageEngine is almost certainly the attacker's. This tool will force-remove it." }
-  } elseif ($meInfected) {
+  } elseif ($meInfected -and $meOther.Count) {
     $me | ForEach-Object { $_.Detail = "Remote-management agent on a PC where other malware was found ($($meOther.Count) item(s), for example $($meOther[0].Kind): $($meOther[0].Target)). Other malware found on this PC, so this ManageEngine is almost certainly the attacker's. This tool will force-remove it." }
+  } elseif ($meInfected) {
+    $me | ForEach-Object { $_.Detail = "Leftover of a ManageEngine agent that an earlier clean-up on this PC already removed as the attacker's (its main service is gone). This tool removes the rest." }
   }
   $meRemove = [bool]$RemoveManageEngine -or $Owner -eq 'Personal' -or $script:MeAttacker -or $meInfected
   if (-not $meRemove -and $Fix -and -not $Owner -and -not $env:WAZIP_NO_PROMPT) {
