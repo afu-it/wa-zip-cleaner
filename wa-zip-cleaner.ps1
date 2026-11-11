@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.11.61'
+$Version = '2026.11.11.62'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -867,7 +867,9 @@ function Get-LolMatch([string]$path) {
 # WAZ-N5DZS (Nov 2026) had it removed as an antivirus killer. A LOLDrivers-listed or unsigned file never counts.
 function Test-ToolDriver([string]$img) {
   $p = ($img.Trim().Trim('"') -replace '^\\\?\?\\', '')
-  if ((Split-Path $p -Leaf) -notmatch '(?i)^HWiNFO(32|64)[A-Z]?_\d+\.SYS$') { return $false }
+  # HWiNFO and GPU-Z unpack their own driver to Temp each run: HWiNFO64A_216.SYS, HWiNFO_x64_216.sys, GPU-Z-v8.sys
+  # (WAZ-8PVNC, Nov 2026). Only a validly signed copy that LOLDrivers does not list is let through.
+  if ((Split-Path $p -Leaf) -notmatch '(?i)^(HWiNFO(32|64)[A-Z]?_\d+|HWiNFO_x(64|86)_\d+|GPU-Z-v\d+)\.SYS$') { return $false }
   if (-not (Test-Path -LiteralPath $p -PathType Leaf) -or (Get-LolMatch $p)) { return $false }
   (Get-AuthenticodeSignature -LiteralPath $p -ErrorAction SilentlyContinue).Status -eq 'Valid'
 }
@@ -2233,6 +2235,9 @@ function Invoke-Fix($qdir) {
   $ipgSafe = ($SafeAuto -or $env:WAZIP_TEST_IPG_SAFE) -and $script:IpgParts -and -not $script:IpgPending -and -not $script:IpgNoAuto
   if ($ipgSafe) { Stop-IpGuardProcs }
   $ipgSwept = $false
+  # A file inside a hiding folder that goes whole: if it cannot move alone (Defender locks a detected DLL), it goes
+  # with its folder, so no FAILED line (WAZ-74CAK, Nov 2026: ctxmuI.dll FAILED, then its folder OK).
+  $unitDirs = @($Findings | Where-Object { $_.Kind -eq 'File' -and $_.Severity -eq 'HIGH' -and $_.Extra -is [hashtable] -and $_.Extra.Unit } | ForEach-Object { [string]$_.Target })
   # Files inside a flagged folder go before the folder itself.
   foreach ($f in $Findings | Sort-Object { @('Process', 'WaSession', 'Vhd', 'Task', 'Wmi', 'DefExcl', 'RegValue', 'Service', 'RegKey', 'Cert', 'WinRE', 'File').IndexOf($_.Kind) }, { -([string]$_.Target).Length }) {
     if ($f.Severity -ne 'HIGH' -or $f.Kind -eq 'Info') { continue }
@@ -2398,6 +2403,8 @@ function Invoke-Fix($qdir) {
           $dest = Join-Path $qdir ("file-$i-" + ((Split-Path $f.Target -Leaf) -replace '[\[\]`*?]', '_') + '.quarantine')
           try { Move-Item -LiteralPath $f.Target -Destination $dest -Force -ErrorAction Stop }
           catch {
+            $tg = [string]$f.Target
+            if (-not $f.Extra.Unit -and @($unitDirs | Where-Object { $tg.StartsWith("$_\", [StringComparison]::OrdinalIgnoreCase) }).Count) { $done = $false; break }
             if (-not $f.Extra.Unit) { throw }
             # The hiding folder can deny access to everyone: take it over, then move it.
             & takeown.exe /f $f.Target /r /d y 2>&1 | Out-Null
