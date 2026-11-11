@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.11.66'
+$Version = '2026.11.11.67'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -1542,6 +1542,10 @@ function Scan-Files {
           $lb = ([IO.Path]::GetFileNameWithoutExtension([string]$lol.name) -replace '\d+$', '').ToLower()
           if ($sev -eq 'WARN' -and $f.FullName -match '(?i)\\Temp\\' -and $lb.Length -ge 3 -and $f.Name.ToLower() -notlike "*$lb*" -and -not (Test-ToolDriver $f.FullName)) {
             Add-Finding 'File' 'HIGH' $f.FullName "Renamed vulnerable driver ($($lol.name), LOLDrivers) left in a Temp folder by the WhatsApp malware to switch off antivirus."; return }
+          # No program keeps its driver loose in AppData\Roaming\Microsoft: WinRing0x64.sys there came with a task
+          # MyApp running AppData\Roaming\service.exe that Defender caught 46 times (WAZ-7CDG8/KTKVU, Nov 2026).
+          if ($sev -eq 'WARN' -and $f.DirectoryName -match '(?i)\\AppData\\Roaming\\Microsoft$') {
+            Add-Finding 'File' 'HIGH' $f.FullName "Vulnerable driver ($($lol.name), LOLDrivers) hidden in the AppData\Roaming\Microsoft folder. Malware drops it there to switch off antivirus or run a crypto-miner."; return }
           Add-Finding 'File' $sev $f.FullName "Driver listed by LOLDrivers ($($lol.kind)): $($lol.name). Attackers use these to switch off antivirus."; return }
         if ($f.Name -match '(?i)^(eneio64|plcc3a)\.dat$') { Add-Finding 'File' 'HIGH' $f.FullName 'Encrypted payload from the October 2026 WhatsApp ZIP wave.'; return }
         if ($f.Name -match '^dd_vcredist_x86_.*_vcRuntimeMinimum_x86\.exe$') { Add-Finding 'File' 'HIGH' $f.FullName 'Fake Visual C++ installer (Winos4.0 next stage).'; return }
