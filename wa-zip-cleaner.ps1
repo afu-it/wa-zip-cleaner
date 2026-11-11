@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.11.52'
+$Version = '2026.11.11.53'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -1527,6 +1527,8 @@ function Scan-Files {
           $ar = Get-ArchiveRisk $f
           if ($ar.Listed -and $ar.Risky.Count) {
             Add-Finding 'File' 'HIGH' $f.FullName "Archive downloaded from WhatsApp Web with a program, script or disk image inside ($(@($ar.Risky | Select-Object -First 3) -join ', ')). The WhatsApp malware arrives like this, so it is moved to quarantine (it can be restored)." @{ Tidy = $true }
+          } elseif ($ar.Listed -and -not $ar.Count) {
+            Add-Finding 'File' 'WARN' $f.FullName 'Archive downloaded from WhatsApp Web with no files inside (empty or only folders), so it is left in place.'
           } elseif ($ar.Listed) {
             Add-Finding 'File' 'WARN' $f.FullName "Archive downloaded from WhatsApp Web. Only documents inside ($($ar.Count) file(s)), so it is left in place."
           } else {

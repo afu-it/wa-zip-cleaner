@@ -1103,7 +1103,8 @@ $drv2 = "$env:SystemRoot\System32\drivers\wazq2hist"; Set-Content $drv2 'dummy'
 $zDoc = "$dl\SPK SOLEH 2024.zip"; New-TestZip $zDoc 'SPK.pdf', 'foto/ktp.jpg'
 $zVhd = "$dl\Gambar majlis.zip"; New-TestZip $zVhd 'Gambar majlis.vhd'
 $zRar = "$dl\Arsip kerja.rar"; Set-Content $zRar 'dummy'
-foreach ($z in $zDoc, $zVhd, $zRar) { Set-Content -LiteralPath $z -Stream Zone.Identifier -Value $zoneW }
+$zEmpty = "$dl\Kosong.zip"; New-TestZip $zEmpty @()
+foreach ($z in $zDoc, $zVhd, $zRar, $zEmpty) { Set-Content -LiteralPath $z -Stream Zone.Identifier -Value $zoneW }
 $locked9 = "$dl\Click here to view9.zip"; Set-Content $locked9 'dummy'
 $locker9 = Start-Encoded "`$f=[IO.File]::Open('$locked9','Open','Read','None'); Start-Sleep 3600"
 # WAZ-DYTEK (Nov 2026): logon script in Public\Documents
@@ -1122,6 +1123,7 @@ Check (Has $r41 'Service' 'HIGH' '^Wazq1jlk5t$' 'hiding place') 'live driver wit
 Check (Has $r41 'File' 'HIGH' 'wazq2hist$' 'installed as a service') 'driver file of a deleted no-extension service (service-install history) is HIGH'
 Check (Has $r41 'File' 'HIGH' 'Gambar majlis\.zip$' 'inside') 'WhatsApp zip with a disk image inside is HIGH'
 Check (Has $r41 'File' 'WARN' 'SPK SOLEH 2024\.zip$' 'Only documents') 'WhatsApp zip with only documents is a warning'
+Check (Has $r41 'File' 'WARN' 'Kosong\.zip$' 'no files inside') 'empty WhatsApp zip is called empty, not documents-only'
 Check (Has $r41 'File' 'WARN' 'Arsip kerja\.rar$' 'cannot look inside') 'WhatsApp .rar the tool cannot open is a warning'
 $tl = if (Test-Path "$env:TEMP\waz-timeline.txt") { Get-Content -Raw "$env:TEMP\waz-timeline.txt" } else { '' }
 Check ($tl -match 'x3 \| WazArdrvHist') "repeated service installs are one timeline line ($(([regex]::Matches($tl, '[^\r\n]*WazArdrvHist[^\r\n]*') | ForEach-Object { $_.Value }) -join ' / '))"
@@ -1154,7 +1156,7 @@ if ($mf4) {
 Unregister-ScheduledTask -TaskName 'WazPrivacyPolicyTest' -Confirm:$false -ErrorAction SilentlyContinue
 & sc.exe delete Wazq1jlk5t | Out-Null
 Remove-Item -LiteralPath $libU, $pdU -Recurse -Force -ErrorAction SilentlyContinue
-Remove-Item -LiteralPath $drv1, $drv2, $zDoc, $zVhd, $zRar, $locked9 -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $drv1, $drv2, $zDoc, $zVhd, $zRar, $zEmpty, $locked9 -Force -ErrorAction SilentlyContinue
 # After a clean-up the killer that stopped coming back is history, not active (WAZ-625V3); KV<hex>.sys in Temp (WAZ-AZVRM).
 $kvDrv = "$env:TEMP\KV1A2B3C4D.sys"; Set-Content -LiteralPath $kvDrv 'killer driver stand-in'
 $r43 = Scan "$env:TEMP\x43.json"
