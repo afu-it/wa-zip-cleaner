@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.12.72'
+$Version = '2026.11.12.73'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -3408,6 +3408,20 @@ if ($Findings | Where-Object { $_.Target -match '^IP-guard' -and $_.Severity -eq
         'IP-guard (a spy program) was found. It records the screen, typing, email and internet traffic. Type Y: the tool blocks its server, then choose 1 to restart into Safe Mode and remove it. Make sure you know your Windows account PASSWORD (not PIN).' Red
   }
 }
+# Changing the boot settings (safeboot) makes BitLocker ask for the 48-digit recovery key on the next start, and most
+# victims do not have it (Nov 2026). Pause BitLocker for the next two restarts (into Safe Mode and back); it turns
+# itself back on after that. No BitLocker, or a PC where it is off: nothing to do.
+function Suspend-BitLockerForReboot {
+  try {
+    $v = Get-BitLockerVolume -MountPoint $env:SystemDrive -ErrorAction Stop
+    if ($v.ProtectionStatus -ne 'On') { return }
+    Suspend-BitLocker -MountPoint $env:SystemDrive -RebootCount 2 -ErrorAction Stop | Out-Null
+    Say '  OK  BitLocker direhatkan untuk 2 kali restart (dia hidup balik sendiri).' '  OK  BitLocker paused for the next 2 restarts (it turns itself back on).' Green
+  } catch {
+    & manage-bde.exe -protectors -disable $env:SystemDrive -RebootCount 2 2>&1 | Out-Null
+  }
+}
+
 # Blocked leftovers: offer to restart into Safe Mode (the tool runs itself there) or into the recovery screen (BUANG.bat).
 function Start-SafeAuto {
   # The online pass holds the evidence (running loader, its folder and task). The final report offer is skipped once
@@ -3425,6 +3439,7 @@ function Start-SafeAuto {
     if ($IpgPending) { Set-Content -LiteralPath (Join-Path $QuarantineRoot 'ipguard-safe-round.txt') -Value 1 -ErrorAction SilentlyContinue }
     # A leading * makes RunOnce run in Safe Mode too.
     Set-ItemProperty -LiteralPath $rk -Name '*WAZipSafeMode' -Value $cmd -ErrorAction Stop
+    Suspend-BitLockerForReboot
     & bcdedit.exe /set '{current}' safeboot minimal | Out-Null
     if ($LASTEXITCODE) { throw 'bcdedit failed' }
     $script:SafeQueued = $true
@@ -3455,6 +3470,7 @@ if ($SafeAuto -and $IpgAgain) {
     Say "Safe Mode pun tak cukup. AMBIL GAMBAR SKRIN NI. Lepas restart: Troubleshoot > Advanced options > Command Prompt, taip $winreBat dan Enter (kalau tak jumpa, tukar C: kepada D:). Lepas siap, taip exit, pilih Continue, dan jalankan tool ni sekali lagi." `
         "Safe Mode was not enough. TAKE A PHOTO OF THIS SCREEN. After the restart: Troubleshoot > Advanced options > Command Prompt, type $winreBat and press Enter (if not found, change C: to D:). When done, type exit, choose Continue, and run this tool again." Yellow
     Read-Host 'Tekan Enter untuk restart ke skrin pemulihan (Press Enter to restart into the recovery screen)' | Out-Null
+    Suspend-BitLockerForReboot
     & shutdown.exe /r /o /f /t 0
   } else {
     Say 'Siap. PC akan restart ke Windows biasa dalam 60 saat. Lepas tu jalankan tool ni sekali lagi untuk semak.' 'Done. The PC restarts into normal Windows in 60 seconds. Then run this tool again to check.' Green
