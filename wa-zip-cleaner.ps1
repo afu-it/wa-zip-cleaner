@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.11.71'
+$Version = '2026.11.12.72'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -938,6 +938,7 @@ function Scan-Services {
     elseif (($name -eq 'EmbeddedDriverService' -or $img -match '(?i)\\Temp\\[^\\]+\.sys"?$') -and -not (Test-ToolDriver $img $name)) { $hit = "Driver loaded from a Temp folder (antivirus killer): $img" }
     # Opt-in report (Nov 2026, MicroPoint chain renamed Virtual_Linux): service MSDRIVER1005 loads ProgramData\<folder>\Security_Module.dat.
     elseif ($img -match '(?i)\\(ProgramData|Users|AppData)\\[^"]*\.(dat|bin|tmp|log|jpg|png|txt)"?$') { $hit = "Service or driver loaded from a data file (antivirus killer, ValleyRAT MicroPoint chain): $img" }
+    elseif ($img.IndexOf("$QuarantineRoot\", [StringComparison]::OrdinalIgnoreCase) -ge 0) { $hit = "Service runs a program from this tool's quarantine (it was moved while running and came back): $img" }
     elseif ($name -match '^(TCLService|Cndom6)$' -and $img -notmatch '(?i)\\Program Files') { $hit = "Silver Fox service (Chinese security reports): $img" }
     elseif ($img -and $img -notmatch 'OPSWAT' -and (Test-HideImage ($imf = Get-ImageFile $img)) -and -not ((Test-Path -LiteralPath $imf -PathType Leaf) -and (Test-MicrosoftSigned $imf))) {
       $hit = "Service or driver loaded from a malware hiding place (Public\Libraries, a folder named with symbols, or a driver file with no extension): $img" }
@@ -2256,6 +2257,32 @@ function Add-ManageEngineRemoval {
 }
 
 # --------------------------------------------------------------- fixes ---
+# Nothing may run from the quarantine. A program moved while it was still running keeps running from there, and its
+# service can be pointed at the new place: UltraViewer was back the next day from
+# C:\WAZipQuarantine\...\UltraViewer.quarantine (WAZ-WWZUM then WAZ-PCFCA, Nov 2026).
+function Stop-QuarantineRunners {
+  $qr = "$QuarantineRoot\"
+  foreach ($k in Get-ChildItem 'HKLM:\SYSTEM\CurrentControlSet\Services' -ErrorAction SilentlyContinue) {
+    $im = [string](Get-ItemProperty -LiteralPath $k.PSPath -Name ImagePath -ErrorAction SilentlyContinue).ImagePath
+    if ($im.IndexOf($qr, [StringComparison]::OrdinalIgnoreCase) -lt 0) { continue }
+    $n = $k.PSChildName
+    & sc.exe config $n start= disabled | Out-Null
+    & sc.exe failure $n reset= 0 actions= '""' | Out-Null
+    & sc.exe stop $n | Out-Null
+    & sc.exe delete $n | Out-Null
+    $script:NeedRestart = $true
+    Say "  OK  Servis yang jalan dari kuarantin dimatikan: $n" "  OK  Service running from the quarantine switched off: $n" Green
+  }
+  foreach ($pr in @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue)) {
+    $ep = [string]$pr.ExecutablePath
+    if (-not $ep -or $ep.IndexOf($qr, [StringComparison]::OrdinalIgnoreCase) -lt 0) { continue }
+    try {
+      Stop-Process -Id $pr.ProcessId -Force -ErrorAction Stop
+      Say "  OK  Program yang jalan dari kuarantin dimatikan: $($pr.Name) (PID $($pr.ProcessId))" "  OK  Program running from the quarantine stopped: $($pr.Name) (PID $($pr.ProcessId))" Green
+    } catch {}
+  }
+}
+
 function Invoke-Fix($qdir) {
   New-Item -ItemType Directory -Force -Path $qdir | Out-Null
   $log = New-Object System.Collections.Generic.List[object]
@@ -2416,6 +2443,9 @@ function Invoke-Fix($qdir) {
             Set-ItemProperty -LiteralPath $f.Extra.RegPath -Name Start -Value 4 -Type DWord -ErrorAction Stop
             if ((Get-ItemProperty -LiteralPath $f.Extra.RegPath -ErrorAction SilentlyContinue).Start -ne 4) { throw 'could not switch it off (Start=4)' }
           }
+          # Switch it off and drop its restart-on-failure first, so killing its program does not bring it straight back.
+          & sc.exe config $f.Target start= disabled | Out-Null
+          & sc.exe failure $f.Target reset= 0 actions= '""' | Out-Null
           & sc.exe stop $f.Target | Out-Null
           & sc.exe delete $f.Target | Out-Null
           # 1072 = already marked for deletion. Anything else: drop the registry entry so it is gone after a restart.
@@ -2526,6 +2556,7 @@ function Invoke-Fix($qdir) {
       else { Say "  OK  Penapis rangkaian IP-guard dilepaskan: $n" "  OK  IP-guard network filter unbound: $n" Green }
     }
   }
+  Stop-QuarantineRunners
   Set-Content -LiteralPath (Join-Path $QuarantineRoot 'last-fix.txt') -Value (Get-Date -Format o)
   $mf = Join-Path $qdir 'manifest.json'
   $log | ConvertTo-Json -Depth 4 | Out-File -Encoding UTF8 $mf

@@ -1012,6 +1012,24 @@ $cnCerts | ForEach-Object { Remove-Item -LiteralPath "Cert:\CurrentUser\My\$($_.
 Remove-Item Env:\WAZIP_TEST_C2, Env:\WAZIP_TEST_CNSIGNER
 }
 
+if (InPart 3) {
+Write-Host '=== Program and service still running from the quarantine (WAZ-WWZUM / WAZ-PCFCA, Nov 2026) ===' -ForegroundColor Cyan
+$qrDir = "$q\20260101-0000\file-1-WazRunner.quarantine"
+New-Item -ItemType Directory -Force -Path $qrDir | Out-Null
+Copy-Item -LiteralPath "$env:SystemRoot\System32\PING.EXE" -Destination "$qrDir\WazRunner.exe" -Force
+$qrP = [Diagnostics.Process]::Start("$qrDir\WazRunner.exe", '-n 900 127.0.0.1')
+& sc.exe create WazQrSvc start= demand binPath= "`"$qrDir\WazRunner.exe`"" | Out-Null
+$rQ = Scan "$env:TEMP\xqr.json" -Fix
+Check (Has $rQ 'Service' 'HIGH' '^WazQrSvc$' 'quarantine') 'service pointing into the quarantine is HIGH'
+Start-Sleep 2
+Check ($qrP.HasExited) 'program running from the quarantine is stopped by the clean-up'
+$qrCfg = (& sc.exe qc WazQrSvc 2>&1 | Out-String)
+Check ($LASTEXITCODE -ne 0 -or $qrCfg -match 'DISABLED') "service pointing into the quarantine is removed or switched off"
+Stop-Process -Id $qrP.Id -Force -ErrorAction SilentlyContinue
+& sc.exe delete WazQrSvc | Out-Null
+Remove-Item -LiteralPath "$q\20260101-0000" -Recurse -Force -ErrorAction SilentlyContinue
+}
+
 if (InPart 1) {
 Write-Host '=== Defender event naming our quarantine copy and a live copy elsewhere (WAZ-2JS5E, Nov 2026) ===' -ForegroundColor Cyan
 $dlDir = "$env:TEMP\WazDefLive"
