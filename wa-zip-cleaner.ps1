@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.12.77'
+$Version = '2026.11.12.78'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -1316,11 +1316,18 @@ function Scan-DefenderExclusions {
   # Look inside every excluded folder (victim report, Nov 2026: AppData\Local\Microsoft\Windows\Caches and
   # AppData\Local\Toolkit were excluded). Known malware anywhere is HIGH; in a user folder, an unsigned
   # program or any script is HIGH too and goes to quarantine with -Fix. Drive roots and Windows are skipped.
+  # Wildcards (C:\DeviceHub_*, ...\Local\*_*\Rainmeter.dll) and Windows\Temp or the SYSTEM profile are checked too:
+  # the BCMF9 kit hid there (Nov 2026). Only Windows itself, System32, SysWOW64 and WinSxS are too big and are skipped.
+  $winBig = '(?i)^' + [regex]::Escape($env:windir) + '(\\(System32|SysWOW64|WinSxS))?$'
   foreach ($v in @($mp.ExclusionPath) + @($pnames) | Where-Object { $_ } | Sort-Object -Unique) {
     $dir = [Environment]::ExpandEnvironmentVariables($v).TrimEnd('\')
-    if ($dir -match $driveRx -or $dir -like "$env:windir*" -or -not (Test-Path -LiteralPath $dir -PathType Container)) { continue }
-    $files = @(Get-TreeFiles $dir | Where-Object { $_.Extension -match '(?i)^\.(exe|dll|scr|vbs|vbe|js|jse|wsf|ps1|bat|cmd|hta|lnk|msi|sys)$' } | Select-Object -First 2001)
-    $user = $dir -match '(?i)^[a-z]:\\Users\\'
+    if ($dir -match $driveRx -or $dir -match $winBig) { continue }
+    $hits = @(if ($dir -match '[*?]') { Get-Item -Path $dir -Force -ErrorAction SilentlyContinue } elseif (Test-Path -LiteralPath $dir) { Get-Item -LiteralPath $dir -Force -ErrorAction SilentlyContinue })
+    if (-not $hits) { continue }
+    $files = @(foreach ($h in $hits) {
+        if ($h.PSIsContainer) { if ($h.FullName -notmatch $winBig -and $h.FullName -notmatch $driveRx) { Get-TreeFiles $h.FullName } } else { $h }
+      } | Where-Object { $_.Extension -match '(?i)^\.(exe|dll|scr|vbs|vbe|js|jse|wsf|ps1|bat|cmd|hta|lnk|msi|sys)$' } | Select-Object -First 2001)
+    $user = $dir -match '(?i)^[a-z]:\\Users\\' -or $v -match $ExclPathBadRegex
     $f0 = $Findings | Where-Object { $_.Kind -eq 'DefExcl' -and $_.Target -eq "Path|$v" } | Select-Object -First 1
     if ($files.Count -gt 2000) {
       if ($f0) { $f0.Detail += ' It holds over 2000 program files; they were not checked one by one.' }
@@ -1343,6 +1350,27 @@ function Scan-DefenderExclusions {
       if ($f0) { $f0.Severity = 'HIGH'; $f0.Detail = $d } else { Add-Finding 'DefExcl' 'HIGH' "Path|$v" $d @{ Type = 'Path'; Value = $v } }
     } elseif ($f0 -and $files.Count) {
       $f0.Detail += " It holds $($files.Count) program file(s), none flagged."
+    }
+  }
+  # Programs Defender ignores by name: a running copy that is not signed and sits in a user-writable folder, or carries
+  # a kit name, is checked here because Defender will not look at it.
+  $exNames = @(@($mp.ExclusionProcess) | Where-Object { $_ } | ForEach-Object { Split-Path $_ -Leaf } | Sort-Object -Unique)
+  if ($exNames) {
+    foreach ($pr in @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue)) {
+      $exe = [string]$pr.ExecutablePath; if (-not $exe) { continue }
+      $leaf = Split-Path $exe -Leaf
+      $m = $exNames | Where-Object { $leaf -like $_ } | Select-Object -First 1
+      if (-not $m -or (Test-MicrosoftSigned $exe)) { continue }
+      $fi = Get-Item -LiteralPath $exe -Force -ErrorAction SilentlyContinue
+      $ioc = if ($fi) { Get-Ioc $fi }
+      $kitName = $m -match $ExclProcBadRegex -or $leaf -match $ExclProcBadRegex
+      $userDir = $exe -match '(?i)\\(Users|ProgramData|Temp)\\|\\systemprofile\\'
+      $unsigned = (Get-AuthenticodeSignature -LiteralPath $exe -ErrorAction SilentlyContinue).Status -ne 'Valid'
+      if (($ioc -and $ioc.Bad) -or ($unsigned -and ($userDir -or $kitName))) {
+        $why = "Program Windows Defender was told to ignore by name ($m), not signed: $exe"
+        Add-Finding 'Process' 'HIGH' "$($pr.Name) (PID $($pr.ProcessId))" $why @{ Pid = $pr.ProcessId; Path = $exe }
+        Add-Finding 'File' 'HIGH' $exe $why
+      }
     }
   }
 }
@@ -2418,6 +2446,7 @@ function Invoke-Fix($qdir) {
             catch { $script:DefExclLeft += $f.Extra.Value; throw }
           }
           $log.Add(@{ Kind = 'DefExcl'; Target = $f.Target; Type = $f.Extra.Type; Value = $f.Extra.Value })
+          if ($f.Extra.Type -eq 'Path') { $script:ExclRescan += $f.Extra.Value }
           if ($f.Extra.Type -eq 'Path') { $exclScan += [Environment]::ExpandEnvironmentVariables($f.Extra.Value) }
         }
         'RegValue' {
@@ -2561,6 +2590,18 @@ function Invoke-Fix($qdir) {
     }
   }
   Stop-QuarantineRunners
+  # Folders Defender was told to skip were never scanned: now that the exclusion is gone, let Defender look at them.
+  $mpc = Join-Path $env:ProgramFiles 'Windows Defender\MpCmdRun.exe'
+  if ($script:ExclRescan -and (Test-Path -LiteralPath $mpc)) {
+    $n = 0
+    foreach ($v in @($script:ExclRescan | Sort-Object -Unique)) {
+      $d = [Environment]::ExpandEnvironmentVariables($v).TrimEnd('\')
+      foreach ($h in @(if ($d -match '[*?]') { Get-Item -Path $d -Force -ErrorAction SilentlyContinue } elseif (Test-Path -LiteralPath $d) { Get-Item -LiteralPath $d -Force -ErrorAction SilentlyContinue })) {
+        try { Start-Process -FilePath $mpc -ArgumentList '-Scan', '-ScanType', '3', '-File', "`"$($h.FullName)`"" -WindowStyle Hidden -ErrorAction Stop; $n++ } catch {}
+      }
+    }
+    if ($n) { Say "  OK  Windows Defender diminta imbas $n tempat yang dulu dikecualikan." "  OK  Windows Defender asked to scan $n place(s) that used to be excluded." Green }
+  }
   Set-Content -LiteralPath (Join-Path $QuarantineRoot 'last-fix.txt') -Value (Get-Date -Format o)
   $mf = Join-Path $qdir 'manifest.json'
   $log | ConvertTo-Json -Depth 4 | Out-File -Encoding UTF8 $mf
@@ -2625,6 +2666,7 @@ if ($Restore) {
 # out first. Nothing leaves the PC unless the user types Y. Safe Mode runs keep it for the next normal run.
 $ReportUrl = if ($env:WAZIP_TEST_REPORT_URL) { $env:WAZIP_TEST_REPORT_URL } else { 'https://report.afuit.dev/report' }
 $script:SafeQueued = $false
+$script:ExclRescan = @()
 $script:PiiNames = $null
 function Hide-Pii([string]$s) {
   if (-not $s) { return $s }
