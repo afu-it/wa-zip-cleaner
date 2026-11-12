@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.12.74'
+$Version = '2026.11.12.75'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -2858,7 +2858,7 @@ function Invoke-ReportOfferCore {
     Write-Host '  Taip Y dan Enter untuk hantar, atau Enter je untuk tak hantar : ' -ForegroundColor Green -NoNewline
     if ($test) { $ans = 'Y'; Write-Host 'Y' } else { $ans = ([string](Read-Host)).Trim() }
   }
-  if ($ans -ne 'Y') { Say 'OK, tiada laporan dihantar.' 'OK, no report sent.' DarkGray; return }
+  if ($ans -ne 'Y') { $script:ReportDeclined = $true; Say 'OK, tiada laporan dihantar.' 'OK, no report sent.' DarkGray; return }
   Set-Content -LiteralPath $consent -Value (Get-Date -Format o) -ErrorAction SilentlyContinue
   $zips = @()
   if ($Findings.Count) { $z = New-WazReport (Join-Path $env:TEMP "waz-report-$stamp.zip"); if ($z) { $zips += $z } }
@@ -3433,9 +3433,14 @@ function Suspend-BitLockerForReboot {
 
 # Blocked leftovers: offer to restart into Safe Mode (the tool runs itself there) or into the recovery screen (BUANG.bat).
 function Start-SafeAuto {
-  # The online pass holds the evidence (running loader, its folder and task). The final report offer is skipped once
-  # the reboot is queued, so keep this pass's report now; the next normal run sends it (GMK9P/ED88Q reports, Nov 2026).
-  if (-not $SafeAuto -and $Findings.Count) { New-WazReport (Join-Path $QuarantineRoot "report-pending-$stamp.zip") | Out-Null }
+  # The online pass holds the evidence (running loader, its folder and task) and still has internet: offer the report
+  # now, before the reboot (AFU, Nov 2026: the first scan of WAZ-BCMF9 only arrived after Safe Mode and a re-scan).
+  # Not sent and not refused (no internet, no answer): keep it; the next normal run sends it (GMK9P/ED88Q, Nov 2026).
+  if (-not $SafeAuto -and $Findings.Count) {
+    $script:LastReportId = $null; $script:ReportDeclined = $false
+    Invoke-ReportOfferCore
+    if (-not $script:LastReportId -and -not $script:ReportDeclined) { New-WazReport (Join-Path $QuarantineRoot "report-pending-$stamp.zip") | Out-Null }
+  }
   # Tests: record the decision instead of rebooting the machine.
   if ($env:WAZIP_TEST_SAFEAUTO_DRY) { Add-Content -LiteralPath $env:WAZIP_TEST_SAFEAUTO_DRY -Value "safeauto $stamp $($script:Recur)"; return }
   $rk = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce'

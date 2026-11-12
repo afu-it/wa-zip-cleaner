@@ -1452,7 +1452,14 @@ New-Item -ItemType Directory -Force -Path $rDir | Out-Null
 Copy-Item -LiteralPath "$env:SystemRoot\System32\PING.EXE" -Destination "$rDir\RuntimeBroker.exe"
 $rP = [Diagnostics.Process]::Start("$rDir\RuntimeBroker.exe", '-n 900 127.0.0.1')
 Start-Sleep 2
+# The report is offered before the reboot, while there is internet (stand-in inbox unreachable, so it lands as a file).
+$repDirPre = "$env:TEMP\waz-rep-pre"; Remove-Item -LiteralPath $repDirPre -Recurse -Force -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Force -Path $repDirPre | Out-Null
+$env:WAZIP_TEST_REPORT_DIR = $repDirPre; $env:WAZIP_TEST_REPORT_URL = 'http://127.0.0.1:8795/report'
 $r48 = Scan "$env:TEMP\x48.json" -Fix -Root $qR
+Remove-Item Env:\WAZIP_TEST_REPORT_DIR, Env:\WAZIP_TEST_REPORT_URL
+Check (@(Get-ChildItem -LiteralPath $repDirPre -Filter 'Laporan-WAZIP-*.zip').Count -ge 1) 'first-scan report offered before the Safe Mode reboot'
+Remove-Item -LiteralPath $repDirPre -Recurse -Force -ErrorAction SilentlyContinue
 $sd = if (Test-Path $safeDry) { Get-Content -Raw $safeDry } else { '' }
 Check ($sd -match 'safeauto .*came back') "malware back after an earlier clean-up goes to Safe Mode ($("$sd".Trim()))"
 # The online pass holds the evidence (loader, folder, task): its report must be kept before the reboot (GMK9P/ED88Q, Nov 2026).
