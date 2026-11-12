@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.12.73'
+$Version = '2026.11.12.74'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -373,6 +373,10 @@ $LureRegex    = '^(Click here to view.*\.(zip|vhd|vhdx)|Notice.*\.vhdx?|(PDF|DOC
 $OverlordRegex = '(?i)\\Explorer\\thumbcache_[^\\]+\\|\\AppData\\Roaming\\Microsoft\\DeviceSync\\|\\AppData\\(Roaming|Local)\\Overlord\\|\\AppData\\Local\\Temp\\(Overlord(virtualDriver)?|ovld_[^\\]+)\\'
 # Programs the October 2026 wave tells Windows Defender to skip. No real program needs these excluded.
 $ExclProcRegex = '(?i)^(QtsUpdater|svchost|rundll32|powershell|cmd|wscript|cscript|mshta|regsvr32|explorer)\.exe$'
+# One kit added about 50 exclusions at once (WAZ-BCMF9, Nov 2026): Windows\Temp, the SYSTEM profile's AppData,
+# drive-root wildcards (C:\DeviceHub_*), wildcard or .dll "programs" and fake system names. No owner sets these.
+$ExclPathBadRegex = '(?i)^[a-z]:\\Windows\\Temp(\\|$)|\\system32\\config\\systemprofile\\AppData(\\|$)|^[a-z]:\\[a-z]+_\*$'
+$ExclProcBadRegex = '(?i)\*|\.dll$|^(svchost_update|svcruntime_x64|SCLoader_x64|ghost_x64|TestRun_x64|white_notepad_download|svcagent)\.exe$'
 # Known attacker servers (C2). A process talking to one of these is the malware.
 # Kaspersky (Apr 2026): ValleyRAT and ABCDoor servers from the Silver Fox tax campaign.
 $C2Ips = @('134.122.155.188',  # IP-guard server on an office PC with the attacker's ManageEngine (WAZ-4DX9C report, Nov 2026)
@@ -1287,19 +1291,19 @@ function Scan-DefenderExclusions {
     if (-not (Test-Path -LiteralPath $k)) { continue }
     foreach ($n in (Get-Item -LiteralPath $k).GetValueNames()) {
       $policy[$n] = $true
-      $bad = if ($kind -eq 'Processes') { (Split-Path $n -Leaf) -match $ExclProcRegex -or $n -match $PersistRegex } else { $n -match '(?i)\\AppData\\Roaming\\Microsoft\\Update' -or $n -match $PersistRegex -or (& $badRoot $n) }
+      $bad = if ($kind -eq 'Processes') { (Split-Path $n -Leaf) -match $ExclProcRegex -or (Split-Path $n -Leaf) -match $ExclProcBadRegex -or $n -match $PersistRegex } else { $n -match '(?i)\\AppData\\Roaming\\Microsoft\\Update' -or $n -match $PersistRegex -or $n -match $ExclPathBadRegex -or (& $badRoot $n) }
       if ($bad) { Add-Finding 'RegValue' 'HIGH' "$k|$n" 'Windows Defender policy told to ignore this (malware hiding from antivirus).' }
     }
   }
   if (-not $mp) { return }
   foreach ($v in @($mp.ExclusionProcess) | Where-Object { $_ -and -not $policy[$_] }) {
-    if ((Split-Path $v -Leaf) -match $ExclProcRegex -or $v -match $PersistRegex) {
+    if ((Split-Path $v -Leaf) -match $ExclProcRegex -or (Split-Path $v -Leaf) -match $ExclProcBadRegex -or $v -match $PersistRegex) {
       Add-Finding 'DefExcl' 'HIGH' "Process|$v" 'Windows Defender told to ignore this program (malware hiding from antivirus).' @{ Type = 'Process'; Value = $v }
     }
   }
   # Windows' own script runners excluded too ($lolExcl) means the user-folder exclusion is the malware's, not the owner's.
   foreach ($v in @($mp.ExclusionPath) | Where-Object { $_ -and -not $policy[$_] }) {
-    if ($v -match '(?i)\\AppData\\Roaming\\Microsoft\\Update' -or $v -match $PersistRegex) {
+    if ($v -match '(?i)\\AppData\\Roaming\\Microsoft\\Update' -or $v -match $PersistRegex -or $v -match $ExclPathBadRegex) {
       Add-Finding 'DefExcl' 'HIGH' "Path|$v" 'Windows Defender told to ignore this folder (malware hiding from antivirus).' @{ Type = 'Path'; Value = $v }
     } elseif (& $badRoot $v) {
       Add-Finding 'DefExcl' 'HIGH' "Path|$v" "Windows Defender told to skip the whole $v drive (malware hiding from antivirus)." @{ Type = 'Path'; Value = $v }
@@ -2754,6 +2758,11 @@ function Get-ReportTimeline {
   foreach ($ls in $script:LogonScripts) {
     $null = $out.AppendLine(''); $null = $out.AppendLine("== Logon script $($ls[0]) (first 20 lines)")
     foreach ($l in @($ls[1])) { $l = [string]$l; $null = $out.AppendLine($l.Substring(0, [Math]::Min(300, $l.Length))) }
+  }
+  $null = $out.AppendLine(''); $null = $out.AppendLine('== Windows Defender exclusions now')
+  $ek = 'HKLM:\SOFTWARE\Microsoft\Windows Defender\Exclusions'
+  foreach ($kind in 'Paths', 'Processes', 'Extensions') {
+    foreach ($n in @(try { (Get-Item -LiteralPath "$ek\$kind" -ErrorAction Stop).GetValueNames() } catch {})) { $null = $out.AppendLine("$kind | $n") }
   }
   $null = $out.AppendLine(''); $null = $out.AppendLine('== Windows Defender detections, last 60 days')
   foreach ($e in @(try { Get-WinEvent -FilterHashtable @{ LogName = 'Microsoft-Windows-Windows Defender/Operational'; Id = 1116, 1117; StartTime = $since } -MaxEvents 200 -ErrorAction Stop } catch {})) {

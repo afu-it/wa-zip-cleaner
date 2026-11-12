@@ -1012,6 +1012,22 @@ $cnCerts | ForEach-Object { Remove-Item -LiteralPath "Cert:\CurrentUser\My\$($_.
 Remove-Item Env:\WAZIP_TEST_C2, Env:\WAZIP_TEST_CNSIGNER
 }
 
+if (InPart 2) {
+Write-Host '=== Exclusion kit: Windows\Temp, SYSTEM profile, root wildcards, fake programs (WAZ-BCMF9, Nov 2026) ===' -ForegroundColor Cyan
+$kitP = @('C:\Windows\TEMP', 'C:\Windows\system32\config\systemprofile\AppData\Local\DeviceHub_*', 'C:\WazHub_*')
+$kitX = @('svchost_update.exe', 'wazcfg*.exe', 'WazSync.dll')
+$kitOk = $false
+try { Add-MpPreference -ExclusionPath $kitP -ExclusionProcess $kitX -ErrorAction Stop; $kitOk = $true } catch { Write-Host "SKIP exclusion kit: $($_.Exception.Message)" -ForegroundColor Yellow }
+if ($kitOk) {
+  $rK = Scan "$env:TEMP\xkit.json" -Fix
+  foreach ($v in $kitP) { Check (Has $rK 'DefExcl' 'HIGH' ('^Path\|' + [regex]::Escape($v) + '$')) "kit path exclusion $v is HIGH" }
+  foreach ($v in $kitX) { Check (Has $rK 'DefExcl' 'HIGH' ('^Process\|' + [regex]::Escape($v) + '$')) "kit program exclusion $v is HIGH" }
+  $mpK = Get-MpPreference
+  Check (-not (@($mpK.ExclusionPath) | Where-Object { $kitP -contains $_ }) -and -not (@($mpK.ExclusionProcess) | Where-Object { $kitX -contains $_ })) 'kit exclusions removed by -Fix'
+  Remove-MpPreference -ExclusionPath $kitP -ExclusionProcess $kitX -ErrorAction SilentlyContinue
+}
+}
+
 if (InPart 3) {
 Write-Host '=== Program and service still running from the quarantine (WAZ-WWZUM / WAZ-PCFCA, Nov 2026) ===' -ForegroundColor Cyan
 $qrDir = "$q\20260101-0000\file-1-WazRunner.quarantine"
