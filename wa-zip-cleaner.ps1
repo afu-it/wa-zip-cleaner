@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.12.83'
+$Version = '2026.11.12.84'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -563,7 +563,13 @@ function Add-Finding($Kind, $Severity, $Target, $Detail, $Extra = $null) {
   # Never a Windows program: cmd.exe was marked for quarantine and a real Windows task deleted with it (WAZ-V8NC2, Nov 2026).
   if ($Kind -eq 'File' -and "$Target".StartsWith($env:SystemRoot, [StringComparison]::OrdinalIgnoreCase) -and
       (Test-Path -LiteralPath $Target -PathType Leaf) -and (Test-MicrosoftSigned $Target)) { return }
-  if ($Findings | Where-Object { "$($_.Kind)|$($_.Target)" -eq $key }) { return }
+  $prev = @($Findings | Where-Object { "$($_.Kind)|$($_.Target)" -eq $key })
+  if ($prev.Count) {
+    # A later HIGH replaces an earlier warning on the same item, or the item is never removed (WAZ-3NR7T, Nov 2026:
+    # IP-guard's winrdgv3.exe was first a "near ManageEngine" warning, so its IP-guard HIGH was dropped and it stayed).
+    if ($Severity -eq 'HIGH' -and $prev[0].Severity -ne 'HIGH') { $prev[0].Severity = 'HIGH'; $prev[0].Detail = $Detail; $prev[0].Extra = $Extra }
+    return
+  }
   # Which program started a bad process, for the opt-in report (a fake FilmoraTray kept coming back, Nov 2026).
   if ($Kind -eq 'Process' -and $Extra -is [hashtable] -and $Extra.Pid) {
     try {
@@ -1907,6 +1913,8 @@ function Add-IpGuardRemoval {
   $parts = $script:IpgParts
   if (-not $parts -or $script:IpgNoAuto) { return }
   foreach ($k in $parts.SafeBoot) { Add-Finding 'RegKey' 'HIGH' $k 'IP-guard added itself to the Safe Mode start list.' }
+  # Tests: an earlier warning on an IP-guard file (as the "near ManageEngine" check gives winrdgv3.exe).
+  if ($env:WAZIP_TEST_PREWARN) { Add-Finding 'File' 'WARN' $env:WAZIP_TEST_PREWARN 'Test warning first.' }
   if (-not ($SafeAuto -or $env:WAZIP_TEST_IPG_SAFE)) { $script:IpgPending = $true; return }
   $keep = @()
   foreach ($s in $parts.Services) {

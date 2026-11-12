@@ -737,8 +737,11 @@ Get-NetFirewallRule -DisplayName 'WAZip block IP-guard server*' -ErrorAction Sil
 $roundFile = Join-Path $q 'ipguard-safe-round.txt'
 Remove-Item -LiteralPath $roundFile -ErrorAction SilentlyContinue
 $env:WAZIP_TEST_IPG_SAFE = '1'
+$env:WAZIP_TEST_PREWARN = "$w64\winoav3.dll"
 $o2 = "$env:TEMP\xi2.txt"
 $rI2 = Scan "$env:TEMP\xi2.json" -Owner Personal -Fix -Out $o2
+Remove-Item Env:\WAZIP_TEST_PREWARN
+Check (Has $rI2 'File' 'HIGH' 'winoav3\.dll$' 'IP-guard file') 'IP-guard file with an earlier warning is raised to HIGH (WAZ-3NR7T winrdgv3.exe)'
 Check (Has $rI2 'Service' 'HIGH' '^TNullFilter$' 'IP-guard') 'Safe Mode pass lists the IP-guard driver service'
 Check (-not (Test-Path -LiteralPath "$w64\winoav3.dll") -and -not (Test-Path -LiteralPath "$drvDirI\TNullFilter.sys") -and -not (Test-Path -LiteralPath $ocDir)) 'Safe Mode pass quarantines IP-guard files and folders'
 $tn = Get-ItemProperty -LiteralPath 'HKLM:\SYSTEM\CurrentControlSet\Services\TNullFilter' -ErrorAction SilentlyContinue
