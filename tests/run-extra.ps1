@@ -788,6 +788,13 @@ Get-NetFirewallRule -DisplayName 'WAZip block IP-guard server*' -ErrorAction Sil
 & sc.exe delete TNullFilter | Out-Null
 Remove-Item -LiteralPath $ocDir -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath "$w64\winoav3.dll", "$drvDirI\TNullFilter.sys", $sbk -Force -ErrorAction SilentlyContinue
+# Leftover after the agent is gone (WAZ-3NR7T): winrdgv3.exe with no IP-guard service is removed in normal Windows.
+$cfsT = if (${env:CommonProgramFiles(x86)}) { "${env:CommonProgramFiles(x86)}\System" } else { "$env:CommonProgramFiles\System" }
+Set-Content -LiteralPath "$cfsT\winrdgv3.exe" 'dummy'
+$rI7 = Scan "$env:TEMP\xi7.json" -Owner Personal -Fix
+Check ((Has $rI7 'File' 'HIGH' 'winrdgv3\.exe$' 'left behind') -and -not (Test-Path -LiteralPath "$cfsT\winrdgv3.exe")) 'leftover IP-guard winrdgv3.exe with no service is HIGH and quarantined'
+Check (-not ($rI7.All | Where-Object { $_.Target -match '^IP-guard' })) 'leftover IP-guard file alone does not start the Safe Mode IP-guard removal'
+Remove-Item -LiteralPath "$cfsT\winrdgv3.exe" -Force -ErrorAction SilentlyContinue
 
 Write-Host '=== Second victim PC (Nov 2026): Toolkit.exe sideload, WindowsUpdateSync task, ManageEngine kit in Caches ===' -ForegroundColor Cyan
 $tkDir = Join-Path $env:LOCALAPPDATA 'Toolkit'

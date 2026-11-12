@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.12.85'
+$Version = '2026.11.12.86'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -1876,7 +1876,16 @@ function Scan-IpGuard {
   $hits += @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { [string]$_.ExecutablePath -match '(?i)\\wrdlv4\.exe$' } | ForEach-Object { "process $($_.Name) (PID $($_.ProcessId))" })
   $drv = Get-ItemProperty -LiteralPath 'HKLM:\SYSTEM\CurrentControlSet\Services\THlpDrv' -ErrorAction SilentlyContinue
   if ($drv -and [string]$drv.Group -match 'Ocular' -and $drv.DeleteFlag -ne 1) { $hits += 'driver THlpDrv' }
-  if (-not $hits.Count) { return }
+  if (-not $hits.Count) {
+    # Leftovers once the agent itself is gone: with no IP-guard service left nothing runs them, so they go now
+    # (WAZ-3NR7T, Nov 2026: winrdgv3.exe stayed after the Safe Mode pass, and later scans no longer saw IP-guard).
+    $cfs = if (${env:CommonProgramFiles(x86)}) { "${env:CommonProgramFiles(x86)}\System" } else { "$env:CommonProgramFiles\System" }
+    if (-not @('winrdgv3.exe', 'winwdgsvr.exe' | Where-Object { Test-Path -LiteralPath (Join-Path $cfs $_) -PathType Leaf }).Count) { return }
+    $left = Get-IpGuardParts
+    if ($left.Services.Count) { return }
+    foreach ($f in $left.Files) { Add-Finding 'File' 'HIGH' $f 'IP-guard file left behind after its agent was removed (nothing runs it any more).' }
+    return
+  }
   # OAgent.ini keeps the server address as SIP=<4 bytes hex, last byte first>.
   $sip = $null
   foreach ($ini in "$sys\SysWOW64\Ocular\OAgent.ini", "$sys\System32\Ocular\OAgent.ini") {
