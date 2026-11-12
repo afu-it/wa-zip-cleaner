@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.12.84'
+$Version = '2026.11.12.85'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -565,9 +565,9 @@ function Add-Finding($Kind, $Severity, $Target, $Detail, $Extra = $null) {
       (Test-Path -LiteralPath $Target -PathType Leaf) -and (Test-MicrosoftSigned $Target)) { return }
   $prev = @($Findings | Where-Object { "$($_.Kind)|$($_.Target)" -eq $key })
   if ($prev.Count) {
-    # A later HIGH replaces an earlier warning on the same item, or the item is never removed (WAZ-3NR7T, Nov 2026:
-    # IP-guard's winrdgv3.exe was first a "near ManageEngine" warning, so its IP-guard HIGH was dropped and it stayed).
-    if ($Severity -eq 'HIGH' -and $prev[0].Severity -ne 'HIGH') { $prev[0].Severity = 'HIGH'; $prev[0].Detail = $Detail; $prev[0].Extra = $Extra }
+    # An IP-guard file replaces an earlier warning on it, or it is never removed (WAZ-3NR7T, Nov 2026: winrdgv3.exe
+    # was first a "near ManageEngine" warning, so its IP-guard HIGH was dropped and it stayed). Other warnings stay.
+    if ($Detail -eq 'IP-guard file' -and $prev[0].Severity -ne 'HIGH') { $prev[0].Severity = 'HIGH'; $prev[0].Detail = $Detail; $prev[0].Extra = $Extra }
     return
   }
   # Which program started a bad process, for the opt-in report (a fake FilmoraTray kept coming back, Nov 2026).
