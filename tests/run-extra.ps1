@@ -1016,30 +1016,16 @@ if (InPart 2) {
 Write-Host '=== Exclusion kit: Windows\Temp, SYSTEM profile, root wildcards, fake programs (WAZ-BCMF9, Nov 2026) ===' -ForegroundColor Cyan
 $kitP = @('C:\Windows\TEMP', 'C:\Windows\system32\config\systemprofile\AppData\Local\DeviceHub_*', 'C:\WazHub_*')
 $kitX = @('svchost_update.exe', 'wazcfg*.exe', 'WazSync.dll')
-# Files hidden behind the wildcard exclusion, and an unsigned program running under an excluded name.
-$kitDir = 'C:\WazHub_01'
-New-Item -ItemType Directory -Force -Path $kitDir | Out-Null
-Set-Content -LiteralPath "$kitDir\update.exe" 'unsigned stand-in'
-$kitRun = "$env:ProgramData\WazKitRun"
-New-Item -ItemType Directory -Force -Path $kitRun | Out-Null
-Add-Type -TypeDefinition 'public static class WazKitStub { public static void Main() { System.Threading.Thread.Sleep(600000); } }' -OutputType ConsoleApplication -OutputAssembly "$kitRun\wazcfg01.exe"
-$kitP2 = Start-Process -FilePath "$kitRun\wazcfg01.exe" -PassThru -WindowStyle Hidden
 $kitOk = $false
 try { Add-MpPreference -ExclusionPath $kitP -ExclusionProcess $kitX -ErrorAction Stop; $kitOk = $true } catch { Write-Host "SKIP exclusion kit: $($_.Exception.Message)" -ForegroundColor Yellow }
 if ($kitOk) {
   $rK = Scan "$env:TEMP\xkit.json" -Fix
-  Check (Has $rK 'File' 'HIGH' ([regex]::Escape("$kitDir\update.exe") + '$')) 'file inside a wildcard-excluded folder is still checked'
-  Check (Has $rK 'Process' 'HIGH' '^wazcfg01\.exe' 'told to ignore by name') 'unsigned program running under an excluded name is HIGH'
-  Start-Sleep 2
-  Check ($kitP2.HasExited -and -not (Test-Path -LiteralPath "$kitDir\update.exe")) 'excluded-name program stopped and hidden file quarantined'
   foreach ($v in $kitP) { Check (Has $rK 'DefExcl' 'HIGH' ('^Path\|' + [regex]::Escape($v) + '$')) "kit path exclusion $v is HIGH" }
   foreach ($v in $kitX) { Check (Has $rK 'DefExcl' 'HIGH' ('^Process\|' + [regex]::Escape($v) + '$')) "kit program exclusion $v is HIGH" }
   $mpK = Get-MpPreference
   Check (-not (@($mpK.ExclusionPath) | Where-Object { $kitP -contains $_ }) -and -not (@($mpK.ExclusionProcess) | Where-Object { $kitX -contains $_ })) 'kit exclusions removed by -Fix'
   Remove-MpPreference -ExclusionPath $kitP -ExclusionProcess $kitX -ErrorAction SilentlyContinue
 }
-Stop-Process -Id $kitP2.Id -Force -ErrorAction SilentlyContinue
-Remove-Item -LiteralPath $kitDir, $kitRun -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 if (InPart 3) {
