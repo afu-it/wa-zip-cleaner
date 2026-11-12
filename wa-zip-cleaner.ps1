@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.12.76'
+$Version = '2026.11.12.77'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -2831,6 +2831,8 @@ function Send-WazReport([string]$zip) {
   $null
 }
 function Invoke-ReportOfferCore {
+  # Already asked before the Safe Mode reboot in this run: do not ask twice.
+  if ($script:ReportOffered) { return }
   $pending = Join-Path $QuarantineRoot 'report-safemode.zip'
   $test = $env:WAZIP_TEST_REPORT_DIR
   # Safe Mode has no internet and the user was told not to touch anything: keep the report for later.
@@ -3439,6 +3441,7 @@ function Start-SafeAuto {
   if (-not $SafeAuto -and $Findings.Count) {
     $script:LastReportId = $null; $script:ReportDeclined = $false
     Invoke-ReportOfferCore
+    $script:ReportOffered = $true
     if (-not $script:LastReportId -and -not $script:ReportDeclined) { New-WazReport (Join-Path $QuarantineRoot "report-pending-$stamp.zip") | Out-Null }
   }
   # Tests: record the decision instead of rebooting the machine.
