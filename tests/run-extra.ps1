@@ -1510,6 +1510,22 @@ Check ($sd -match 'safeauto .*antivirus killer') "loader running with an antivir
 Stop-Process -Id $rP.Id -Force -ErrorAction SilentlyContinue
 & sc.exe delete WazBootRepairRc | Out-Null
 Remove-Item -LiteralPath $rDir, $qR, $safeDry, $kvSys -Recurse -Force -ErrorAction SilentlyContinue
+# Same loader, but a Windows update waits for a restart: no Safe Mode (it would fail with "undoing changes").
+New-Item -ItemType Directory -Force -Path $rDir | Out-Null
+Copy-Item -LiteralPath "$env:SystemRoot\System32\PING.EXE" -Destination "$rDir\RuntimeBroker.exe"
+$rP = [Diagnostics.Process]::Start("$rDir\RuntimeBroker.exe", '-n 900 127.0.0.1')
+Set-Content $kvSys 'dummy'
+& sc.exe create WazBootRepairRc type= kernel start= demand binPath= $kvSys | Out-Null
+Start-Sleep 2
+$env:WAZIP_TEST_UPDATEPENDING = '1'
+$r49u = Scan "$env:TEMP\x49u.json" -Fix -Root $qR -Out "$env:TEMP\x49u.out"
+Remove-Item Env:\WAZIP_TEST_UPDATEPENDING
+$sd = if (Test-Path $safeDry) { Get-Content -Raw $safeDry } else { '' }
+Check ($sd -match 'update-pending' -and $sd -notmatch 'safeauto') "pending Windows update stops the Safe Mode restart ($("$sd".Trim()))"
+Check ((Get-Content -Raw "$env:TEMP\x49u.out") -match 'Update and restart') 'pending Windows update: user told to Update and restart first'
+Stop-Process -Id $rP.Id -Force -ErrorAction SilentlyContinue
+& sc.exe delete WazBootRepairRc | Out-Null
+Remove-Item -LiteralPath $rDir, $qR, $safeDry, $kvSys -Recurse -Force -ErrorAction SilentlyContinue
 
 Write-Host '=== ManageEngine leftovers and task files in Safe Mode (VVF5Z/2F44T reports, Nov 2026) ===' -ForegroundColor Cyan
 New-MePlant 'MEUemsTest5'

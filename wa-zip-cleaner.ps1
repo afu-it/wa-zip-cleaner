@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.12.81'
+$Version = '2026.11.12.82'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -3475,6 +3475,17 @@ function Suspend-BitLockerForReboot {
   }
 }
 
+# A Windows update waiting for a restart cannot install in Safe Mode: Windows shows a black "Something didn't go as
+# planned. Undoing changes" screen for a long time (AFU, Nov 2026). Let the update finish with a normal restart first.
+function Test-UpdatePending {
+  if ($env:WAZIP_TEST_SAFEAUTO_DRY) { return [bool]$env:WAZIP_TEST_UPDATEPENDING }
+  $keys = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending',
+          'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\PackagesPending',
+          'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired'
+  foreach ($k in $keys) { if (Test-Path -LiteralPath $k) { return $true } }
+  return (Test-Path -LiteralPath (Join-Path $env:windir 'WinSxS\pending.xml'))
+}
+
 # Blocked leftovers: offer to restart into Safe Mode (the tool runs itself there) or into the recovery screen (BUANG.bat).
 function Start-SafeAuto {
   # The online pass holds the evidence (running loader, its folder and task) and still has internet: offer the report
@@ -3485,6 +3496,14 @@ function Start-SafeAuto {
     Invoke-ReportOfferCore
     $script:ReportOffered = $true
     if (-not $script:LastReportId -and -not $script:ReportDeclined) { New-WazReport (Join-Path $QuarantineRoot "report-pending-$stamp.zip") | Out-Null }
+  }
+  # Only from normal Windows: in Safe Mode the boot setting is already on and must not be left behind.
+  if (-not $SafeAuto -and (Test-UpdatePending)) {
+    if ($env:WAZIP_TEST_SAFEAUTO_DRY) { Add-Content -LiteralPath $env:WAZIP_TEST_SAFEAUTO_DRY -Value "update-pending $stamp"; return }
+    Write-Host ''
+    Say 'Windows ada UPDATE yang belum siap. Kalau masuk Safe Mode sekarang, update tu gagal dan keluar skrin hitam "Something didn''t go as planned". Buat ni dulu: Start > Power > Update and restart. Tunggu sampai masuk Windows biasa, kemudian jalankan tool ni sekali lagi dan pilih 1.' `
+        'Windows has an UPDATE waiting to finish. Going into Safe Mode now makes it fail with a black "Something didn''t go as planned" screen. Do this first: Start > Power > Update and restart. Wait until normal Windows is back, then run this tool again and choose 1.' Yellow
+    return
   }
   # Tests: record the decision instead of rebooting the machine.
   if ($env:WAZIP_TEST_SAFEAUTO_DRY) { Add-Content -LiteralPath $env:WAZIP_TEST_SAFEAUTO_DRY -Value "safeauto $stamp $($script:Recur)"; return }
