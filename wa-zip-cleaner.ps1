@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.12.75'
+$Version = '2026.11.12.76'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -375,8 +375,8 @@ $OverlordRegex = '(?i)\\Explorer\\thumbcache_[^\\]+\\|\\AppData\\Roaming\\Micros
 $ExclProcRegex = '(?i)^(QtsUpdater|svchost|rundll32|powershell|cmd|wscript|cscript|mshta|regsvr32|explorer)\.exe$'
 # One kit added about 50 exclusions at once (WAZ-BCMF9, Nov 2026): Windows\Temp, the SYSTEM profile's AppData,
 # drive-root wildcards (C:\DeviceHub_*), wildcard or .dll "programs" and fake system names. No owner sets these.
-$ExclPathBadRegex = '(?i)^[a-z]:\\Windows\\Temp(\\|$)|\\system32\\config\\systemprofile\\AppData(\\|$)|^[a-z]:\\[a-z]+_\*$'
-$ExclProcBadRegex = '(?i)\*|\.dll$|^(svchost_update|svcruntime_x64|SCLoader_x64|ghost_x64|TestRun_x64|white_notepad_download|svcagent)\.exe$'
+$ExclPathBadRegex = '(?i)^[a-z]:\\Windows\\Temp(\\|$)|\\system32\\config\\systemprofile\\AppData(\\|$)|^[a-z]:\\[a-z]+_\*$|^[a-z]:\\ProgramData\\(CompanyTools|Microsoft\\DeviceSync)\\?$|\\Common Files\\NSEC\\'
+$ExclProcBadRegex = '(?i)\*|\.dll$|^(svchost_update|svcruntime_x64|SCLoader_x64|ghost_x64|TestRun_x64|white_notepad_download|svcagent|EventLog|SkinInstaller|SynTPHelper)\.exe$'
 # Known attacker servers (C2). A process talking to one of these is the malware.
 # Kaspersky (Apr 2026): ValleyRAT and ABCDoor servers from the Silver Fox tax campaign.
 $C2Ips = @('134.122.155.188',  # IP-guard server on an office PC with the attacker's ManageEngine (WAZ-4DX9C report, Nov 2026)
