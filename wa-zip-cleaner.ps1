@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.12.82'
+$Version = '2026.11.12.83'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -3499,10 +3499,10 @@ function Start-SafeAuto {
   }
   # Only from normal Windows: in Safe Mode the boot setting is already on and must not be left behind.
   if (-not $SafeAuto -and (Test-UpdatePending)) {
-    if ($env:WAZIP_TEST_SAFEAUTO_DRY) { Add-Content -LiteralPath $env:WAZIP_TEST_SAFEAUTO_DRY -Value "update-pending $stamp"; return }
     Write-Host ''
     Say 'Windows ada UPDATE yang belum siap. Kalau masuk Safe Mode sekarang, update tu gagal dan keluar skrin hitam "Something didn''t go as planned". Buat ni dulu: Start > Power > Update and restart. Tunggu sampai masuk Windows biasa, kemudian jalankan tool ni sekali lagi dan pilih 1.' `
         'Windows has an UPDATE waiting to finish. Going into Safe Mode now makes it fail with a black "Something didn''t go as planned" screen. Do this first: Start > Power > Update and restart. Wait until normal Windows is back, then run this tool again and choose 1.' Yellow
+    if ($env:WAZIP_TEST_SAFEAUTO_DRY) { Add-Content -LiteralPath $env:WAZIP_TEST_SAFEAUTO_DRY -Value "update-pending $stamp" }
     return
   }
   # Tests: record the decision instead of rebooting the machine.
