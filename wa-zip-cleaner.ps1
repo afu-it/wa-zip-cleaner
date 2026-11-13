@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.14.94'
+$Version = '2026.11.14.95'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -3574,12 +3574,22 @@ function Start-SafeAuto {
         'REMEMBER: Safe Mode was NOT started. Do Start > Power > Update and restart first, then run this tool again and choose 1.' Yellow
     return
   }
+  # Setup failed: say why, and give the recovery steps right here. "Follow the red steps above" pointed at nothing when
+  # only IP-guard was left (WAZ-PU7JW, Nov 2026: bcdedit step failed on a PC that tried Safe Mode seven times).
+  $fail = {
+    param($why)
+    Remove-ItemProperty -LiteralPath $rk -Name '*WAZipSafeMode' -ErrorAction SilentlyContinue
+    Set-Content -LiteralPath $safeQFile -Value "setup failed $(Get-Date -Format o): $why" -ErrorAction SilentlyContinue
+    Say "Tak dapat sediakan Safe Mode auto ($why). $safeMs Kemudian jalankan tool ni sekali lagi dan taip Y." `
+        "Could not set up automatic Safe Mode ($why). $safeEn Then run this tool again and type Y." Red
+  }
+  $rk = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce'
+  if ($env:WAZIP_TEST_SAFEAUTO_FAIL) { & $fail 'test bcdedit failure'; return }
   # Tests: record the decision instead of rebooting the machine.
   if ($env:WAZIP_TEST_SAFEAUTO_DRY) {
     Add-Content -LiteralPath $env:WAZIP_TEST_SAFEAUTO_DRY -Value "safeauto $stamp $($script:Recur)"
     Set-Content -LiteralPath $safeQFile -Value "queued $(Get-Date -Format o)" -ErrorAction SilentlyContinue; return
   }
-  $rk = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce'
   $copy = Join-Path $QuarantineRoot 'wa-zip-cleaner.ps1'
   try {
     if ($PSCommandPath -ne $copy) { Copy-Item -LiteralPath $PSCommandPath -Destination $copy -Force -ErrorAction Stop }
@@ -3595,9 +3605,7 @@ function Start-SafeAuto {
     $script:SafeQueued = $true
     Set-Content -LiteralPath $safeQFile -Value "queued $(Get-Date -Format o)" -ErrorAction SilentlyContinue
   } catch {
-    Remove-ItemProperty -LiteralPath $rk -Name '*WAZipSafeMode' -ErrorAction SilentlyContinue
-    Set-Content -LiteralPath $safeQFile -Value "setup failed $(Get-Date -Format o): $($_.Exception.Message)" -ErrorAction SilentlyContinue
-    Say 'Tak dapat sediakan Safe Mode auto. Ikut arahan merah di atas (skrin biru pemulihan).' 'Could not set up automatic Safe Mode. Follow the red steps above (blue recovery screen).' Red
+    & $fail ("$($_.Exception.Message)" -replace '\s+', ' ')
     return
   }
   $ipg = $IpgPending -or $IpgAgain
