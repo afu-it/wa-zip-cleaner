@@ -1130,7 +1130,7 @@ $rLv = Scan "$env:TEMP\xlv.json" -Out "$env:TEMP\xlv.out"
 $xlv = Get-Content -Raw "$env:TEMP\xlv.out"
 Check ((Has $rLv 'Info' 'OLD' 'blocked a WhatsApp lure file' 'CRY_WAZ_1\.vhd') -and -not (Has $rLv 'Info' 'WARN' 'WazLureVhd')) 'Defender catching only the lure disk image is history, not a warning'
 # The runner has other warnings of its own, so check this record is not one of them rather than "PC BERSIH".
-Check ($xlv -match 'Rekod lama[^\r\n]*[\r\n]+[^\r\n]*blocked a WhatsApp lure file' -and $xlv -notmatch 'Defender detected: Trojan:Win32/WazLureVhd' -and $xlv -notmatch 'Defender only removed that file') 'Defender catching only the lure disk image: listed as an old record, not a warning'
+Check ($xlv -match 'Rekod lama' -and $xlv -match '- Windows Defender blocked a WhatsApp lure file' -and $xlv -notmatch 'Defender detected: Trojan:Win32/WazLureVhd' -and $xlv -notmatch 'Defender only removed that file') 'Defender catching only the lure disk image: listed as an old record, not a warning'
 $env:WAZIP_TEST_DEFEVT = "Trojan:Win32/WazPayload|file:_C:\Users\WazNoUser\AppData\Local\Temp\Rar`$DIa0.554\setup.exe"
 $rLe = Scan "$env:TEMP\xle.json" -Out "$env:TEMP\xle.out"
 Remove-Item Env:\WAZIP_TEST_DEFEVT
