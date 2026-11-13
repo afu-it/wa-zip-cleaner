@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.13.91'
+$Version = '2026.11.14.92'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -2692,6 +2692,22 @@ if (-not (Test-Admin)) {
 }
 # Started by RunOnce inside Safe Mode: switch the next boot back to normal Windows first, so a crash cannot trap the PC in Safe Mode.
 if ($SafeAuto) { & bcdedit.exe /deletevalue '{current}' safeboot | Out-Null; $Fix = $true }
+# Automatic Safe Mode set up by an earlier run that never started: say so, and keep it in the report. One PC ran the
+# tool six times in two hours, chose Safe Mode each time, and no Safe Mode report ever came (WAZ-K6RTR..CT2HP, Nov 2026).
+$safeQFile = Join-Path $QuarantineRoot 'safeauto-queued.txt'; $safeRFile = Join-Path $QuarantineRoot 'safeauto-ran.txt'
+$script:SafeMissed = $null
+if ($SafeAuto) {
+  New-Item -ItemType Directory -Force -Path $QuarantineRoot -ErrorAction SilentlyContinue | Out-Null
+  Set-Content -LiteralPath $safeRFile -Value (Get-Date -Format o) -ErrorAction SilentlyContinue
+} elseif (Test-Path -LiteralPath $safeQFile) {
+  $qItem = Get-Item -LiteralPath $safeQFile
+  $rTime = if (Test-Path -LiteralPath $safeRFile) { (Get-Item -LiteralPath $safeRFile).LastWriteTime } else { [datetime]::MinValue }
+  if ($rTime -lt $qItem.LastWriteTime) {
+    $script:SafeMissed = ([string](Get-Content -LiteralPath $safeQFile -Raw -ErrorAction SilentlyContinue)).Trim()
+    Add-Finding 'Info' 'WARN' 'Automatic Safe Mode did not run' "Set up by an earlier run ($($script:SafeMissed)), but the Safe Mode clean-up never started on this PC."
+  }
+  Remove-Item -LiteralPath $safeQFile -Force -ErrorAction SilentlyContinue
+}
 
 if ($Restore) {
   if (-not $Manifest -or -not (Test-Path -LiteralPath $Manifest)) { Say 'Beri -Manifest <laluan manifest.json>.' 'Pass -Manifest <path to manifest.json>.' Red; exit 2 }
@@ -3551,7 +3567,10 @@ function Start-SafeAuto {
     return
   }
   # Tests: record the decision instead of rebooting the machine.
-  if ($env:WAZIP_TEST_SAFEAUTO_DRY) { Add-Content -LiteralPath $env:WAZIP_TEST_SAFEAUTO_DRY -Value "safeauto $stamp $($script:Recur)"; return }
+  if ($env:WAZIP_TEST_SAFEAUTO_DRY) {
+    Add-Content -LiteralPath $env:WAZIP_TEST_SAFEAUTO_DRY -Value "safeauto $stamp $($script:Recur)"
+    Set-Content -LiteralPath $safeQFile -Value "queued $(Get-Date -Format o)" -ErrorAction SilentlyContinue; return
+  }
   $rk = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce'
   $copy = Join-Path $QuarantineRoot 'wa-zip-cleaner.ps1'
   try {
@@ -3563,11 +3582,13 @@ function Start-SafeAuto {
     # A leading * makes RunOnce run in Safe Mode too.
     Set-ItemProperty -LiteralPath $rk -Name '*WAZipSafeMode' -Value $cmd -ErrorAction Stop
     Suspend-BitLockerForReboot
-    & bcdedit.exe /set '{current}' safeboot minimal | Out-Null
-    if ($LASTEXITCODE) { throw 'bcdedit failed' }
+    $bo = [string](& bcdedit.exe /set '{current}' safeboot minimal 2>&1 | Out-String)
+    if ($LASTEXITCODE) { throw "bcdedit failed: $($bo.Trim())" }
     $script:SafeQueued = $true
+    Set-Content -LiteralPath $safeQFile -Value "queued $(Get-Date -Format o)" -ErrorAction SilentlyContinue
   } catch {
     Remove-ItemProperty -LiteralPath $rk -Name '*WAZipSafeMode' -ErrorAction SilentlyContinue
+    Set-Content -LiteralPath $safeQFile -Value "setup failed $(Get-Date -Format o): $($_.Exception.Message)" -ErrorAction SilentlyContinue
     Say 'Tak dapat sediakan Safe Mode auto. Ikut arahan merah di atas (skrin biru pemulihan).' 'Could not set up automatic Safe Mode. Follow the red steps above (blue recovery screen).' Red
     return
   }
@@ -3616,6 +3637,10 @@ if ($SafeAuto -and $IpgAgain) {
   Show-Head 'PAKSA BUANG' 'FORCE REMOVAL'
   Write-Host ''
   Say 'Tool boleh paksa buang semua ni sendiri melalui Safe Mode. Kami syorkan pilihan 1.' 'The tool can force the removal by itself through Safe Mode. We recommend option 1.' White
+  if ($script:SafeMissed) {
+    Say 'Safe Mode auto yang dipilih tadi TAK berjalan. Kalau lepas taip 1 PC tak masuk Safe Mode lagi, ikut cara skrin pemulihan di atas.' `
+        'The automatic Safe Mode chosen last time did NOT run. If the PC does not go into Safe Mode after typing 1 again, follow the recovery-screen steps above.' Yellow
+  }
   Write-Host ''
   Say '  [1] Safe Mode auto (DISYORKAN): PC restart ke Safe Mode, tool buang semua, kemudian restart ke Windows biasa.' `
       '  [1] Automatic Safe Mode (RECOMMENDED): the PC restarts into Safe Mode, the tool removes everything, then restarts into normal Windows.' White

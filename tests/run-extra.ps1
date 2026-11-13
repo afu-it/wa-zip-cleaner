@@ -1560,9 +1560,23 @@ $r49 = Scan "$env:TEMP\x49.json" -Fix -Root $qR
 $sd = if (Test-Path $safeDry) { Get-Content -Raw $safeDry } else { '' }
 Check (Has $r49 'Service' 'HIGH' '^WazBootRepairRc$' 'antivirus killer') 'driver loaded from Temp is an antivirus killer'
 Check ($sd -match 'safeauto .*antivirus killer') "loader running with an antivirus killer goes to Safe Mode ($("$sd".Trim()))"
+Check ((Get-Content -Raw -LiteralPath "$qR\safeauto-queued.txt" -ErrorAction SilentlyContinue) -match '^queued ') 'automatic Safe Mode leaves a note that it was set up'
 Stop-Process -Id $rP.Id -Force -ErrorAction SilentlyContinue
 & sc.exe delete WazBootRepairRc | Out-Null
 Remove-Item -LiteralPath $rDir, $qR, $safeDry, $kvSys -Recurse -Force -ErrorAction SilentlyContinue
+# Safe Mode set up earlier but never started: the next run says so (WAZ-K6RTR..CT2HP, Nov 2026).
+$qSm = Join-Path $env:TEMP 'qSafeMissed'
+New-Item -ItemType Directory -Force -Path $qSm | Out-Null
+Set-Content -LiteralPath "$qSm\safeauto-queued.txt" -Value 'queued 2026-11-13T23:00:00'
+$rSm = Scan "$env:TEMP\xsm.json" -Root $qSm
+Check (Has $rSm 'Info' 'WARN' '^Automatic Safe Mode did not run' 'queued 2026-11-13') 'Safe Mode set up but never started is reported on the next run'
+Check (-not (Test-Path -LiteralPath "$qSm\safeauto-queued.txt")) 'Safe Mode did-not-run note is reported only once'
+Set-Content -LiteralPath "$qSm\safeauto-queued.txt" -Value 'queued 2026-11-13T23:00:00'
+Start-Sleep 2
+Set-Content -LiteralPath "$qSm\safeauto-ran.txt" -Value 'ran'
+$rSm2 = Scan "$env:TEMP\xsm2.json" -Root $qSm
+Check (-not (Has $rSm2 'Info' 'WARN' '^Automatic Safe Mode did not run')) 'Safe Mode that did run is not reported as missed'
+Remove-Item -LiteralPath $qSm -Recurse -Force -ErrorAction SilentlyContinue
 # Same loader, but a Windows update waits for a restart: no Safe Mode (it would fail with "undoing changes").
 New-Item -ItemType Directory -Force -Path $rDir | Out-Null
 Copy-Item -LiteralPath "$env:SystemRoot\System32\PING.EXE" -Destination "$rDir\RuntimeBroker.exe"
