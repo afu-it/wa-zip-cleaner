@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.14.99'
+$Version = '2026.11.14.100'
 
 # 32-bit PowerShell on 64-bit Windows sees SysWOW64 as System32: no bcdedit.exe or netcfg.exe there, so automatic
 # Safe Mode could never be set up (WAZ-B6PDP, Nov 2026: seven tries). Run again in 64-bit PowerShell, same arguments.
@@ -1676,7 +1676,8 @@ function Scan-Files {
           } elseif ($ar.Listed -and -not $ar.Count) {
             Add-Finding 'File' 'WARN' $f.FullName 'Archive downloaded from WhatsApp Web with no files inside (empty or only folders), so it is left in place.'
           } elseif ($ar.Listed) {
-            Add-Finding 'File' 'WARN' $f.FullName "Archive downloaded from WhatsApp Web. Only documents inside ($($ar.Count) file(s)), so it is left in place."
+            # Nothing to act on: a note, so a clean PC still ends "PC BERSIH" (AFU, Nov 2026, WAZ-8DEY6 CamScanner zip).
+            Add-Finding 'File' 'OLD' $f.FullName "Archive downloaded from WhatsApp Web. Only documents inside ($($ar.Count) file(s)), so it is left in place." @{ Note = "ZIP dari WhatsApp, dokumen sahaja ($($ar.Count) fail): selamat" }
           } else {
             Add-Finding 'File' 'WARN' $f.FullName "Archive downloaded from WhatsApp Web that this tool cannot look inside ($($f.Extension), damaged or locked). It is left in place; do not open a program, .vhd or .iso file from it."
           } }
@@ -3332,8 +3333,8 @@ $oldRec = @($Findings | Where-Object Severity -eq 'OLD')
 function Show-OldRecords {
   if (-not $oldRec.Count) { return }
   Write-Host ''
-  Say '  Rekod lama (tiada tindakan perlu):' '  Old records (nothing to do):' DarkGray
-  foreach ($f in $oldRec) { Write-Host ("   - {0}" -f $f.Target) -ForegroundColor DarkGray }
+  Say '  Nota (tiada tindakan perlu):' '  Notes (nothing to do):' DarkGray
+  foreach ($f in $oldRec) { Write-Host ("   - {0}{1}" -f $f.Target, $(if ($f.Extra.Note) { " ($($f.Extra.Note))" })) -ForegroundColor DarkGray }
 }
 Show-Head 'KEPUTUSAN' 'RESULT'
 Write-Host ''
