@@ -798,7 +798,7 @@ $env:WAZIP_TEST_NO_NETCFG = '1'
 $rI7 = Scan "$env:TEMP\xi7.json" -Owner Personal -Fix -Root (Join-Path $env:TEMP 'qIpgNoNetcfg') -Out "$env:TEMP\xi7.txt"
 Remove-Item Env:\WAZIP_TEST_NO_NETCFG
 $xi7 = Get-Content -Raw "$env:TEMP\xi7.txt"
-Check ($xi7 -match 'IP-guard network filter switched off on every connection: tnfcap' -and $xi7 -notmatch 'is not recognized|null-valued') 'no netcfg.exe: IP-guard network filter switched off without a script error'
+Check ($xi7 -match 'IP-guard network filter switched off on every connection: tnfcap' -and $xi7 -notmatch 'is not recognized|null-valued|FAILED to switch off') 'no netcfg.exe: IP-guard network filter not bound anywhere counts as switched off (WAZ-LEZ2G)'
 Check ((Test-Path -LiteralPath 'HKLM:\SYSTEM\CurrentControlSet\Services\tnfcap') -and (Test-Path -LiteralPath "$drvDirI\tnfcap.sys")) 'no netcfg.exe: network filter driver left in place so the internet keeps working'
 & sc.exe delete tnfcap | Out-Null
 Remove-Item -LiteralPath "$drvDirI\tnfcap.sys", $ocDir -Recurse -Force -ErrorAction SilentlyContinue

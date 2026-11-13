@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.13.90'
+$Version = '2026.11.13.91'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -2619,7 +2619,9 @@ function Invoke-Fix($qdir) {
         continue
       }
       try {
-        $nb = @(Get-NetAdapterBinding -ComponentID $IpgNetComp[$n] -ErrorAction Stop | Where-Object { $_.Enabled })
+        # Not bound to any connection is reported as 'No MSFT_NetAdapterBindingSettingData objects found' (WAZ-LEZ2G).
+        $nb = @(try { Get-NetAdapterBinding -ComponentID $IpgNetComp[$n] -ErrorAction Stop | Where-Object { $_.Enabled } }
+                catch { if ($_.CategoryInfo.Category -ne 'ObjectNotFound' -and "$_" -notmatch 'No MSFT_NetAdapterBinding') { throw } })
         if ($nb.Count) { $nb | Disable-NetAdapterBinding -ErrorAction Stop }
         Say "  OK  Penapis rangkaian IP-guard dimatikan pada semua sambungan: $n (failnya ditinggal supaya internet tak putus)" "  OK  IP-guard network filter switched off on every connection: $n (its files stay so the internet keeps working)" Green
       } catch { Say "  GAGAL matikan penapis rangkaian IP-guard $n" "  FAILED to switch off the IP-guard network filter $n" Yellow }
