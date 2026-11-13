@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.14.97'
+$Version = '2026.11.14.98'
 
 # 32-bit PowerShell on 64-bit Windows sees SysWOW64 as System32: no bcdedit.exe or netcfg.exe there, so automatic
 # Safe Mode could never be set up (WAZ-B6PDP, Nov 2026: seven tries). Run again in 64-bit PowerShell, same arguments.
@@ -3602,6 +3602,11 @@ function Start-SafeAuto {
   }
   $rk = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce'
   if ($env:WAZIP_TEST_SAFEAUTO_FAIL) { & $fail 'test bcdedit failure'; return }
+  # Sophos blocks the Safe Mode start entry as an attack (T1562.009) and the tool stops without a word
+  # (WAZ-2JCQL, Nov 2026): go straight to the recovery-screen steps, which Sophos does not see.
+  if ($env:WAZIP_TEST_SOPHOS -or (Get-Service -Name 'SophosED', 'Sophos Endpoint Defense Service' -ErrorAction SilentlyContinue)) {
+    & $fail 'antivirus Sophos sekat / Sophos antivirus blocks it'; return
+  }
   # Tests: record the decision instead of rebooting the machine.
   if ($env:WAZIP_TEST_SAFEAUTO_DRY) {
     Add-Content -LiteralPath $env:WAZIP_TEST_SAFEAUTO_DRY -Value "safeauto $stamp $($script:Recur)"
