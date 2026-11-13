@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.14.96'
+$Version = '2026.11.14.97'
 
 # 32-bit PowerShell on 64-bit Windows sees SysWOW64 as System32: no bcdedit.exe or netcfg.exe there, so automatic
 # Safe Mode could never be set up (WAZ-B6PDP, Nov 2026: seven tries). Run again in 64-bit PowerShell, same arguments.
@@ -2730,7 +2730,8 @@ if ($SafeAuto) {
     $script:SafeMissed = ([string](Get-Content -LiteralPath $safeQFile -Raw -ErrorAction SilentlyContinue)).Trim()
     Add-Finding 'Info' 'WARN' 'Automatic Safe Mode did not run' "Set up by an earlier run ($($script:SafeMissed)), but the Safe Mode clean-up never started on this PC."
   }
-  Remove-Item -LiteralPath $safeQFile -Force -ErrorAction SilentlyContinue
+  # The launcher's first pass is a scan whose report is never sent: keep the note for the clean-up pass (WAZ-B6PDP).
+  if ($Fix) { Remove-Item -LiteralPath $safeQFile -Force -ErrorAction SilentlyContinue }
 }
 
 if ($Restore) {

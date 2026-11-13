@@ -1612,7 +1612,7 @@ New-Item -ItemType Directory -Force -Path $qSm | Out-Null
 Set-Content -LiteralPath "$qSm\safeauto-queued.txt" -Value 'queued 2026-11-13T23:00:00'
 $rSm = Scan "$env:TEMP\xsm.json" -Root $qSm
 Check (Has $rSm 'Info' 'WARN' '^Automatic Safe Mode did not run' 'queued 2026-11-13') 'Safe Mode set up but never started is reported on the next run'
-Check (-not (Test-Path -LiteralPath "$qSm\safeauto-queued.txt")) 'Safe Mode did-not-run note is reported only once'
+Check (Test-Path -LiteralPath "$qSm\safeauto-queued.txt") 'scan-only pass keeps the Safe Mode did-not-run note for the clean-up pass (WAZ-B6PDP)'
 Set-Content -LiteralPath "$qSm\safeauto-queued.txt" -Value 'queued 2026-11-13T23:00:00'
 Start-Sleep 2
 Set-Content -LiteralPath "$qSm\safeauto-ran.txt" -Value 'ran'
