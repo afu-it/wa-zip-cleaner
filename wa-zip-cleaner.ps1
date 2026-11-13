@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.14.92'
+$Version = '2026.11.14.93'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -3366,7 +3366,17 @@ if ($Fix -and $high.Count) {
   Say 'Cuma ada amaran, tiada apa yang tool ni akan buang. Baca amaran di atas.' 'Warnings only; nothing for this tool to remove. Read the warnings above.' Cyan
 }
 # Defender removing a trojan does not mean the PC is clean: the program that loaded it may still be there.
-if (-not $infected.Count -and ($Findings | Where-Object { $_.Kind -eq 'Info' -and $_.Target -match '^Defender detected: (Trojan|Backdoor|Behavior|Exploit|HackTool|Ransom)' })) {
+$defTroj = @($Findings | Where-Object { $_.Kind -eq 'Info' -and $_.Target -match '^Defender detected: (Trojan|Backdoor|Behavior|Exploit|HackTool|Ransom)' })
+# Only the lure itself caught (a disk image, or a file still inside a ZIP/RAR) and nothing else found: Defender stopped
+# it before it opened. The red "format the PC" warning sent one user back to scan four times (WAZ-TYM3F, Nov 2026).
+$defLureOnly = $defTroj.Count -and -not @($defTroj | Where-Object {
+  $dp = ("$($_.Detail)" -replace '^[^:]*last on [0-9-]+: ', '')
+  -not ($dp -match '(?i)\.(vhdx?|iso|img)\s*$' -or $dp -match '(?i)\.(zip|rar|7z)->') }).Count
+if (-not $infected.Count -and $defLureOnly) {
+  Write-Host ''
+  Say 'Windows Defender dah sekat fail umpan (cakera maya atau fail dalam ZIP/RAR) sebelum ia dibuka, dan imbasan ni tak jumpa virus. PC ni bersih. Untuk berjaga-jaga: log keluar WhatsApp Web dari telefon (Peranti dipaut > Log keluar semua) dan padam fail ZIP/RAR asal tu.' `
+      'Windows Defender blocked the lure file (a disk image or a file inside a ZIP/RAR) before it opened, and this scan found no virus. This PC is clean. To be safe: log out WhatsApp Web from your phone (Linked devices > Log out all) and delete the original ZIP/RAR.' Green
+} elseif (-not $infected.Count -and $defTroj.Count) {
   Write-Host ''
   Say 'AWAS: Windows Defender jumpa trojan di PC ni (lihat "Defender detected" di atas). Defender cuma buang fail tu; program yang muatkan dia mungkin masih ada. Tukar kata laluan bank & emel guna telefon, log keluar WhatsApp Web (Peranti dipaut > Log keluar semua), dan hantar screenshot folder dalam amaran tu kepada orang yang bantu anda. Paling selamat: backup data dan format PC.' `
       'WARNING: Windows Defender found a trojan on this PC (see "Defender detected" above). Defender only removed that file; the program that loaded it may still be there. Change bank and email passwords from your phone, log out WhatsApp Web (Linked devices > Log out all), and send a screenshot of the folder in that warning to whoever is helping you. Safest: back up data and reinstall Windows.' Red

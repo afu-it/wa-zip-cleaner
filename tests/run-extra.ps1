@@ -1113,6 +1113,19 @@ Remove-Item -LiteralPath $dlDir -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 if (InPart 1) {
+Write-Host '=== Defender caught only the lure disk image: calm message, not "format the PC" (WAZ-TYM3F, Nov 2026) ===' -ForegroundColor Cyan
+$env:WAZIP_TEST_DEFEVT = "Trojan:Win32/WazLureVhd|file:_C:\Users\WazNoUser\AppData\Local\Temp\Rar`$DIa0.554\CRY_WAZ_1.vhd"
+$rLv = Scan "$env:TEMP\xlv.json" -Out "$env:TEMP\xlv.out"
+$xlv = Get-Content -Raw "$env:TEMP\xlv.out"
+Check ($xlv -match 'blocked the lure file' -and $xlv -notmatch 'Defender only removed that file') 'Defender catching only the lure disk image shows the calm message'
+$env:WAZIP_TEST_DEFEVT = "Trojan:Win32/WazPayload|file:_C:\Users\WazNoUser\AppData\Local\Temp\Rar`$DIa0.554\setup.exe"
+$rLe = Scan "$env:TEMP\xle.json" -Out "$env:TEMP\xle.out"
+Remove-Item Env:\WAZIP_TEST_DEFEVT
+$xle = Get-Content -Raw "$env:TEMP\xle.out"
+Check ($xle -match 'Defender only removed that file' -and $xle -notmatch 'blocked the lure file') 'Defender catching a program keeps the red warning'
+}
+
+if (InPart 1) {
 Write-Host '=== Defender detection alone does not say Defender was told to ignore it (WAZ-CD9VY, Nov 2026) ===' -ForegroundColor Cyan
 $hsDl2 = "$env:TEMP\hs_rt32_wazt0002.dll"
 Set-Content $hsDl2 'dummy'
