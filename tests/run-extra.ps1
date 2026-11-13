@@ -1613,7 +1613,16 @@ Remove-Item Env:\WAZIP_TEST_SAFEAUTO_FAIL
 $x49f = Get-Content -Raw "$env:TEMP\x49f.out"
 Check ($x49f -match 'Could not set up automatic Safe Mode \(test bcdedit failure\)\. (Remove it from the recovery screen|Start in Safe Mode with Networking)' -and $x49f -notmatch 'red steps above') 'Safe Mode setup failure shows the reason and the recovery steps'
 Check ((Get-Content -Raw -LiteralPath "$qR\safeauto-queued.txt" -ErrorAction SilentlyContinue) -match '^setup failed .*test bcdedit failure') 'Safe Mode setup failure is noted for the next report'
+Stop-Process -Id $rP.Id -Force -ErrorAction SilentlyContinue
+& sc.exe delete WazBootRepairRc | Out-Null
+Remove-Item -LiteralPath $rDir, $qR, $safeDry, $kvSys -Recurse -Force -ErrorAction SilentlyContinue
 # Sophos on the PC: it blocks the Safe Mode start entry, so the recovery steps are given at once (WAZ-2JCQL).
+New-Item -ItemType Directory -Force -Path $rDir | Out-Null
+Copy-Item -LiteralPath "$env:SystemRoot\System32\PING.EXE" -Destination "$rDir\RuntimeBroker.exe"
+$rP = [Diagnostics.Process]::Start("$rDir\RuntimeBroker.exe", '-n 900 127.0.0.1')
+Set-Content $kvSys 'dummy'
+& sc.exe create WazBootRepairRc type= kernel start= demand binPath= $kvSys | Out-Null
+Start-Sleep 2
 Remove-Item -LiteralPath "$qR\safeauto-queued.txt" -ErrorAction SilentlyContinue
 $env:WAZIP_TEST_SOPHOS = '1'
 $r49s = Scan "$env:TEMP\x49s.json" -Fix -Root $qR -Out "$env:TEMP\x49s.out"
