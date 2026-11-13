@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.12.86'
+$Version = '2026.11.13.87'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -1741,7 +1741,6 @@ function Scan-ManageEngine {
   }
   Scan-Ping32
   Scan-UltraViewer
-  Scan-IpGuard
   Scan-CnRmm
   # MyCERT MA-1491/1493: work folders the ManageEngine lures create.
   $drops = @("$env:SystemDrive\kouren", "$env:SystemDrive\cool")
@@ -1751,6 +1750,8 @@ function Scan-ManageEngine {
       Add-Finding 'File' 'HIGH' $d 'ManageEngine install kit left by the WhatsApp disk-image lure (MyCERT MA-1491/1493).'; $script:MeAttacker = $true
     }
   }
+  # After the install-kit check: an attacker's ManageEngine on this PC makes its IP-guard the attacker's too.
+  Scan-IpGuard
   if ($hits.Count) {
     $d = if ($script:MeAttacker) { 'Remote-management agent connected to a known attacker server (WhatsApp VBS campaign). This tool will force-remove it.' } else { switch ($Owner) {
       'Office'   { 'Remote-management agent found. Company IT often installs it; ask your IT team to confirm. This tool leaves it alone on an office PC.' }
@@ -1897,7 +1898,12 @@ function Scan-IpGuard {
   $net = if ($sip) { $sip -replace '\.\d+$', '.' } else { $null }
   $bad = $sip -and (($C2Ips -contains $sip) -or @($C2Ips | Where-Object { $_.StartsWith($net) }).Count)
   $found = " Found: $($hits -join ', ')."
-  if ($Owner -eq 'Office' -and -not $bad) {
+  # The attacker's ManageEngine on this PC, now or removed by an earlier clean-up here, means the attacker installed
+  # this IP-guard too, whatever its server (WAZ-FHYGQ, Nov 2026: office PC, server 192.229.87.179 not on any list,
+  # kept as a warning through the Safe Mode pass).
+  $withMe = $script:MeAttacker -or [bool](Get-ChildItem -LiteralPath $QuarantineRoot -Recurse -Filter manifest.json -ErrorAction SilentlyContinue |
+    Where-Object { $_.LastWriteTime -gt (Get-Date).AddDays(-30) -and (Select-String -LiteralPath $_.FullName -Pattern 'ManageEngine|AdventNet' -Quiet) })
+  if ($Owner -eq 'Office' -and -not $bad -and -not $withMe) {
     $srv = if ($sip) { " Its server is $sip." } else { '' }
     Add-Finding 'Info' 'WARN' 'IP-guard (OCular) monitoring agent' ("IP-guard (OCular) monitoring agent. Companies use it to watch staff PCs; ask your IT team if they installed it.$srv If they did not, an attacker installed it: disconnect the internet, back up your documents and reinstall Windows." + $found)
     return
@@ -1907,6 +1913,7 @@ function Scan-IpGuard {
   $script:IpgParts = Get-IpGuardParts
   $script:IpgNoAuto = [bool]$script:IpgParts.Filters.Count
   $srv = if ($bad) { "Its settings point at a known attacker server ($sip). " } elseif ($sip) { "Its server is $sip. " } else { '' }
+  if ($withMe -and -not $bad) { $srv += "Found on a PC where the attacker's ManageEngine was found, so the attacker installed it. " }
   $what = 'IP-guard (OCular) spy program: records the screen, typing, email, browsers and network traffic. In the WhatsApp ManageEngine campaign the attacker installs it a few days after ManageEngine.'
   if ($script:IpgNoAuto) {
     $how = " One of its drivers is attached to a device ($($script:IpgParts.Filters -join ', ')), so the tool does not remove it automatically. Disconnect the internet, back up your documents (check they open on another PC first), then reinstall Windows or ask an IT person to remove it."

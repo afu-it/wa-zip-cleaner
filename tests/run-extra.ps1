@@ -708,8 +708,22 @@ Set-Content -LiteralPath "$ocDir\OAgent.ini" -Value '[AgentConfig]', 'SIP=BE9B7A
 $r25b = Scan "$env:TEMP\x25b.json" -Owner Office
 Check (Has $r25b 'Info' 'HIGH' '^IP-guard' '134\.122\.155\.190') 'IP-guard server in an attacker /24 is HIGH even on an office PC'
 Set-Content -LiteralPath "$ocDir\OAgent.ini" -Value '[AgentConfig]', 'SIP=0A00000A' -Encoding ASCII
-$r26 = Scan "$env:TEMP\x26.json" -Owner Office
+# An empty quarantine folder: earlier clean-ups in this run removed ManageEngine, which counts as the attacker's.
+$qIpg = Join-Path $env:TEMP 'qIpgOffice'
+$r26 = Scan "$env:TEMP\x26.json" -Owner Office -Root $qIpg
 Check (Has $r26 'Info' 'WARN' '^IP-guard' 'IT team') 'IP-guard with a company server is WARN on an office PC'
+# WAZ-FHYGQ: the attacker's ManageEngine kit on the same office PC makes IP-guard the attacker's, whatever its server.
+New-Item -ItemType Directory -Force -Path "$env:SystemDrive\kouren" | Out-Null
+Set-Content -LiteralPath "$env:SystemDrive\kouren\UEMSAgent.mst" 'dummy'
+$r26m = Scan "$env:TEMP\x26m.json" -Owner Office -Root $qIpg
+Remove-Item -LiteralPath "$env:SystemDrive\kouren" -Recurse -Force -ErrorAction SilentlyContinue
+Check (Has $r26m 'Info' 'HIGH' '^IP-guard' "attacker's ManageEngine") 'office IP-guard next to the attacker''s ManageEngine kit is HIGH (WAZ-FHYGQ)'
+# WAZ-ASQSJ/E9UHN: after an earlier clean-up removed ManageEngine here, IP-guard still counts as the attacker's.
+New-Item -ItemType Directory -Force -Path "$qIpg\old" | Out-Null
+Set-Content -LiteralPath "$qIpg\old\manifest.json" '[{"Kind":"Service","Target":"ManageEngine UEMS - Agent"}]'
+$r26r = Scan "$env:TEMP\x26r.json" -Owner Office -Root $qIpg
+Check (Has $r26r 'Info' 'HIGH' '^IP-guard' "attacker's ManageEngine") 'office IP-guard after ManageEngine was removed here is HIGH (WAZ-E9UHN)'
+Remove-Item -LiteralPath $qIpg -Recurse -Force -ErrorAction SilentlyContinue
 $r27 = Scan "$env:TEMP\x27.json" -Owner Personal -Fix
 Check (Has $r27 'Info' 'HIGH' '^IP-guard') 'IP-guard is HIGH on a personal PC'
 Check (Test-Path -LiteralPath "$ocDir\OAgent.ini") 'online -Fix leaves IP-guard files for the Safe Mode pass'
@@ -780,7 +794,7 @@ New-Item -ItemType Directory -Force -Path $ocDir | Out-Null
 Set-Content -LiteralPath "$ocDir\OAgent.ini" -Value '[AgentConfig]', 'SIP=0A00000A' -Encoding ASCII
 Set-Content -LiteralPath "$w64\winoav3.dll" 'dummy'
 $env:WAZIP_TEST_IPG_SAFE = '1'
-$rI4 = Scan "$env:TEMP\xi4.json" -Owner Office -Fix
+$rI4 = Scan "$env:TEMP\xi4.json" -Owner Office -Fix -Root (Join-Path $env:TEMP 'qIpgOffice4')
 Remove-Item Env:\WAZIP_TEST_IPG_SAFE
 Check ((Has $rI4 'Info' 'WARN' '^IP-guard') -and (Test-Path -LiteralPath "$w64\winoav3.dll") -and (Test-Path -LiteralPath "$ocDir\OAgent.ini")) 'office IP-guard with a company server is never removed'
 Check (-not (Get-NetFirewallRule -DisplayName 'WAZip block IP-guard server*' -ErrorAction SilentlyContinue)) 'office IP-guard with a company server is not blocked'
