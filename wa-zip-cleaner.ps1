@@ -32,7 +32,23 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.14.95'
+$Version = '2026.11.14.96'
+
+# 32-bit PowerShell on 64-bit Windows sees SysWOW64 as System32: no bcdedit.exe or netcfg.exe there, so automatic
+# Safe Mode could never be set up (WAZ-B6PDP, Nov 2026: seven tries). Run again in 64-bit PowerShell, same arguments.
+if ([Environment]::Is64BitOperatingSystem -and -not [Environment]::Is64BitProcess -and $PSCommandPath) {
+  $ps64 = Join-Path $env:windir 'Sysnative\WindowsPowerShell\v1.0\powershell.exe'
+  if (Test-Path -LiteralPath $ps64) {
+    $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $PSCommandPath)
+    foreach ($k in $PSBoundParameters.Keys) {
+      $v = $PSBoundParameters[$k]
+      if ($v -is [System.Management.Automation.SwitchParameter]) { if ($v.IsPresent) { $a += "-$k" } } else { $a += "-$k"; $a += "$v" }
+    }
+    & $ps64 @a
+    exit $LASTEXITCODE
+  }
+}
+if ($env:WAZIP_TEST_BITNESS) { Set-Content -LiteralPath $env:WAZIP_TEST_BITNESS -Value "$([Environment]::Is64BitProcess) $Owner $Fix"; exit 0 }
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.

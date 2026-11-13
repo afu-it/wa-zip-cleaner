@@ -1113,6 +1113,17 @@ Remove-Item -LiteralPath $dlDir -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 if (InPart 1) {
+Write-Host '=== Started from 32-bit PowerShell: runs again as 64-bit with the same arguments (WAZ-B6PDP, Nov 2026) ===' -ForegroundColor Cyan
+$ps32 = Join-Path $env:windir 'SysWOW64\WindowsPowerShell\v1.0\powershell.exe'
+$bitF = "$env:TEMP\waz-bitness.txt"; Remove-Item -LiteralPath $bitF -ErrorAction SilentlyContinue
+$env:WAZIP_TEST_BITNESS = $bitF
+& $ps32 -NoProfile -ExecutionPolicy Bypass -File $tool -Owner Office -Fix -QuarantineRoot "$env:TEMP\q 32bit" | Out-Host
+Remove-Item Env:\WAZIP_TEST_BITNESS
+$bitS = "$(Get-Content -LiteralPath $bitF -ErrorAction SilentlyContinue)".Trim()
+Check ($bitS -eq 'True Office True') "tool started from 32-bit PowerShell runs as 64-bit with its arguments ($bitS)"
+}
+
+if (InPart 1) {
 Write-Host '=== Defender caught only the lure disk image: calm message, not "format the PC" (WAZ-TYM3F, Nov 2026) ===' -ForegroundColor Cyan
 $env:WAZIP_TEST_DEFEVT = "Trojan:Win32/WazLureVhd|file:_C:\Users\WazNoUser\AppData\Local\Temp\Rar`$DIa0.554\CRY_WAZ_1.vhd"
 $rLv = Scan "$env:TEMP\xlv.json" -Out "$env:TEMP\xlv.out"

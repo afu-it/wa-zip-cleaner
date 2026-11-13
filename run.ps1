@@ -9,6 +9,9 @@
     return
   }
   $p = "$env:TEMP\waz.ps1"
+  # Opened as 32-bit PowerShell (x86): start the tool in 64-bit PowerShell, or Safe Mode cannot be set up (WAZ-B6PDP).
+  $ps = Join-Path $env:windir 'Sysnative\WindowsPowerShell\v1.0\powershell.exe'
+  if (-not (Test-Path -LiteralPath $ps)) { $ps = 'powershell' }
   # An antivirus (Malwarebytes, Nov 2026) can quarantine the tool as soon as it lands or while it runs:
   # say so in plain words instead of a red PowerShell error.
   $blocked = {
@@ -25,11 +28,11 @@
   }
   Start-Sleep -Seconds 2
   if (-not (Test-Path -LiteralPath $p)) { & $blocked; return }
-  powershell -NoProfile -ExecutionPolicy Bypass -File $p
+  & $ps -NoProfile -ExecutionPolicy Bypass -File $p
   $code = $LASTEXITCODE
   if (-not (Test-Path -LiteralPath $p)) { & $blocked; return }
   if ($code -eq 1 -and (Read-Host 'Taip Y dan Enter untuk bersihkan') -eq 'Y') {
-    powershell -NoProfile -ExecutionPolicy Bypass -File $p -Fix
+    & $ps -NoProfile -ExecutionPolicy Bypass -File $p -Fix
     if (-not (Test-Path -LiteralPath $p)) { & $blocked }
   }
 }
