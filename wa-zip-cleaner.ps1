@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.14.93'
+$Version = '2026.11.14.94'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -1438,7 +1438,10 @@ function Scan-DefenderHistory {
         if (-not $live.Count) { continue }
         $d['Path'] = $live -join '; '
       }
-      if (-not $det.Contains($t)) { $det[$t] = @{ Count = 0; Last = $when; Path = ($d['Path'] -replace '^\w+:_', '') } }
+      if (-not $det.Contains($t)) { $det[$t] = @{ Count = 0; Last = $when; Path = ($d['Path'] -replace '^\w+:_', ''); LureOnly = $true } }
+      # Only the lure itself (a disk image, or a file still inside a ZIP/RAR): Defender stopped it before it opened.
+      $lp = @("$($d['Path'])" -split ';' | ForEach-Object { ($_.Trim() -replace '^\w+:_', '') } | Where-Object { $_ })
+      if (-not $lp.Count -or @($lp | Where-Object { -not ($_ -match '(?i)\.(vhdx?|iso|img)$' -or $_ -match '(?i)\.(zip|rar|7z)->') }).Count) { $det[$t].LureOnly = $false }
       $det[$t].Count++
       $defPaths += ,@($t, $d['Path'])
     } elseif ($r.Id -eq 5001) { $rtp += $when }
@@ -1447,6 +1450,11 @@ function Scan-DefenderHistory {
     }
   }
   foreach ($t in $det.Keys) {
+    # History, not a warning: the red "format the PC" advice sent one user back to scan four times (WAZ-TYM3F, Nov 2026).
+    if ($det[$t].LureOnly) {
+      Add-Finding 'Info' 'OLD' "Windows Defender blocked a WhatsApp lure file before it opened ($t, $($det[$t].Last))" "Nothing ran: Defender removed $($det[$t].Path)"
+      continue
+    }
     Add-Finding 'Info' 'WARN' "Defender detected: $t" "Windows Defender found this $($det[$t].Count) time(s), last on $($det[$t].Last): $($det[$t].Path)"
   }
   Find-DefenderLureZip $defPaths
@@ -3288,7 +3296,7 @@ $oldRec = @($Findings | Where-Object Severity -eq 'OLD')
 function Show-OldRecords {
   if (-not $oldRec.Count) { return }
   Write-Host ''
-  Say '  Rekod lama sebelum pembersihan (tiada tindakan perlu):' '  Old records from before the clean-up (nothing to do):' DarkGray
+  Say '  Rekod lama (tiada tindakan perlu):' '  Old records (nothing to do):' DarkGray
   foreach ($f in $oldRec) { Write-Host ("   - {0}" -f $f.Target) -ForegroundColor DarkGray }
 }
 Show-Head 'KEPUTUSAN' 'RESULT'
@@ -3366,17 +3374,7 @@ if ($Fix -and $high.Count) {
   Say 'Cuma ada amaran, tiada apa yang tool ni akan buang. Baca amaran di atas.' 'Warnings only; nothing for this tool to remove. Read the warnings above.' Cyan
 }
 # Defender removing a trojan does not mean the PC is clean: the program that loaded it may still be there.
-$defTroj = @($Findings | Where-Object { $_.Kind -eq 'Info' -and $_.Target -match '^Defender detected: (Trojan|Backdoor|Behavior|Exploit|HackTool|Ransom)' })
-# Only the lure itself caught (a disk image, or a file still inside a ZIP/RAR) and nothing else found: Defender stopped
-# it before it opened. The red "format the PC" warning sent one user back to scan four times (WAZ-TYM3F, Nov 2026).
-$defLureOnly = $defTroj.Count -and -not @($defTroj | Where-Object {
-  $dp = ("$($_.Detail)" -replace '^[^:]*last on [0-9-]+: ', '')
-  -not ($dp -match '(?i)\.(vhdx?|iso|img)\s*$' -or $dp -match '(?i)\.(zip|rar|7z)->') }).Count
-if (-not $infected.Count -and $defLureOnly) {
-  Write-Host ''
-  Say 'Windows Defender dah sekat fail umpan (cakera maya atau fail dalam ZIP/RAR) sebelum ia dibuka, dan imbasan ni tak jumpa virus. PC ni bersih. Untuk berjaga-jaga: log keluar WhatsApp Web dari telefon (Peranti dipaut > Log keluar semua) dan padam fail ZIP/RAR asal tu.' `
-      'Windows Defender blocked the lure file (a disk image or a file inside a ZIP/RAR) before it opened, and this scan found no virus. This PC is clean. To be safe: log out WhatsApp Web from your phone (Linked devices > Log out all) and delete the original ZIP/RAR.' Green
-} elseif (-not $infected.Count -and $defTroj.Count) {
+if (-not $infected.Count -and ($Findings | Where-Object { $_.Kind -eq 'Info' -and $_.Severity -eq 'WARN' -and $_.Target -match '^Defender detected: (Trojan|Backdoor|Behavior|Exploit|HackTool|Ransom)' })) {
   Write-Host ''
   Say 'AWAS: Windows Defender jumpa trojan di PC ni (lihat "Defender detected" di atas). Defender cuma buang fail tu; program yang muatkan dia mungkin masih ada. Tukar kata laluan bank & emel guna telefon, log keluar WhatsApp Web (Peranti dipaut > Log keluar semua), dan hantar screenshot folder dalam amaran tu kepada orang yang bantu anda. Paling selamat: backup data dan format PC.' `
       'WARNING: Windows Defender found a trojan on this PC (see "Defender detected" above). Defender only removed that file; the program that loaded it may still be there. Change bank and email passwords from your phone, log out WhatsApp Web (Linked devices > Log out all), and send a screenshot of the folder in that warning to whoever is helping you. Safest: back up data and reinstall Windows.' Red

@@ -1117,12 +1117,13 @@ Write-Host '=== Defender caught only the lure disk image: calm message, not "for
 $env:WAZIP_TEST_DEFEVT = "Trojan:Win32/WazLureVhd|file:_C:\Users\WazNoUser\AppData\Local\Temp\Rar`$DIa0.554\CRY_WAZ_1.vhd"
 $rLv = Scan "$env:TEMP\xlv.json" -Out "$env:TEMP\xlv.out"
 $xlv = Get-Content -Raw "$env:TEMP\xlv.out"
-Check ($xlv -match 'blocked the lure file' -and $xlv -notmatch 'Defender only removed that file') 'Defender catching only the lure disk image shows the calm message'
+Check ((Has $rLv 'Info' 'OLD' 'blocked a WhatsApp lure file' 'CRY_WAZ_1\.vhd') -and -not (Has $rLv 'Info' 'WARN' 'WazLureVhd')) 'Defender catching only the lure disk image is history, not a warning'
+Check ($xlv -match 'PC BERSIH' -and $xlv -notmatch 'Defender only removed that file' -and $xlv -notmatch 'PERIKSA') 'Defender catching only the lure disk image: result is PC BERSIH'
 $env:WAZIP_TEST_DEFEVT = "Trojan:Win32/WazPayload|file:_C:\Users\WazNoUser\AppData\Local\Temp\Rar`$DIa0.554\setup.exe"
 $rLe = Scan "$env:TEMP\xle.json" -Out "$env:TEMP\xle.out"
 Remove-Item Env:\WAZIP_TEST_DEFEVT
 $xle = Get-Content -Raw "$env:TEMP\xle.out"
-Check ($xle -match 'Defender only removed that file' -and $xle -notmatch 'blocked the lure file') 'Defender catching a program keeps the red warning'
+Check ($xle -match 'Defender only removed that file' -and -not (Has $rLe 'Info' 'OLD' 'blocked a WhatsApp lure')) 'Defender catching a program keeps the red warning'
 }
 
 if (InPart 1) {
