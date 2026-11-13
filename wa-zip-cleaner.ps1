@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.13.88'
+$Version = '2026.11.13.89'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -3433,7 +3433,8 @@ if ($infected.Count) {
     Say "Windows tak bagi tool buang pengecualian antivirus ni: $($script:DefExclLeft -join ', '). Buang sendiri: Windows Security > Virus & threat protection > Manage settings > Exclusions > Add or remove exclusions > tekan setiap satu > Remove. Lepas tu restart dan jalankan tool ni semula." `
         "Windows would not let the tool remove these antivirus exclusions: $($script:DefExclLeft -join ', '). Remove them yourself: Windows Security > Virus & threat protection > Manage settings > Exclusions > Add or remove exclusions > click each one > Remove. Then restart and run this tool again." Red
   }
-  if ($Findings | Where-Object { $_.Kind -eq 'DefExcl' -or $_.Detail -match 'Defender' }) {
+  # Only real exclusions: a plain 'Defender detected' finding means Defender did see it (WAZ-CD9VY, Nov 2026).
+  if ($Findings | Where-Object { $_.Kind -eq 'DefExcl' -or $_.Detail -match 'told to ignore' -or $_.Target -match '^Defender exclusion added' }) {
     Say 'Malware ni suruh Windows Defender abaikan dia, sebab tu scan antivirus nampak bersih. Lepas bersihkan dan restart, buat Full scan Windows Defender sekali lagi.' `
         'This malware told Windows Defender to ignore it, which is why antivirus scans looked clean. After cleaning and restarting, run a Windows Defender full scan again.' Yellow
   }

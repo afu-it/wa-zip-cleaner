@@ -1098,6 +1098,20 @@ Remove-Item -LiteralPath $dlDir -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 if (InPart 1) {
+Write-Host '=== Defender detection alone does not say Defender was told to ignore it (WAZ-CD9VY, Nov 2026) ===' -ForegroundColor Cyan
+$hsDl2 = "$env:TEMP\hs_rt32_wazt0002.dll"
+Set-Content $hsDl2 'dummy'
+(Get-Item -LiteralPath $hsDl2 -Force).Attributes = 'Hidden, System'
+$env:WAZIP_TEST_DEFEVT = "Trojan:Win32/WazSeen|file:_$hsDl2"
+$rDs = Scan "$env:TEMP\xds.json" -Out "$env:TEMP\xds.out"
+Remove-Item Env:\WAZIP_TEST_DEFEVT
+$xds = Get-Content -Raw "$env:TEMP\xds.out"
+Check (Has $rDs 'Info' 'WARN' 'Defender detected: Trojan:Win32/WazSeen') 'Defender detection reported'
+Check ($xds -match 'PENTING' -and $xds -notmatch 'told Windows Defender to ignore') 'Defender detection alone does not claim Defender was told to ignore the malware'
+Remove-Item -LiteralPath $hsDl2 -Force -ErrorAction SilentlyContinue
+}
+
+if (InPart 1) {
 Write-Host '=== .bat launchers ===' -ForegroundColor Cyan
 # Clear WARN-only leftovers so a clean result reads BERSIH.
 & sc.exe delete MEUemsTest | Out-Null; & sc.exe delete OpswatLegitTest | Out-Null
