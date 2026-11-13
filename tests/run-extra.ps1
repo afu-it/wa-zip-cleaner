@@ -788,6 +788,21 @@ Check ((Test-Path -LiteralPath $bat) -and (Select-String -LiteralPath $bat -Patt
 $lk1.Close(); $lk2.Close()
 Remove-Item -LiteralPath $ocDir -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath "$w64\winoav3.dll", $bat, $roundFile -Force -ErrorAction SilentlyContinue
+# Windows build without netcfg.exe: the network filter is switched off cleanly, no script error (WAZ-K6RTR, Nov 2026).
+Get-NetFirewallRule -DisplayName 'WAZip block IP-guard server*' -ErrorAction SilentlyContinue | Remove-NetFirewallRule
+New-Item -ItemType Directory -Force -Path $ocDir | Out-Null
+Set-Content -LiteralPath "$ocDir\OAgent.ini" -Value '[AgentConfig]', 'SIP=B6297C1B' -Encoding ASCII
+Set-Content -LiteralPath "$drvDirI\tnfcap.sys" 'dummy'
+& sc.exe create tnfcap type= kernel start= demand binPath= System32\drivers\tnfcap.sys | Out-Null
+$env:WAZIP_TEST_NO_NETCFG = '1'
+$rI7 = Scan "$env:TEMP\xi7.json" -Owner Personal -Fix -Root (Join-Path $env:TEMP 'qIpgNoNetcfg') -Out "$env:TEMP\xi7.txt"
+Remove-Item Env:\WAZIP_TEST_NO_NETCFG
+$xi7 = Get-Content -Raw "$env:TEMP\xi7.txt"
+Check ($xi7 -match 'IP-guard network filter switched off on every connection: tnfcap' -and $xi7 -notmatch 'is not recognized|null-valued') 'no netcfg.exe: IP-guard network filter switched off without a script error'
+Check ((Test-Path -LiteralPath 'HKLM:\SYSTEM\CurrentControlSet\Services\tnfcap') -and (Test-Path -LiteralPath "$drvDirI\tnfcap.sys")) 'no netcfg.exe: network filter driver left in place so the internet keeps working'
+& sc.exe delete tnfcap | Out-Null
+Remove-Item -LiteralPath "$drvDirI\tnfcap.sys", $ocDir -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath (Join-Path $env:TEMP 'qIpgNoNetcfg') -Recurse -Force -ErrorAction SilentlyContinue
 # Office PC with a company server: a warning only, nothing removed even in Safe Mode.
 Get-NetFirewallRule -DisplayName 'WAZip block IP-guard server*' -ErrorAction SilentlyContinue | Remove-NetFirewallRule
 New-Item -ItemType Directory -Force -Path $ocDir | Out-Null

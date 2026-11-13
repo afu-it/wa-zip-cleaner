@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.13.89'
+$Version = '2026.11.13.90'
 
 # ---------------------------------------------------------------- IOCs ---
 # Known bad files (SHA-256). Sizes let us skip hashing unrelated files.
@@ -2606,11 +2606,23 @@ function Invoke-Fix($qdir) {
   }
   # IP-guard network filters must be unbound before their drivers go; netcfg works in normal Windows only.
   if ($script:IpgPending) {
+    # netcfg.exe is missing on some Windows 11 builds (10.0.26300, WAZ-K6RTR, Nov 2026): then switch the filter off
+    # on every network connection instead. Its files stay, so the internet keeps working.
+    $ncf = Join-Path $env:SystemRoot 'System32\netcfg.exe'
+    if ($env:WAZIP_TEST_NO_NETCFG) { $ncf = Join-Path $env:SystemRoot 'WazNoSuchDir\netcfg.exe' }
     foreach ($n in $IpgNetSvc.Keys) {
       if (-not (Test-Path -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\$n")) { continue }
-      $out = & netcfg.exe -u $IpgNetComp[$n] 2>&1 | Out-String
-      if ($LASTEXITCODE) { Say "  GAGAL lepaskan penapis rangkaian IP-guard $n ($($out.Trim()))" "  FAILED to unbind the IP-guard network filter $n" Yellow }
-      else { Say "  OK  Penapis rangkaian IP-guard dilepaskan: $n" "  OK  IP-guard network filter unbound: $n" Green }
+      if (Test-Path -LiteralPath $ncf) {
+        $out = [string](& $ncf -u $IpgNetComp[$n] 2>&1 | Out-String)
+        if ($LASTEXITCODE) { Say "  GAGAL lepaskan penapis rangkaian IP-guard $n ($($out.Trim()))" "  FAILED to unbind the IP-guard network filter $n" Yellow }
+        else { Say "  OK  Penapis rangkaian IP-guard dilepaskan: $n" "  OK  IP-guard network filter unbound: $n" Green }
+        continue
+      }
+      try {
+        $nb = @(Get-NetAdapterBinding -ComponentID $IpgNetComp[$n] -ErrorAction Stop | Where-Object { $_.Enabled })
+        if ($nb.Count) { $nb | Disable-NetAdapterBinding -ErrorAction Stop }
+        Say "  OK  Penapis rangkaian IP-guard dimatikan pada semua sambungan: $n (failnya ditinggal supaya internet tak putus)" "  OK  IP-guard network filter switched off on every connection: $n (its files stay so the internet keeps working)" Green
+      } catch { Say "  GAGAL matikan penapis rangkaian IP-guard $n" "  FAILED to switch off the IP-guard network filter $n" Yellow }
     }
   }
   Stop-QuarantineRunners
