@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.14.98'
+$Version = '2026.11.14.99'
 
 # 32-bit PowerShell on 64-bit Windows sees SysWOW64 as System32: no bcdedit.exe or netcfg.exe there, so automatic
 # Safe Mode could never be set up (WAZ-B6PDP, Nov 2026: seven tries). Run again in 64-bit PowerShell, same arguments.
@@ -606,6 +606,7 @@ $WarnHelp = @(
   ,@('Service installed from a malware hiding place', 'Rekod lama: virus pernah pasang pembunuh antivirus di PC ni (tarikh di bawah). Fail tu dah tiada sekarang.', 'Kalau tiada merah [HIGH] lain, virus dah dibuang. Hidupkan Windows Update kalau dimatikan, dan tukar kata laluan bank dan emel guna telefon.')
   ,@('the attacker''s ManageEngine', 'Program ni dipasang hampir serentak dengan ManageEngine penggodam. Mungkin sebahagian serangan yang sama.', 'Taip Y bila tool tanya untuk hantar sampel supaya kami boleh semak. Kalau anda atau IT tak kenal program ni: Settings > Apps > Uninstall.')
   ,@('Defender detected', 'Windows Defender pernah jumpa virus di PC ni dalam 30 hari lepas.', 'Kalau nama virus tu ada ValleyRAT, Winos, Rozena atau Trojan: anggap PC pernah dijangkiti. Jalankan tool ni dan taip Y, kemudian tukar kata laluan guna telefon.')
+  ,@('Windows Event Log service is off', 'Servis Windows Event Log (rekod sejarah Windows) mati. Malware matikan dia untuk sorok jejak.', 'Taip Y bila tool tanya: tool akan hidupkan semula. Kalau masih mati, hantar screenshot kepada orang yang bantu anda.')
   ,@('real-time protection was turned off', 'Perlindungan antivirus pernah dimatikan. Malware buat ni sebelum pasang dirinya.', 'Pastikan dia hidup semula: Windows Security > Virus & threat protection > Manage settings > Real-time protection: On. Lepas tu buat Full scan.')
   ,@('Defender exclusion added', 'Ada program suruh antivirus abaikan folder atau program ni. Malware buat ni supaya dia tak diperiksa.', 'Kalau bukan anda yang tambah: Windows Security > Virus & threat protection > Manage settings > Exclusions > Remove. Tool ni dah buang yang dia kenal sebagai jahat.')
   ,@('Ping32', 'Program kawalan jauh Ping32. Syarikat kadang pasang untuk pantau PC staf. Kalau PC sendiri, penggodam yang pasang (versi lain kempen VBS WhatsApp) untuk kawal PC anda.', 'Kalau bukan office yang pasang: jalankan tool sekali lagi, pilih "PC sendiri" bila ditanya, kemudian taip Y. Tool akan buang dia.')
@@ -2732,6 +2733,24 @@ if ($SafeAuto) {
   }
   # The launcher's first pass is a scan whose report is never sent: keep the note for the clean-up pass (WAZ-B6PDP).
   if ($Fix) { Remove-Item -LiteralPath $safeQFile -Force -ErrorAction SilentlyContinue }
+}
+# Windows Event Log off: every history check comes back "The RPC server is unavailable". Malware switches it off to
+# hide its tracks; one PC had it off from one run to the next (WAZ-G5LHC..EZPYW, Nov 2026). -Fix turns it back on
+# first, so this run can still read the history.
+$elSvc = Get-CimInstance Win32_Service -Filter "Name='EventLog'" -ErrorAction SilentlyContinue
+if ($elSvc -and ($env:WAZIP_TEST_EVENTLOG_OFF -or $elSvc.State -ne 'Running')) {
+  $elWas = if ($env:WAZIP_TEST_EVENTLOG_OFF) { 'Stopped, Disabled (test)' } else { "$($elSvc.State), $($elSvc.StartMode)" }
+  $elOk = $false
+  if ($Fix) {
+    try {
+      if ($elSvc.StartMode -eq 'Disabled') { Set-Service -Name EventLog -StartupType Automatic -ErrorAction Stop }
+      Start-Service -Name EventLog -ErrorAction Stop
+      $elOk = $true
+      Say "  OK  Windows Event Log dihidupkan semula (tadi: $elWas)" "  OK  Windows Event Log switched back on (was: $elWas)" Green
+    } catch { Say "  GAGAL hidupkan Windows Event Log: $($_.Exception.Message)" '  FAILED to switch Windows Event Log back on.' Red }
+  }
+  if ($elOk) { Add-Finding 'Info' 'OLD' 'Windows Event Log was off and is switched back on' "It was: $elWas." }
+  else { Add-Finding 'Info' 'WARN' 'Windows Event Log service is off' "It is: $elWas. Malware switches it off to hide its tracks, and the tool cannot read Windows history while it is off. Type Y to switch it back on." }
 }
 
 if ($Restore) {

@@ -1113,6 +1113,16 @@ Remove-Item -LiteralPath $dlDir -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 if (InPart 1) {
+Write-Host '=== Windows Event Log switched off: reported by a scan, switched back on by -Fix (WAZ-G5LHC, Nov 2026) ===' -ForegroundColor Cyan
+$env:WAZIP_TEST_EVENTLOG_OFF = '1'
+$rEl = Scan "$env:TEMP\xel.json"
+$rEl2 = Scan "$env:TEMP\xel2.json" -Fix -Out "$env:TEMP\xel2.out"
+Remove-Item Env:\WAZIP_TEST_EVENTLOG_OFF
+Check (Has $rEl 'Info' 'WARN' '^Windows Event Log service is off') 'Windows Event Log off is a warning in a scan'
+Check ((Has $rEl2 'Info' 'OLD' '^Windows Event Log was off') -and ((Get-Content -Raw "$env:TEMP\xel2.out") -match 'Windows Event Log switched back on') -and (Get-Service EventLog).Status -eq 'Running') '-Fix switches Windows Event Log back on'
+}
+
+if (InPart 1) {
 Write-Host '=== Started from 32-bit PowerShell: runs again as 64-bit with the same arguments (WAZ-B6PDP, Nov 2026) ===' -ForegroundColor Cyan
 $ps32 = Join-Path $env:windir 'SysWOW64\WindowsPowerShell\v1.0\powershell.exe'
 $bitF = "$env:TEMP\waz-bitness.txt"; Remove-Item -LiteralPath $bitF -ErrorAction SilentlyContinue
