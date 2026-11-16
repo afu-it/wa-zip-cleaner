@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.16.101'
+$Version = '2026.11.16.102'
 
 # 32-bit PowerShell on 64-bit Windows sees SysWOW64 as System32: no bcdedit.exe or netcfg.exe there, so automatic
 # Safe Mode could never be set up (WAZ-B6PDP, Nov 2026: seven tries). Run again in 64-bit PowerShell, same arguments.
@@ -1558,7 +1558,8 @@ function Scan-Files {
         if ($f.Extension -ieq '.lnk') {
           $l = try { $wsh.CreateShortcut($f.FullName) } catch { $null }
           if ($l -and $l.TargetPath -match '(?i)\\(cmd|powershell|pwsh|mshta|wscript|cscript)\.exe$' -and
-              $l.Arguments -match '(?i)(-e(nc|ncodedcommand)?\s+[A-Za-z0-9+/=]{20,}|for\s+%{1,2}\w+\s+in|DownloadString|\bIEX\b|https?://)') {
+              $l.Arguments -match '(?i)(-e(nc|ncodedcommand)?\s+[A-Za-z0-9+/=]{20,}|for\s+%{1,2}\w+\s+in|DownloadString|\bIEX\b|https?://(?!(localhost|127\.0\.0\.1)[:/]))') {
+            # A link to this PC's own address (V-Ray Swarm UI: start http://localhost:24267) downloads nothing (WAZ-WTM7R).
             Add-Finding 'File' 'HIGH' $f.FullName "Shortcut disguised as a document runs hidden commands (SORVEPOTEL WhatsApp worm): $(Split-Path $l.TargetPath -Leaf) $($l.Arguments.Substring(0, [Math]::Min(80, $l.Arguments.Length)))"
           } elseif ($f.Name -match $LureRegex) { Add-Finding 'File' 'HIGH' $f.FullName 'WhatsApp lure file name.' }
           elseif (Test-WaOrigin $f) { Add-Finding 'File' 'HIGH' $f.FullName 'Shortcut downloaded from WhatsApp Web. Real documents are never shortcuts.' }

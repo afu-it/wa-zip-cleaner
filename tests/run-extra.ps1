@@ -1095,6 +1095,16 @@ if ($ffsOk) {
 Stop-Process -Id $ffsP.Id -Force -ErrorAction SilentlyContinue
 Start-Sleep 1
 Remove-Item -LiteralPath $ffsRun -Recurse -Force -ErrorAction SilentlyContinue
+# Start Menu shortcut that opens a local web page (V-Ray Swarm UI) is not the SORVEPOTEL shortcut (WAZ-WTM7R).
+$lnkD = "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\WazLocalUi"
+New-Item -ItemType Directory -Force -Path $lnkD | Out-Null
+$wshT = New-Object -ComObject WScript.Shell
+$lk = $wshT.CreateShortcut("$lnkD\Waz Swarm UI.lnk"); $lk.TargetPath = "$env:SystemRoot\System32\cmd.exe"; $lk.Arguments = '/C start http://localhost:24267'; $lk.Save()
+$lk = $wshT.CreateShortcut("$lnkD\Waz Remote.lnk"); $lk.TargetPath = "$env:SystemRoot\System32\cmd.exe"; $lk.Arguments = '/C start http://203.0.113.9/a'; $lk.Save()
+$rL = Scan "$env:TEMP\xlnk.json"
+Check (-not ($rL.All | Where-Object { $_.Target -match 'Waz Swarm UI\.lnk$' })) 'shortcut to a localhost page is not flagged (WAZ-WTM7R)'
+Check (Has $rL 'File' 'HIGH' 'Waz Remote\.lnk$' 'SORVEPOTEL') 'shortcut running cmd with an internet link is still HIGH'
+Remove-Item -LiteralPath $lnkD -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $kitDir, $kitRun -Recurse -Force -ErrorAction SilentlyContinue
 }
 
