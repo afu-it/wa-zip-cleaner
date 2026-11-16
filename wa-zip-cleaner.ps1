@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.14.100'
+$Version = '2026.11.16.101'
 
 # 32-bit PowerShell on 64-bit Windows sees SysWOW64 as System32: no bcdedit.exe or netcfg.exe there, so automatic
 # Safe Mode could never be set up (WAZ-B6PDP, Nov 2026: seven tries). Run again in 64-bit PowerShell, same arguments.
@@ -393,6 +393,15 @@ $ExclProcRegex = '(?i)^(QtsUpdater|svchost|rundll32|powershell|cmd|wscript|cscri
 # drive-root wildcards (C:\DeviceHub_*), wildcard or .dll "programs" and fake system names. No owner sets these.
 $ExclPathBadRegex = '(?i)^[a-z]:\\Windows\\Temp(\\|$)|\\system32\\config\\systemprofile\\AppData(\\|$)|^[a-z]:\\[a-z]+_\*$|^[a-z]:\\ProgramData\\(CompanyTools|Microsoft\\DeviceSync)\\?$|\\Common Files\\NSEC\\'
 $ExclProcBadRegex = '(?i)\*|\.dll$|^(svchost_update|svcruntime_x64|SCLoader_x64|ghost_x64|TestRun_x64|white_notepad_download|svcagent|EventLog|SkinInstaller|SynTPHelper)\.exe$'
+# "<folder>\*" as a process exclusion means "programs started from that folder", not "every program".
+# WAZ-WTM7R (Nov 2026): FreeFileSync\Bin\* was read as the bare name "*" and the tool quarantined
+# V-Ray, IDM, DriverMax and Store apps. Such an entry is judged by its folder, like a path exclusion.
+function Test-ExclProcFolder([string]$v) { $v -match '\\' -and (Split-Path $v -Leaf) -match '^\*(\.\*|\.exe)?$' }
+function Test-ExclProcBad([string]$v) {
+  if (Test-ExclProcFolder $v) { return [bool]($v -match $PersistRegex -or $v -match '(?i)\\(Temp|ProgramData)\\|\\AppData\\|^[a-z]:\\\*') }
+  $l = Split-Path $v -Leaf
+  [bool]($l -match $ExclProcRegex -or $l -match $ExclProcBadRegex -or $v -match $PersistRegex)
+}
 # Known attacker servers (C2). A process talking to one of these is the malware.
 # Kaspersky (Apr 2026): ValleyRAT and ABCDoor servers from the Silver Fox tax campaign.
 $C2Ips = @('134.122.155.188',  # IP-guard server on an office PC with the attacker's ManageEngine (WAZ-4DX9C report, Nov 2026)
@@ -1314,13 +1323,13 @@ function Scan-DefenderExclusions {
     if (-not (Test-Path -LiteralPath $k)) { continue }
     foreach ($n in (Get-Item -LiteralPath $k).GetValueNames()) {
       $policy[$n] = $true
-      $bad = if ($kind -eq 'Processes') { (Split-Path $n -Leaf) -match $ExclProcRegex -or (Split-Path $n -Leaf) -match $ExclProcBadRegex -or $n -match $PersistRegex } else { $n -match '(?i)\\AppData\\Roaming\\Microsoft\\Update' -or $n -match $PersistRegex -or $n -match $ExclPathBadRegex -or (& $badRoot $n) }
+      $bad = if ($kind -eq 'Processes') { Test-ExclProcBad $n } else { $n -match '(?i)\\AppData\\Roaming\\Microsoft\\Update' -or $n -match $PersistRegex -or $n -match $ExclPathBadRegex -or (& $badRoot $n) }
       if ($bad) { Add-Finding 'RegValue' 'HIGH' "$k|$n" 'Windows Defender policy told to ignore this (malware hiding from antivirus).' }
     }
   }
   if (-not $mp) { return }
   foreach ($v in @($mp.ExclusionProcess) | Where-Object { $_ -and -not $policy[$_] }) {
-    if ((Split-Path $v -Leaf) -match $ExclProcRegex -or (Split-Path $v -Leaf) -match $ExclProcBadRegex -or $v -match $PersistRegex) {
+    if (Test-ExclProcBad $v) {
       Add-Finding 'DefExcl' 'HIGH' "Process|$v" 'Windows Defender told to ignore this program (malware hiding from antivirus).' @{ Type = 'Process'; Value = $v }
     }
   }
@@ -1377,16 +1386,19 @@ function Scan-DefenderExclusions {
   }
   # Programs Defender ignores by name: a running copy that is not signed and sits in a user-writable folder, or carries
   # a kit name, is checked here because Defender will not look at it.
-  $exNames = @(@($mp.ExclusionProcess) | Where-Object { $_ } | ForEach-Object { Split-Path $_ -Leaf } | Sort-Object -Unique)
+  $exNames = @(@($mp.ExclusionProcess) | Where-Object { $_ } | Sort-Object -Unique)
   if ($exNames) {
     foreach ($pr in @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue)) {
       $exe = [string]$pr.ExecutablePath; if (-not $exe) { continue }
+      # Store apps (WindowsApps) are signed by their package, not the file, so they read as unsigned.
+      if ($exe -match '(?i)^[a-z]:\\Program Files\\WindowsApps\\') { continue }
       $leaf = Split-Path $exe -Leaf
-      $m = $exNames | Where-Object { $leaf -like $_ } | Select-Object -First 1
+      $m = $exNames | Where-Object { if ($_ -match '\\') { $exe -like $_ } else { $leaf -like $_ } } | Select-Object -First 1
       if (-not $m -or (Test-MicrosoftSigned $exe)) { continue }
       $fi = Get-Item -LiteralPath $exe -Force -ErrorAction SilentlyContinue
       $ioc = if ($fi) { Get-Ioc $fi }
-      $kitName = $m -match $ExclProcBadRegex -or $leaf -match $ExclProcBadRegex
+      # A wildcard alone is not a kit name: "*" or "<folder>\*" matches every program (WAZ-WTM7R).
+      $kitName = ((Split-Path $m -Leaf) -notmatch '[*?]' -and (Split-Path $m -Leaf) -match $ExclProcBadRegex) -or $leaf -match $ExclProcBadRegex
       $userDir = $exe -match '(?i)\\(Users|ProgramData|Temp)\\|\\systemprofile\\'
       $unsigned = (Get-AuthenticodeSignature -LiteralPath $exe -ErrorAction SilentlyContinue).Status -ne 'Valid'
       if (($ioc -and $ioc.Bad) -or ($unsigned -and ($userDir -or $kitName))) {

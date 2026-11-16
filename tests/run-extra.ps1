@@ -1078,6 +1078,23 @@ if ($kitOk) {
   Remove-MpPreference -ExclusionPath $kitP -ExclusionProcess $kitX -ErrorAction SilentlyContinue
 }
 Stop-Process -Id $kitP2.Id -Force -ErrorAction SilentlyContinue
+# "<folder>\*" process exclusion is a folder, not every program (WAZ-WTM7R: V-Ray, IDM and Store apps were quarantined).
+$ffsX = "$env:ProgramFiles\WazFfsTest\Bin\*"
+$ffsRun = "$env:ProgramFiles\WazOtherApp"
+New-Item -ItemType Directory -Force -Path $ffsRun | Out-Null
+Add-Type -TypeDefinition 'public static class WazOtherStub { public static void Main() { System.Threading.Thread.Sleep(600000); } }' -OutputType ConsoleApplication -OutputAssembly "$ffsRun\wazother.exe"
+$ffsP = Start-Process -FilePath "$ffsRun\wazother.exe" -PassThru -WindowStyle Hidden
+$ffsOk = $false; try { Add-MpPreference -ExclusionProcess $ffsX -ErrorAction Stop; $ffsOk = $true } catch { Write-Host "SKIP folder process exclusion: $($_.Exception.Message)" -ForegroundColor Yellow }
+if ($ffsOk) {
+  Start-Sleep 2
+  $rF = Scan "$env:TEMP\xffs.json"
+  Check (-not ($rF.All | Where-Object { "$($_.Target)$($_.Detail)" -match 'wazother' })) 'program outside a "<folder>\*" process exclusion is not flagged (WAZ-WTM7R)'
+  Check (-not (Has $rF 'DefExcl' 'HIGH' 'WazFfsTest')) 'a "<folder>\*" process exclusion under Program Files is not called malware'
+  Remove-MpPreference -ExclusionProcess $ffsX -ErrorAction SilentlyContinue
+}
+Stop-Process -Id $ffsP.Id -Force -ErrorAction SilentlyContinue
+Start-Sleep 1
+Remove-Item -LiteralPath $ffsRun -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $kitDir, $kitRun -Recurse -Force -ErrorAction SilentlyContinue
 }
 
