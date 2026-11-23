@@ -341,6 +341,8 @@ Check ($repSum -and $repSum.version -and $repSum.counts.high -gt 0 -and @($repSu
 Check ($repSum -and @($repSum.c2) -contains '127.77.0.1') 'report summary lists the attacker server'
 Check ($repSum -and @($repSum.findings | Where-Object { $_.type -eq 'Process' -and $_.parent }).Count -gt 0) 'report shows which program started a bad process'
 Check ($repSum -and @($repSum.findings | Where-Object { $_.type -eq 'File' -and $_.sha256 -match '^[0-9a-f]{64}$' -and $_.size -gt 0 }).Count -gt 0) 'report lists SHA-256 and size of found files'
+$lolvSha = (Get-FileHash "$drvDir\wazlolv.sys").Hash.ToLower()
+Check ($repSum -and @($repSum.findings | Where-Object { $_.type -eq 'Service' -and $_.title -eq 'WazLolVuln' -and $_.sha256 -eq $lolvSha -and $_.file -match 'wazlolv\.sys$' }).Count -eq 1) 'report lists the SHA-256 of a vulnerable driver service'
 $repAll = ($repEntries.Values | Out-String)
 Check ($repAll -and $repAll -notmatch [regex]::Escape($env:USERNAME) -and $repAll -notmatch [regex]::Escape($env:COMPUTERNAME)) 'report has no account name or PC name'
 Check ($repAll -match 'Users\\{1,2}<user>') 'report shows user folders as <user>'

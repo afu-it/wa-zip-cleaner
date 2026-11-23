@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.23.110'
+$Version = '2026.11.23.111'
 
 # 32-bit PowerShell on 64-bit Windows sees SysWOW64 as System32: no bcdedit.exe or netcfg.exe there, so automatic
 # Safe Mode could never be set up (WAZ-B6PDP, Nov 2026: seven tries). Run again in 64-bit PowerShell, same arguments.
@@ -3037,6 +3037,12 @@ function New-WazReport([string]$dest) {
       findings = @($Findings | ForEach-Object {
         $o = [ordered]@{ severity = $_.Severity; type = $_.Kind; title = (Hide-Pii "$($_.Target)"); detail = (Hide-Pii "$($_.Detail)") }
         if ($_.Kind -eq 'File' -and ($h = Get-ReportHash "$($_.Target)")) { $o.sha256 = $h.Sha; $o.size = $h.Size }
+        # A driver service: hash its file, so a LOLDrivers warning can be looked up without guessing which
+        # listed version it is (WAZ-4R9QU, Nov 2026: ampa, GVCIDrv and MSIO matched 11 possible hashes).
+        elseif ($_.Kind -eq 'Service' -and $_.Extra -is [hashtable] -and $_.Extra.Image) {
+          $ip = Resolve-ImagePath "$($_.Extra.Image)"
+          if ($ip -and ($h = Get-ReportHash $ip)) { $o.file = (Hide-Pii $ip); $o.sha256 = $h.Sha; $o.size = $h.Size }
+        }
         if ($_.Extra -is [hashtable] -and $_.Extra.Parent) { $o.parent = (Hide-Pii "$($_.Extra.Parent)") }
         $o
       })
