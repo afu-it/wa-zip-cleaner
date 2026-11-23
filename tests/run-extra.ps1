@@ -1736,14 +1736,17 @@ $env:WAZIP_TEST_AVSTATE = 'Windows Defender=393472'
 $rAv = Scan "$env:TEMP\xav1.json" -Out "$env:TEMP\xav1.out"
 $env:WAZIP_TEST_AVSTATE = 'Windows Defender=393472;Other AV=266240'
 $rAv2 = Scan "$env:TEMP\xav2.json"
-Remove-Item Env:\WAZIP_TEST_AVSTATE
+$env:WAZIP_TEST_AVSTATE = 'Windows Defender=397568'; $env:WAZIP_TEST_WINDEFEND = 'Stopped'
+$rAv3 = Scan "$env:TEMP\xav3.json"
+Remove-Item Env:\WAZIP_TEST_AVSTATE, Env:\WAZIP_TEST_WINDEFEND
 if (-not $rtHad) { Remove-Item -LiteralPath $rtKey -Force -ErrorAction SilentlyContinue }
 elseif ($null -eq $rtOld) { Remove-ItemProperty -LiteralPath $rtKey -Name DisableRealtimeMonitoring -ErrorAction SilentlyContinue }
 else { Set-ItemProperty -LiteralPath $rtKey -Name DisableRealtimeMonitoring -Value $rtOld }
-Check (Has $rAv 'Info' 'WARN' '^No antivirus is switched on$' 'installed: Windows Defender\)') 'no antivirus switched on is WARN'
+Check (Has $rAv 'Info' 'WARN' '^No antivirus is switched on$' 'installed: Windows Defender;') 'no antivirus switched on is WARN'
 Check (Has $rAv 'Info' 'WARN' '^Windows Defender is switched off by policy$') 'Defender switched off by policy is WARN'
 Check ((Get-Content -Raw "$env:TEMP\xav1.out") -match 'Maksud: Tiada antivirus yang hidup') 'antivirus-off warning explained in plain Malay'
 Check (-not ($rAv2.All | Where-Object { $_.Target -eq 'No antivirus is switched on' })) 'no warning when another antivirus is on'
+Check (Has $rAv3 'Info' 'WARN' '^No antivirus is switched on$' 'Defender service: Stopped') 'Defender listed as on but its service stopped is WARN'
 
 Write-Host '=== Step errors, Defender exclusions from the registry, vendor disk, report names ===' -ForegroundColor Cyan
 $mpOk = $false; try { Add-MpPreference -ExclusionProcess 'QtsUpdater.exe' -ErrorAction Stop; $mpOk = $true } catch {}

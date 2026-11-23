@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.23.105'
+$Version = '2026.11.23.106'
 
 # 32-bit PowerShell on 64-bit Windows sees SysWOW64 as System32: no bcdedit.exe or netcfg.exe there, so automatic
 # Safe Mode could never be set up (WAZ-B6PDP, Nov 2026: seven tries). Run again in 64-bit PowerShell, same arguments.
@@ -1319,10 +1319,15 @@ function Scan-AntivirusOff {
   } else {
     try { $av = @(Get-CimInstance -Namespace 'root/SecurityCenter2' -ClassName AntiVirusProduct -ErrorAction Stop) } catch {}
   }
-  if ($null -ne $av -and -not @($av | Where-Object { (([int]$_.productState -shr 12) -band 0xF) -eq 1 }).Count) {
+  # WAZ-LD2EW screenshot: Windows Security said "No action needed" while the Defender service was not running
+  # (last scan and last update "Not available"). Security Center still counted it as on, so check the service too.
+  $wdState = if ($env:WAZIP_TEST_WINDEFEND) { $env:WAZIP_TEST_WINDEFEND } else { [string](Get-Service -Name WinDefend -ErrorAction SilentlyContinue).Status }
+  $wdDead = $wdState -ne 'Running'
+  $on = @($av | Where-Object { $_ -and (([int]$_.productState -shr 12) -band 0xF) -eq 1 -and -not ($wdDead -and $_.displayName -match '(?i)Windows Defender|Microsoft Defender') })
+  if ($null -ne $av -and -not $on.Count) {
     $names = (@($av | ForEach-Object { $_.displayName }) | Select-Object -Unique) -join ', '
     if (-not $names) { $names = 'none' }
-    Add-Finding 'Info' 'WARN' 'No antivirus is switched on' "Windows Security reports no antivirus with real-time protection on (installed: $names). Malware switches antivirus off before installing itself. Turn it back on: Windows Security > Virus & threat protection > Manage settings > Real-time protection: On, then run a Full scan."
+    Add-Finding 'Info' 'WARN' 'No antivirus is switched on' "Windows Security reports no antivirus with real-time protection on (installed: $names; Defender service: $(if ($wdState) { $wdState } else { 'missing' })). Malware switches antivirus off before installing itself. Turn it back on: Windows Security > Virus & threat protection > Manage settings > Real-time protection: On, then run a Full scan."
   }
   $pk = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender'
   $pol = Get-ItemProperty -LiteralPath $pk -ErrorAction SilentlyContinue
