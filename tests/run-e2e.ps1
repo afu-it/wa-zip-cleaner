@@ -64,7 +64,7 @@ foreach ($e in $expect) {
   Check ([bool]$hit) "detects $($e[0]) $($e[1])"
 }
 Check (-not ($r.All | Where-Object { $_.Target -match 'normal-document\.pdf' })) 'ignores normal file'
-Check ([bool]($r.All | Where-Object { $_.Kind -eq 'File' -and $_.Severity -eq 'WARN' -and $_.Target -match 'WindowsHelper\.exe$' })) 'detects hidden+system program (WARN)'
+Check ([bool]($r.All | Where-Object { $_.Kind -eq 'File' -and $_.Severity -eq 'HIGH' -and $_.Target -match 'WindowsHelper\.exe$' -and $_.Detail -match 'other malware' })) 'hidden+system program is HIGH on a PC with other malware'
 Check ([bool]($r.All | Where-Object { $_.Kind -eq 'Service' -and $_.Severity -eq 'WARN' -and $_.Target -match 'WAZipFakeSvc$' })) 'detects interpreter service from user folder (WARN)'
 Check ([bool]($r.All | Where-Object { $_.Kind -eq 'Info' -and $_.Target -match 'fetish-friends\.com' })) 'attacker domain in DNS cache (WARN)'
 Check ([bool]($r.All | Where-Object { $_.Kind -eq 'Info' -and $_.Target -match 'Selenium PowerShell module' })) 'Selenium module installed by the worm (WARN)'
