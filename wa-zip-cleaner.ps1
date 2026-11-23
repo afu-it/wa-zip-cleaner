@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.23.104'
+$Version = '2026.11.23.105'
 
 # 32-bit PowerShell on 64-bit Windows sees SysWOW64 as System32: no bcdedit.exe or netcfg.exe there, so automatic
 # Safe Mode could never be set up (WAZ-B6PDP, Nov 2026: seven tries). Run again in 64-bit PowerShell, same arguments.
@@ -627,6 +627,8 @@ $WarnHelp = @(
   ,@('Admin permission prompt', 'Tetingkap "Benarkan program ni buat perubahan?" dah dimatikan. Program boleh pasang diri tanpa tanya anda.', 'Taip Y bila ditanya: tool akan hidupkan semula tetingkap ni, kemudian restart PC. Atau buat sendiri: taip UAC dalam carian Windows > Change User Account Control settings > naikkan slider satu tingkat > OK.')
   ,@('Attacker server looked up', 'PC ni pernah cuba hubungi server penggodam baru-baru ini.', 'Anggap PC dijangkiti. Tukar kata laluan guna telefon. Paling selamat: backup dokumen dan format.')
   ,@('Windows Update is disabled', 'Windows Update dimatikan. Malware buat ni supaya Windows tak dapat pembaikan keselamatan.', 'Kalau bukan anda yang matikan: taip services.msc dalam carian > Windows Update > Startup type: Manual > OK.')
+  ,@('No antivirus is switched on', 'Tiada antivirus yang hidup di PC ni. Malware matikan antivirus dulu sebelum pasang dirinya.', 'Windows Security > Virus & threat protection > Manage settings > Real-time protection: On. Lepas tu buat Full scan. Kalau tak boleh hidupkan, hantar screenshot kepada orang IT.')
+  ,@('switched off by policy', 'Ada tetapan (policy) yang paksa Windows Defender mati, walaupun lepas restart. Malware buat ni supaya antivirus tak hidup semula.', 'Kalau bukan IT office yang tetapkan: hantar screenshot kepada orang IT untuk buang tetapan ni, kemudian restart.')
   ,@('Blocklist is OFF', 'Perlindungan Windows yang sekat driver bahaya dimatikan.', 'Windows Security > Device security > Core isolation details > hidupkan Microsoft Vulnerable Driver Blocklist > restart.')
   ,@('DefExcl', 'Antivirus disuruh abaikan folder ni, jadi fail dalam tu tak diperiksa.', 'Kalau bukan anda yang tetapkan: Windows Security > Virus & threat protection > Manage settings > Exclusions > Remove.')
   ,@('extension|Extension', 'Browser dipaksa pasang extension, atau extension dipasang dari folder (bukan kedai rasmi). Extension boleh baca semua laman yang anda buka.', 'Biasa di PC office. Kalau PC sendiri: buang di browser > Extensions, atau jalankan tool semula dan pilih "PC sendiri".')
@@ -1206,6 +1208,7 @@ function Scan-Persistence {
   if ((Get-ItemProperty -LiteralPath 'HKLM:\SYSTEM\CurrentControlSet\Services\wuauserv' -ErrorAction SilentlyContinue).Start -eq 4) {
     Add-Finding 'Info' 'WARN' 'Windows Update is disabled' 'Silver Fox switches off Windows Update. Unless you did this yourself, turn it back on: services.msc > Windows Update > Startup type Manual.'
   }
+  Scan-AntivirusOff
   # ABCDoor (Kaspersky, Apr 2026) runs at logon through UserInitMprLogonScript and keeps settings in Software\CarEmu.
   foreach ($hive in Get-UserHives) {
     $logon = [string](Get-ItemProperty -LiteralPath "$hive\Environment" -ErrorAction SilentlyContinue).UserInitMprLogonScript
@@ -1300,6 +1303,32 @@ function Scan-Persistence {
       # SORVEPOTEL's startup .bat builds a hidden PowerShell command out of for-loops plus base64.
       elseif ($body -match '(?i)for\s+%{1,2}\w+\s+in' -and $body -match '[A-Za-z0-9+/]{40,}') { Add-Finding 'File' 'HIGH' $_.FullName 'Startup script that hides a PowerShell command (SORVEPOTEL WhatsApp worm).' }
     }
+  }
+}
+
+# No antivirus switched on (WAZ-LD2EW, Nov 2026: Defender was off and nothing else was registered). Security Center
+# lists every antivirus with a state; bits 12-15 of productState are 1 when real-time protection is on. Windows Server
+# has no Security Center, and Safe Mode does not start it, so both skip the check. WARN only: some PCs turn Defender
+# off on purpose (game boosters, IT policy).
+function Scan-AntivirusOff {
+  if ($SafeAuto) { return }
+  # $av stays $null when Security Center cannot be read; an empty list means it answered with no antivirus at all.
+  $av = $null
+  if ($env:WAZIP_TEST_AVSTATE) {
+    $av = @($env:WAZIP_TEST_AVSTATE -split ';' | Where-Object { $_ -and $_ -ne 'none' } | ForEach-Object { $n, $st = $_ -split '=', 2; [pscustomobject]@{ displayName = $n; productState = [int]$st } })
+  } else {
+    try { $av = @(Get-CimInstance -Namespace 'root/SecurityCenter2' -ClassName AntiVirusProduct -ErrorAction Stop) } catch {}
+  }
+  if ($null -ne $av -and -not @($av | Where-Object { (([int]$_.productState -shr 12) -band 0xF) -eq 1 }).Count) {
+    $names = (@($av | ForEach-Object { $_.displayName }) | Select-Object -Unique) -join ', '
+    if (-not $names) { $names = 'none' }
+    Add-Finding 'Info' 'WARN' 'No antivirus is switched on' "Windows Security reports no antivirus with real-time protection on (installed: $names). Malware switches antivirus off before installing itself. Turn it back on: Windows Security > Virus & threat protection > Manage settings > Real-time protection: On, then run a Full scan."
+  }
+  $pk = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender'
+  $pol = Get-ItemProperty -LiteralPath $pk -ErrorAction SilentlyContinue
+  $rt = Get-ItemProperty -LiteralPath "$pk\Real-Time Protection" -ErrorAction SilentlyContinue
+  if (($pol -and $pol.DisableAntiSpyware -eq 1) -or ($rt -and $rt.DisableRealtimeMonitoring -eq 1)) {
+    Add-Finding 'Info' 'WARN' 'Windows Defender is switched off by policy' "A policy under $pk switches Defender off. Malware sets this so Defender stays off after a restart. Unless your IT set it, delete the DisableAntiSpyware / DisableRealtimeMonitoring values there (regedit), then restart."
   }
 }
 

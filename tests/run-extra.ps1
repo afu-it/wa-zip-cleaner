@@ -1725,6 +1725,26 @@ foreach ($tn in 'DCAgentUpdater', 'UEMSLogCollector') {
 foreach ($sv in 'MEUemsTest5', 'DCFAFilter', 'MEARWFltDriver', 'uesAgentService') { & sc.exe delete $sv 2>&1 | Out-Null }
 Remove-MePlant 'MEUemsTest5'
 
+Write-Host '=== No antivirus switched on, Defender off by policy (WAZ-LD2EW, Nov 2026) ===' -ForegroundColor Cyan
+# productState bits 12-15: 0x60100 = Defender registered but off, 0x41000 = another antivirus on.
+$rtKey = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection'
+$rtHad = Test-Path -LiteralPath $rtKey
+$rtOld = (Get-ItemProperty -LiteralPath $rtKey -ErrorAction SilentlyContinue).DisableRealtimeMonitoring
+New-Item -Path $rtKey -Force | Out-Null
+New-ItemProperty -Path $rtKey -Name DisableRealtimeMonitoring -Value 1 -PropertyType DWord -Force | Out-Null
+$env:WAZIP_TEST_AVSTATE = 'Windows Defender=393472'
+$rAv = Scan "$env:TEMP\xav1.json" -Out "$env:TEMP\xav1.out"
+$env:WAZIP_TEST_AVSTATE = 'Windows Defender=393472;Other AV=266240'
+$rAv2 = Scan "$env:TEMP\xav2.json"
+Remove-Item Env:\WAZIP_TEST_AVSTATE
+if (-not $rtHad) { Remove-Item -LiteralPath $rtKey -Force -ErrorAction SilentlyContinue }
+elseif ($null -eq $rtOld) { Remove-ItemProperty -LiteralPath $rtKey -Name DisableRealtimeMonitoring -ErrorAction SilentlyContinue }
+else { Set-ItemProperty -LiteralPath $rtKey -Name DisableRealtimeMonitoring -Value $rtOld }
+Check (Has $rAv 'Info' 'WARN' '^No antivirus is switched on$' 'installed: Windows Defender\)') 'no antivirus switched on is WARN'
+Check (Has $rAv 'Info' 'WARN' '^Windows Defender is switched off by policy$') 'Defender switched off by policy is WARN'
+Check ((Get-Content -Raw "$env:TEMP\xav1.out") -match 'Maksud: Tiada antivirus yang hidup') 'antivirus-off warning explained in plain Malay'
+Check (-not ($rAv2.All | Where-Object { $_.Target -eq 'No antivirus is switched on' })) 'no warning when another antivirus is on'
+
 Write-Host '=== Step errors, Defender exclusions from the registry, vendor disk, report names ===' -ForegroundColor Cyan
 $mpOk = $false; try { Add-MpPreference -ExclusionProcess 'QtsUpdater.exe' -ErrorAction Stop; $mpOk = $true } catch {}
 $regOk = $false; try { $regOk = @((Get-Item 'HKLM:\SOFTWARE\Microsoft\Windows Defender\Exclusions\Processes' -ErrorAction Stop).GetValueNames()) -contains 'QtsUpdater.exe' } catch {}
