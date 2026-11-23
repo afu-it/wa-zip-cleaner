@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.16.102'
+$Version = '2026.11.23.103'
 
 # 32-bit PowerShell on 64-bit Windows sees SysWOW64 as System32: no bcdedit.exe or netcfg.exe there, so automatic
 # Safe Mode could never be set up (WAZ-B6PDP, Nov 2026: seven tries). Run again in 64-bit PowerShell, same arguments.
@@ -797,9 +797,9 @@ function Add-HideUnit([string]$dir, [string]$why, [switch]$Rand) {
 }
 # Scheduled tasks as one list. In Safe Mode the Task Scheduler does not answer, so the task files are read instead
 # (two Safe Mode reports, Nov 2026, listed no tasks and left the ManageEngine tasks behind).
-function Grant-RegAdmin([string]$psPath) {
-  # Turn on the take-ownership and restore rights the admin token already holds, then give
-  # Administrators full control of an HKLM key and its subkeys.
+# Loads the token and registry helpers. Remove-RegKeyAdmin used them before Grant-RegAdmin had loaded them, so the
+# ManageEngine and AdventNet key clean-up failed with "Unable to find type [WazTokPriv]" (7M72Y, SQ9VE, Nov 2026).
+function Initialize-WazTokPriv {
   if (-not ('WazTokPriv' -as [type])) {
     Add-Type -TypeDefinition @'
 using System; using System.Runtime.InteropServices;
@@ -826,6 +826,11 @@ public static class WazTokPriv {
 }
 '@
   }
+}
+function Grant-RegAdmin([string]$psPath) {
+  # Turn on the take-ownership and restore rights the admin token already holds, then give
+  # Administrators full control of an HKLM key and its subkeys.
+  Initialize-WazTokPriv
   [WazTokPriv]::Enable('SeTakeOwnershipPrivilege'); [WazTokPriv]::Enable('SeRestorePrivilege')
   $sub = $psPath -replace '^HKLM:\\', ''
   $adm = New-Object System.Security.Principal.SecurityIdentifier('S-1-5-32-544')
@@ -845,6 +850,7 @@ public static class WazTokPriv {
 
 function Remove-RegKeyAdmin([string]$psPath) {
   # Delete an HKLM key and its subkeys, deepest first, without write access to the parent.
+  Initialize-WazTokPriv
   $sub = $psPath -replace '^HKLM:\\', ''
   $rk = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey($sub)
   if (-not $rk) { return }
@@ -2526,7 +2532,8 @@ function Invoke-Fix($qdir) {
           catch {
             # WAZ-BRKSM (Nov 2026): ManageEngine and AdventNet keys refused ("subkey does not exist", "unauthorized").
             # Retry deepest first with the admin delete; done when the key is gone.
-            if ("$($f.Target)" -match '^HKLM:\\') { try { Remove-RegKeyAdmin $f.Target } catch {} }
+            # AdventNet stayed after "unauthorized" until it was taken over first (7M72Y, SQ9VE, Nov 2026).
+            if ("$($f.Target)" -match '^HKLM:\\') { try { Grant-RegAdmin $f.Target } catch {}; try { Remove-RegKeyAdmin $f.Target } catch {} }
             if (Test-Path -LiteralPath $f.Target) { throw }
           }
           $log.Add(@{ Kind = 'Reg'; Target = $f.Target; Backup = $reg })
@@ -3234,6 +3241,17 @@ Invoke-Step 7 'Kawalan jauh & tetapan keselamatan' { Scan-ManageEngine }
 Invoke-Step 8 'Browser' { Scan-Browsers }
 Add-LinkedFindings
 if ($env:WAZIP_TEST_TIMELINE) { [IO.File]::WriteAllText($env:WAZIP_TEST_TIMELINE, (Hide-Pii (Get-ReportTimeline))) }
+
+# Hidden+System programs in a user folder are only a warning on a clean PC. On a PC with other malware they are the
+# loader's copy: 7M72Y/SQ9VE (Nov 2026) kept 16 of them in a Downloads folder, and ManageEngine, the Temp driver and
+# the Console\0 module all came back within minutes of each clean-up, twice. Quarantined, so -Restore brings them back.
+$hsOther = @($Findings | Where-Object { $_.Severity -eq 'HIGH' -and -not $_.Extra.Tidy -and $_.Kind -ne 'WaSession' -and "$($_.Target)" -notmatch '(?i)\.(zip|rar|7z)$' -and "$($_.Target) $($_.Detail)" -notmatch 'ManageEngine' })
+if ($hsOther.Count) {
+  $Findings | Where-Object { $_.Kind -eq 'File' -and $_.Severity -eq 'WARN' -and "$($_.Detail)" -like 'Hidden+System program in a user folder*' } | ForEach-Object {
+    $_.Severity = 'HIGH'
+    $_.Detail = "Hidden+System program in a user folder on a PC with other malware ($($hsOther[0].Kind): $($hsOther[0].Target)). It can put the malware back after a clean-up."
+  }
+}
 
 # ManageEngine: a personal PC should never have it, an office PC often does.
 $me = $Findings | Where-Object { $_.Kind -eq 'Info' -and $_.Target -match 'ManageEngine' }

@@ -1410,6 +1410,19 @@ Stop-Process -Id $gP.Id -Force -ErrorAction SilentlyContinue
 Remove-ItemProperty -Path $runG -Name WazTokenBrokerTest -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $gDir, $hsDir -Recurse -Force -ErrorAction SilentlyContinue
 
+Write-Host '=== Hidden+System DLLs in a Downloads folder: WARN on a clean PC, HIGH with other malware (7M72Y, Nov 2026) ===' -ForegroundColor Cyan
+$hdDir = Join-Path $dl 'WazHiddenKit'; New-Item -ItemType Directory -Force -Path $hdDir | Out-Null
+$hdDll = "$hdDir\wazhidden1.dll"; Set-Content $hdDll 'dummy'
+(Get-Item -LiteralPath $hdDll -Force).Attributes = 'Hidden, System'
+$rHs1 = Scan "$env:TEMP\xhs1.json"
+Check (Has $rHs1 'File' 'WARN' 'WazHiddenKit\\wazhidden1\.dll$' 'Hidden\+System') 'Hidden+System DLL in Downloads alone stays WARN'
+$kv2 = "$env:TEMP\KV5E6F7A8B.sys"; Set-Content $kv2 'driver stand-in'
+$rHs2 = Scan "$env:TEMP\xhs2.json"
+Check (Has $rHs2 'File' 'HIGH' 'WazHiddenKit\\wazhidden1\.dll$' 'other malware') 'Hidden+System DLL in Downloads is HIGH when other malware is on the PC'
+$rHs3 = Scan "$env:TEMP\xhs3.json" -Fix
+Check (-not (Test-Path -LiteralPath $hdDll)) 'Hidden+System DLL in Downloads quarantined by -Fix when other malware is on the PC'
+Remove-Item -LiteralPath $hdDir, $kv2 -Recurse -Force -ErrorAction SilentlyContinue
+
 Write-Host '=== Opt-in malware samples go to the stand-in inbox; documents, zips and Downloads files never do ===' -ForegroundColor Cyan
 $sq = 'C:\WAZipQuarantineSample'
 Remove-Item -LiteralPath $sq -Recurse -Force -ErrorAction SilentlyContinue
