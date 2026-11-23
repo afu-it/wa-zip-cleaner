@@ -337,3 +337,9 @@ From opt-in reports sent by the tool (Windows event 7045 history, scheduled task
 - amirulcyber.com, Malaysia LHDN tax-audit impersonation (2 Nov 2026): https://amirulcyber.com/2026/11/02/malaysia-lhdn-tax-audit-impersonate/
 - NetbyteSEC, Malaysian WhatsApp phishing wave delivers Overlord (28 Oct 2026): https://notes.netbytesec.com/2026/10/malaysian-whatsapp-phishing-wave.html
 - The Star, 29 Sep 2026: https://www.thestar.com.my/tech/tech-news/2026/09/29/malaysians-report-being-targeted-by-malware-file-sent-through-whatsapp
+
+## Defender killed by policy + IFEO, lure IMG unpacked by WPS Office (opt-in report WAZ-HPJCS/LD2EW, Nov 2026)
+
+- Lure disk image `WA-22NCC-123-112026.img`, unpacked by WPS Office to `%TEMP%\wpscompress\<guid>\<guid>\`. Defender name: `Trojan:Win32/Suschil!rfn` ("executes commands from an attacker"). No hash: Defender quarantined it before we saw it.
+- Defender switched off three ways: `HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\DisableAntiSpyware=1`; `...\Real-Time Protection\` `DisableRealtimeMonitoring`, `DisableBehaviorMonitoring`, `DisableScanOnRealtimeEnable`, `DisableOnAccessProtection`, `DisableIOAVProtection` all `1`; Image File Execution Options `Debugger=systray.exe` on `MsMpEng.exe`, `SecurityHealthService.exe`, `SecurityHealthSystray.exe` (`sc start WinDefend` fails with error 577). Windows Security still showed "No action needed".
+- Same PC had the ManageEngine UEMS agent (installed 13 Nov 2026).

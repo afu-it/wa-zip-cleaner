@@ -111,6 +111,11 @@ Set-Content "$vhdUnzip\Waz Test Lure.vhd" 'dummy'
 $vhdUnzip2 = "$env:TEMP\7b5e9327-c899-44e6-8733-29c21c690ee0_WazMys.zip.WazMys.zip"
 New-Item -ItemType Directory -Force -Path $vhdUnzip2 | Out-Null
 Set-Content "$vhdUnzip2\WazMys.vhd" 'dummy'
+# WPS Office unpacks a disk image opened from an archive to Temp\wpscompress\<guid>\<guid>\ (WAZ-LD2EW, Nov 2026).
+$wpsDir = "$env:TEMP\wpscompress\749106f9-6dc6-4c44-a301-c4c73bf6534e\235249ac-46fa-429e-a318-5d07c78f6074"
+New-Item -ItemType Directory -Force -Path $wpsDir | Out-Null
+Set-Content "$wpsDir\WazWps.img" 'dummy'
+Set-Content "$dl\WA-ABCDE-123-112026.img" 'dummy'
 # Hidden+System payload DLL in Temp from the same report.
 $hsDll = "$env:TEMP\hs_rt32_wazt0001.dll"
 Set-Content $hsDll 'dummy'
@@ -247,6 +252,8 @@ Check (Has $r 'File' 'HIGH' 'WazVirtualLinux$' 'MicroPoint') 'renamed MicroPoint
 Check (Has $r 'Service' 'HIGH' '^WazMsDriver$' 'data file') 'driver loaded from a .dat file in ProgramData is HIGH'
 Check (Has $r 'File' 'HIGH' 'Waz Test Lure\.vhd$' 'straight from a ZIP') 'VHD opened straight from a ZIP is HIGH'
 Check (Has $r 'File' 'HIGH' 'WazMys\.zip\.WazMys\.zip\\WazMys\.vhd$' 'straight from a ZIP') 'VHD opened from a ZIP (<name>.zip.<name>.zip shape) is HIGH'
+Check (Has $r 'File' 'HIGH' 'wpscompress\\.+\\WazWps\.img$' 'straight from a ZIP or other archive') 'disk image WPS Office unpacked to Temp is HIGH'
+Check (Has $r 'File' 'HIGH' 'WA-ABCDE-123-112026\.img$' 'lure file name') 'WA-XXXXX-123-<date>.img lure name is HIGH'
 Check (Has $r 'File' 'HIGH' 'hs_rt32_wazt0001\.dll$' 'Temp folder') 'Hidden+System hs_rt32 DLL in Temp is HIGH'
 Check (-not ($r.All | Where-Object { $_.Target -match 'checkProjectBilling\.js$|build_salary_deck\.js$|WorkflowsStepFailedResponse\.js$' })) 'developer .js files with lure words are not flagged'
 Check (Has $r 'File' 'HIGH' 'Invoice Nov 2026\.js$' 'VBS campaign') 'document-named .js that uses Windows Script Host is HIGH'
@@ -310,7 +317,7 @@ Check ($x2out -match 'WAZ-TEST7') 'opt-in report sent and the reference number s
 Check ($x2out -match '(?m)^ KUARANTIN SIAP') 'quarantine-done tag printed at the left edge on its own line'
 Check (-not (Test-Path -LiteralPath "$vhdUnzip2\WazMys.vhd")) 'lure VHD (<name>.zip.<name>.zip shape) quarantined by -Fix'
 Check (-not (Test-Path -LiteralPath $hsDll)) 'Hidden+System hs_rt32 DLL in Temp quarantined by -Fix'
-Remove-Item -LiteralPath $vhdUnzip2, $hsDll -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $vhdUnzip2, $hsDll, "$env:TEMP\wpscompress", "$dl\WA-ABCDE-123-112026.img" -Recurse -Force -ErrorAction SilentlyContinue
 $repEntries = @{}
 if (Test-Path "$repDir\posted.zip") {
   Add-Type -AssemblyName System.IO.Compression.FileSystem

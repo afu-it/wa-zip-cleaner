@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.23.108'
+$Version = '2026.11.23.109'
 
 # 32-bit PowerShell on 64-bit Windows sees SysWOW64 as System32: no bcdedit.exe or netcfg.exe there, so automatic
 # Safe Mode could never be set up (WAZ-B6PDP, Nov 2026: seven tries). Run again in 64-bit PowerShell, same arguments.
@@ -384,7 +384,7 @@ if ($env:WAZIP_TEST_IOCS -and (Test-Path -LiteralPath $env:WAZIP_TEST_IOCS)) {
   }
 }
 $PersistRegex ='\\Explorer\\thumbcache_[^\\]+\\|\\Microsoft\\DeviceSync\\[^\\]+\.exe|\\(Roaming|Local)\\Overlord\\|\bovd_[0-9a-f]{12}\.exe|\\Users\\Public\\Libraries\\.+\.(exe|dll)|\\AppData\\Local\\[0-9A-F]{16}\\|\\AppData\\Roaming\\Microsoft\\Windows\\System\\[^\\]+\.exe|rime\.dll|_vmclientcore@16|KafanInput|vcRuntimeMinimum_x86\.exe|\\H\d{8,}\.exe|ZyArk|\\ardrv\.sys|\\AppData\\Roaming\\Microsoft\\Update\\[^\\]+\.exe|active_desktop_(launcher|render)|Add-MpPreference|eneio64\.dat|plcc3a\.dat|-m\s+appclient|\\appclient\\python\\|HealthApp-[0-9a-f]{6}\.bat|\\ProgramData\\MicroPoint\\|WinCombo\.exe|CRClient\.dll|\\Toolkit\\winhttp\.dll|webview2_integration\.exe|encrashrep\.dll|\\ProgramData\\WindowsData\\|ExceptCatch\.dll|\\QNWallpaper\\|\\msvc-rt14\\|NtHandleCallback\.exe|\\(XiaoH|rwdriver|kabuto)\.sys'
-$LureRegex    = '^(Click here to view.*\.(zip|vhd|vhdx)|Notice.*\.vhdx?|(PDF|DOC|CRY)_[A-Z0-9-]{3,8}_20\d{12,13}\.(zip|img|iso|exe|vhd|vhdx)|20\d{6}[.-]MYS20\d{2}Y\d{4}[A-Z0-9]{4,6}\.(zip|img|iso|vhd|vhdx)|(RES-20\d{6}_\d{6}|ORCAMENTO_\d{6}|COMPROVANTE_20\d{6}_\d{6}|ComprovanteSantander-[\d.]+|NEW-20\d{6}_\d{6}-PED_[0-9A-F]+|DOC-\d{8}_[0-9A-F]{8})\.(zip|lnk)|20\d{12}-[0-9A-F]{14}\.zip|SENARAI ?DOKUMEN.*\.zip|.+\.(vhdx?|img|iso)\.zip|LHDN.*\.(iso|img|vhdx?)|Open_to_view.*\.(iso|img)|TAX_[A-Za-z0-9]{6,}\.img(\.zip)?|SSM-\d+\.img(\.zip)?|20\d{6}[0-9A-F]{8}\.(zip|exe|img|iso|vhd|vhdx)|20\d{6}_\d{6}_\d{4}\.(zip|img|iso|vhd|vhdx)|Financial_Report_20\d{6}_PDF\.\d+\.(zip|exe|img|iso|vhdx?)|\d{14}(\.[0-9A-F]{3})?\.(img|iso|vhdx?)|[A-Z.]{3,9}[.-]Number[.-]20\d{10,12}\.(img\d?|iso|vhdx?)|(IMPS|UTR|TWV)_\d{3,4}-\d{1,2}-20\d{2}\d*(\.[0-9A-F]{3})?\.(img|iso|vhdx?)|20\d{12}\.[0-9A-F]{12}\.zip|SOA\d*\.(img|iso|vhdx?)|MYS20\d{2}C\d{3}V[A-Z0-9]{3}\.(zip|img|iso|vhdx?)|Reconciliation[ _-]?Invoice.*\.(zip|img|iso|vhdx?)|Rekonsiliasi[ _-]?Akun.*\.(zip|img|iso|vhdx?)|E-statement\d*\.(img|iso|vhdx?)|RT\d{10}\.\d{3}\.img|.*_[CD]\d{10}(_.*)?\.(zip|exe|img|iso|vhdx?)|Notis_Penalti_\w+\.(zip|exe)|Notis[ _-]?Denda.*\.(zip|vhdx?|img|iso|exe)|TBK[-_]?\d{4,8}(_\d+)?\.(zip|exe)|SENARAI DOKUMEN\d*\.(zip|exe)|MyInvois_e-Invoice_INV\d+\w*\.(zip|exe)|e-Invoice_INV\d+_.+_Validated[\w-]*\.(zip|exe)|(TDS_Penalty_S\d+\w*_PAN_|GST_Non_Filing_Notice_|ITR_Scrutiny_\d+_Notice_PAN_).*\.(zip|exe|img|iso|vhdx?)|Common_Offline_Utility_ITR-.*\.(img|iso|vhdx?)|\u6240\u5F97\u7A0E.*\u7D0D\u7A0E\u901A\u77E5\u66F8\d*\.(zip|exe))$'
+$LureRegex    = '^(Click here to view.*\.(zip|vhd|vhdx)|Notice.*\.vhdx?|(PDF|DOC|CRY)_[A-Z0-9-]{3,8}_20\d{12,13}\.(zip|img|iso|exe|vhd|vhdx)|20\d{6}[.-]MYS20\d{2}Y\d{4}[A-Z0-9]{4,6}\.(zip|img|iso|vhd|vhdx)|(RES-20\d{6}_\d{6}|ORCAMENTO_\d{6}|COMPROVANTE_20\d{6}_\d{6}|ComprovanteSantander-[\d.]+|NEW-20\d{6}_\d{6}-PED_[0-9A-F]+|DOC-\d{8}_[0-9A-F]{8})\.(zip|lnk)|20\d{12}-[0-9A-F]{14}\.zip|SENARAI ?DOKUMEN.*\.zip|.+\.(vhdx?|img|iso)\.zip|LHDN.*\.(iso|img|vhdx?)|Open_to_view.*\.(iso|img)|TAX_[A-Za-z0-9]{6,}\.img(\.zip)?|SSM-\d+\.img(\.zip)?|20\d{6}[0-9A-F]{8}\.(zip|exe|img|iso|vhd|vhdx)|20\d{6}_\d{6}_\d{4}\.(zip|img|iso|vhd|vhdx)|Financial_Report_20\d{6}_PDF\.\d+\.(zip|exe|img|iso|vhdx?)|\d{14}(\.[0-9A-F]{3})?\.(img|iso|vhdx?)|[A-Z.]{3,9}[.-]Number[.-]20\d{10,12}\.(img\d?|iso|vhdx?)|(IMPS|UTR|TWV)_\d{3,4}-\d{1,2}-20\d{2}\d*(\.[0-9A-F]{3})?\.(img|iso|vhdx?)|20\d{12}\.[0-9A-F]{12}\.zip|SOA\d*\.(img|iso|vhdx?)|WA-[A-Z0-9]{5}-\d{3}-\d{6}\.(zip|img|iso|vhdx?)|MYS20\d{2}C\d{3}V[A-Z0-9]{3}\.(zip|img|iso|vhdx?)|Reconciliation[ _-]?Invoice.*\.(zip|img|iso|vhdx?)|Rekonsiliasi[ _-]?Akun.*\.(zip|img|iso|vhdx?)|E-statement\d*\.(img|iso|vhdx?)|RT\d{10}\.\d{3}\.img|.*_[CD]\d{10}(_.*)?\.(zip|exe|img|iso|vhdx?)|Notis_Penalti_\w+\.(zip|exe)|Notis[ _-]?Denda.*\.(zip|vhdx?|img|iso|exe)|TBK[-_]?\d{4,8}(_\d+)?\.(zip|exe)|SENARAI DOKUMEN\d*\.(zip|exe)|MyInvois_e-Invoice_INV\d+\w*\.(zip|exe)|e-Invoice_INV\d+_.+_Validated[\w-]*\.(zip|exe)|(TDS_Penalty_S\d+\w*_PAN_|GST_Non_Filing_Notice_|ITR_Scrutiny_\d+_Notice_PAN_).*\.(zip|exe|img|iso|vhdx?)|Common_Offline_Utility_ITR-.*\.(img|iso|vhdx?)|\u6240\u5F97\u7A0E.*\u7D0D\u7A0E\u901A\u77E5\u66F8\d*\.(zip|exe))$'
 # Overlord RAT (open source, used by TankRAT) and its TankRAT loader keep their files in these folders.
 $OverlordRegex = '(?i)\\Explorer\\thumbcache_[^\\]+\\|\\AppData\\Roaming\\Microsoft\\DeviceSync\\|\\AppData\\(Roaming|Local)\\Overlord\\|\\AppData\\Local\\Temp\\(Overlord(virtualDriver)?|ovld_[^\\]+)\\'
 # Programs the October 2026 wave tells Windows Defender to skip. No real program needs these excluded.
@@ -458,7 +458,9 @@ $BrowserRoots = @(
   @{ Name = 'Opera'; Dir = 'AppData\Roaming\Opera Software\Opera Stable'; Proc = 'opera'; Policy = $null }
 )
 # A file opened straight from inside a ZIP is unpacked by Explorer to Temp\<guid>_<zip name>.zip<anything>\.
-$TempZipRegex = '(?i)\\Temp\\[0-9a-f]{8}-[0-9a-f-]{27}_[^\\]+\.zip[^\\]*\\'
+# Archive programs unpack a file opened from inside an archive to Temp: Explorer to <guid>_<name>.zip.<n>\, WPS Office to
+# wpscompress\ (WAZ-LD2EW, Nov 2026: Defender caught WA-22NCC-123-112026.img there), 7-Zip to 7zO<hex>\, WinRAR to Rar$<id>\.
+$TempZipRegex = '(?i)\\Temp\\([0-9a-f]{8}-[0-9a-f-]{27}_[^\\]+\.zip[^\\]*|wpscompress|7zO[0-9A-F]+|Rar\$[^\\]+)\\'
 $VbsLureRegex = '(?i)(?<![a-z])(Statement|Debt|Hutang|Outstanding|Balance Sheet|Financial ?Report|Penyata|Invoice|Invois|Payment|Billing|Sila semak|Promissory|Reconciliation|Acknowledg|Application ?form|Income Tax|Cukai|Work Snapshot|Salary|Gaji|Claim|Tuntutan|LHDN|KWSP|EPF).*\.(vbs|vbe|js|wsf)$'
 # A document-named script is only a lure when it is not part of a developer tool, and a .js only when it
 # uses Windows Script Host. A developer PC had 11 Node.js files (firebase-tools, jose, VS Code extensions,
@@ -1670,14 +1672,14 @@ function Scan-Files {
         if ($f.FullName -match $StageRegex -or $f.Name -ieq 'active_desktop_render_x64.dll' -or $f.Name -ieq 'desk_compositor_x64.dll') {
           Add-Finding 'File' 'HIGH' $f.FullName 'SilverFox loader DLL (fake Microsoft\Update folder or KuGou/desk_compositor variant).'; return }
         if ($f.Name -match '(?i)\.(iso|img)$' -and $f.FullName -match $TempZipRegex) {
-          Add-Finding 'File' 'HIGH' $f.FullName 'Disk image opened straight from a ZIP. This is how the WhatsApp ZIP lure starts.'; return }
+          Add-Finding 'File' 'HIGH' $f.FullName 'Disk image opened straight from a ZIP or other archive. This is how the WhatsApp ZIP lure starts.'; return }
         if ($f.Name -match '(?i)\.vhdx?$' -and $f.Name -ine 'ext4.vhdx' -and
             $f.FullName -match '(?i)^[a-z]:\\Users\\' -and
             $f.FullName -notmatch '(?i)\\AppData\\Local\\(Docker\\|Packages\\(?!5319275A\.WhatsAppDesktop))') {
           if (Test-WaOrigin $f) { Add-Finding 'File' 'HIGH' $f.FullName 'Virtual disk (VHD) downloaded from WhatsApp Web. The WhatsApp ZIP hides its payload in a VHD.'; return }
           # Explorer unpacks a file opened straight from a ZIP to Temp\<guid>_<zip name>.zip.<n>\ (Notis Denda.zip report, Nov 2026)
           # or Temp\<guid>_<name>.zip.<name>.zip\ (MYS2026C*.zip report, Nov 2026).
-          if ($f.FullName -match $TempZipRegex) { Add-Finding 'File' 'HIGH' $f.FullName 'Virtual disk (VHD) opened straight from a ZIP. This is how the WhatsApp ZIP lure starts.'; return }
+          if ($f.FullName -match $TempZipRegex) { Add-Finding 'File' 'HIGH' $f.FullName 'Virtual disk (VHD) opened straight from a ZIP or other archive. This is how the WhatsApp ZIP lure starts.'; return }
           Add-Finding 'File' 'WARN' $f.FullName 'Virtual disk (VHD) in a user folder. The WhatsApp ZIP hides its payload in a VHD; delete it unless you made it.'; return }
         # Victim sample (4 Nov 2026, TBK20261104_9635.zip): renamed Edge notification_helper.exe loads a fake dbghelp.dll from its own folder.
         if ($f.Name -ieq 'dbghelp.dll' -and $f.FullName -match '(?i)^[a-z]:\\Users\\' -and
