@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.23.103'
+$Version = '2026.11.23.104'
 
 # 32-bit PowerShell on 64-bit Windows sees SysWOW64 as System32: no bcdedit.exe or netcfg.exe there, so automatic
 # Safe Mode could never be set up (WAZ-B6PDP, Nov 2026: seven tries). Run again in 64-bit PowerShell, same arguments.
@@ -2415,7 +2415,9 @@ function Invoke-Fix($qdir) {
             $done = $false
           } else {
             $gp = Get-Process -Id $f.Extra.Pid -ErrorAction SilentlyContinue
-            Stop-Process -Id $f.Extra.Pid -Force -ErrorAction Stop
+            # Two findings can name one process; the second found it already stopped and told the victim
+            # "GAGAL" (WAZ-2CJLN, Nov 2026). A process that is gone is done.
+            if ($gp) { Stop-Process -Id $f.Extra.Pid -Force -ErrorAction Stop }
             # Let it exit so its folder can be moved right after.
             if ($gp) { try { $gp.WaitForExit(3000) | Out-Null } catch {} }
             $log.Add(@{ Kind = 'Process'; Target = $f.Target })
@@ -2843,7 +2845,7 @@ function Get-ReportHash([string]$path) {
   try {
     $fi = if (Test-Path -LiteralPath $path -PathType Leaf) { Get-Item -LiteralPath $path -Force } else {
       Get-ChildItem -LiteralPath (Join-Path $QuarantineRoot $stamp) -File -Force -ErrorAction Stop |
-        Where-Object { $_.Name -like ('file-*-' + (Split-Path $path -Leaf) + '.quarantine') } | Select-Object -First 1 }
+        Where-Object { $_.Name -like ('file-*-' + [Management.Automation.WildcardPattern]::Escape((Split-Path $path -Leaf)) + '.quarantine') } | Select-Object -First 1 }
     if ($fi -and $fi.Length -le 200MB) { return @{ Sha = (Get-FileHash -LiteralPath $fi.FullName -Algorithm SHA256 -ErrorAction Stop).Hash.ToLower(); Size = $fi.Length } }
   } catch {}
   $null
