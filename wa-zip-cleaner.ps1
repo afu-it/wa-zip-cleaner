@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.23.107'
+$Version = '2026.11.23.108'
 
 # 32-bit PowerShell on 64-bit Windows sees SysWOW64 as System32: no bcdedit.exe or netcfg.exe there, so automatic
 # Safe Mode could never be set up (WAZ-B6PDP, Nov 2026: seven tries). Run again in 64-bit PowerShell, same arguments.
@@ -627,6 +627,7 @@ $WarnHelp = @(
   ,@('Admin permission prompt', 'Tetingkap "Benarkan program ni buat perubahan?" dah dimatikan. Program boleh pasang diri tanpa tanya anda.', 'Taip Y bila ditanya: tool akan hidupkan semula tetingkap ni, kemudian restart PC. Atau buat sendiri: taip UAC dalam carian Windows > Change User Account Control settings > naikkan slider satu tingkat > OK.')
   ,@('Attacker server looked up', 'PC ni pernah cuba hubungi server penggodam baru-baru ini.', 'Anggap PC dijangkiti. Tukar kata laluan guna telefon. Paling selamat: backup dokumen dan format.')
   ,@('Windows Update is disabled', 'Windows Update dimatikan. Malware buat ni supaya Windows tak dapat pembaikan keselamatan.', 'Kalau bukan anda yang matikan: taip services.msc dalam carian > Windows Update > Startup type: Manual > OK.')
+  ,@('Debugger hijack:', 'Bila program ni dibuka, Windows disuruh jalankan program lain. Program yang betul (contoh Process Explorer) boleh buat ni, tapi malware pun guna cara ni untuk sekat atau ganti program.', 'Kalau anda tak tetapkan sendiri: hantar screenshot kepada orang IT untuk buang tetapan ni.')
   ,@('No antivirus is switched on', 'Tiada antivirus yang hidup di PC ni. Malware matikan antivirus dulu sebelum pasang dirinya.', 'Windows Security > Virus & threat protection > Manage settings > Real-time protection: On. Lepas tu buat Full scan. Kalau tak boleh hidupkan, hantar screenshot kepada orang IT.')
   ,@('switched off by policy', 'Ada tetapan (policy) yang paksa Windows Defender mati, walaupun lepas restart. Malware buat ni supaya antivirus tak hidup semula.', 'Kalau bukan IT office yang tetapkan: hantar screenshot kepada orang IT untuk buang tetapan ni, kemudian restart.')
   ,@('Blocklist is OFF', 'Perlindungan Windows yang sekat driver bahaya dimatikan.', 'Windows Security > Device security > Core isolation details > hidupkan Microsoft Vulnerable Driver Blocklist > restart.')
@@ -1312,6 +1313,7 @@ function Scan-Persistence {
 # off on purpose (game boosters, IT policy).
 function Scan-AntivirusOff {
   Scan-DefenderPolicyOff
+  Scan-IfeoHijack
   if ($SafeAuto) { return }
   # $av stays $null when Security Center cannot be read; an empty list means it answered with no antivirus at all.
   $av = $null
@@ -1329,6 +1331,28 @@ function Scan-AntivirusOff {
     $names = (@($av | ForEach-Object { $_.displayName }) | Select-Object -Unique) -join ', '
     if (-not $names) { $names = 'none' }
     Add-Finding 'Info' 'WARN' 'No antivirus is switched on' "Windows Security reports no antivirus with real-time protection on (installed: $names; Defender service: $(if ($wdState) { $wdState } else { 'missing' })). Malware switches antivirus off before installing itself. Turn it back on: Windows Security > Virus & threat protection > Manage settings > Real-time protection: On, then run a Full scan."
+  }
+}
+
+# WAZ-LD2EW (Nov 2026): Image File Execution Options gave MsMpEng.exe, SecurityHealthService.exe and
+# SecurityHealthSystray.exe a "Debugger" of systray.exe, so Windows ran systray.exe instead and Defender never started
+# (sc start WinDefend: error 577). A debugger on a security program is never legitimate: HIGH, removed by -Fix.
+# On other programs it can be a real tool (Process Explorer replaces Task Manager this way), so only a warning.
+$IfeoSecurity = @('MsMpEng.exe', 'MpCmdRun.exe', 'NisSrv.exe', 'MpDefenderCoreService.exe', 'MsSense.exe', 'SecurityHealthService.exe',
+  'SecurityHealthSystray.exe', 'SecHealthUI.exe', 'smartscreen.exe', 'MRT.exe')
+function Scan-IfeoHijack {
+  foreach ($root in 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options',
+                    'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows NT\CurrentVersion\Image File Execution Options') {
+    foreach ($k in Get-ChildItem -LiteralPath $root -ErrorAction SilentlyContinue) {
+      $dbg = [string]$k.GetValue('Debugger')
+      if (-not $dbg) { continue }
+      $key = "$root\$($k.PSChildName)"
+      if ($IfeoSecurity -contains $k.PSChildName) {
+        Add-Finding 'RegValue' 'HIGH' "$key|Debugger" "Debugger hijack on a security program: Windows runs $dbg instead of $($k.PSChildName), so it never starts (malware switching antivirus off)."
+      } else {
+        Add-Finding 'RegValue' 'WARN' "$key|Debugger" "Debugger hijack: Windows runs $dbg whenever $($k.PSChildName) is started. Fine if you set this up (for example Process Explorer replacing Task Manager); otherwise malware uses it to block or replace a program."
+      }
+    }
   }
 }
 
