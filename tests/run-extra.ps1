@@ -115,7 +115,15 @@ Set-Content "$vhdUnzip2\WazMys.vhd" 'dummy'
 $wpsDir = "$env:TEMP\wpscompress\749106f9-6dc6-4c44-a301-c4c73bf6534e\235249ac-46fa-429e-a318-5d07c78f6074"
 New-Item -ItemType Directory -Force -Path $wpsDir | Out-Null
 Set-Content "$wpsDir\WazWps.img" 'dummy'
-Set-Content "$dl\WA-ABCDE-123-112026.img" 'dummy'
+Set-Content "$dl\WA-ABCDE-123-112026 (2)_9433.img" 'dummy'
+# A zip received in the WhatsApp Desktop app sits in its Transfers folder with no download mark (WAZ-LD2EW, Nov 2026).
+$waTr = "$env:LOCALAPPDATA\Packages\5319275A.WhatsAppDesktop_wazt0001\LocalState\Sessions\WAZTEST\Transfers\2026-46"
+New-Item -ItemType Directory -Force -Path $waTr | Out-Null
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$waZipSrc = "$env:TEMP\waztr-src"; New-Item -ItemType Directory -Force -Path $waZipSrc | Out-Null
+Set-Content "$waZipSrc\Penyata.img" 'dummy'
+Remove-Item -LiteralPath "$waTr\Penyata Nov.zip" -Force -ErrorAction SilentlyContinue
+[IO.Compression.ZipFile]::CreateFromDirectory($waZipSrc, "$waTr\Penyata Nov.zip")
 # Hidden+System payload DLL in Temp from the same report.
 $hsDll = "$env:TEMP\hs_rt32_wazt0001.dll"
 Set-Content $hsDll 'dummy'
@@ -253,7 +261,8 @@ Check (Has $r 'Service' 'HIGH' '^WazMsDriver$' 'data file') 'driver loaded from 
 Check (Has $r 'File' 'HIGH' 'Waz Test Lure\.vhd$' 'straight from a ZIP') 'VHD opened straight from a ZIP is HIGH'
 Check (Has $r 'File' 'HIGH' 'WazMys\.zip\.WazMys\.zip\\WazMys\.vhd$' 'straight from a ZIP') 'VHD opened from a ZIP (<name>.zip.<name>.zip shape) is HIGH'
 Check (Has $r 'File' 'HIGH' 'wpscompress\\.+\\WazWps\.img$' 'straight from a ZIP or other archive') 'disk image WPS Office unpacked to Temp is HIGH'
-Check (Has $r 'File' 'HIGH' 'WA-ABCDE-123-112026\.img$' 'lure file name') 'WA-XXXXX-123-<date>.img lure name is HIGH'
+Check (Has $r 'File' 'HIGH' 'WA-ABCDE-123-112026 \(2\)_9433\.img$' 'lure file name') 'WA-XXXXX-123-<date>.img lure name is HIGH'
+Check (Has $r 'File' 'HIGH' 'Transfers\\2026-46\\Penyata Nov\.zip$' 'Penyata\.img') 'zip with a disk image received in WhatsApp Desktop is HIGH'
 Check (Has $r 'File' 'HIGH' 'hs_rt32_wazt0001\.dll$' 'Temp folder') 'Hidden+System hs_rt32 DLL in Temp is HIGH'
 Check (-not ($r.All | Where-Object { $_.Target -match 'checkProjectBilling\.js$|build_salary_deck\.js$|WorkflowsStepFailedResponse\.js$' })) 'developer .js files with lure words are not flagged'
 Check (Has $r 'File' 'HIGH' 'Invoice Nov 2026\.js$' 'VBS campaign') 'document-named .js that uses Windows Script Host is HIGH'
@@ -317,7 +326,7 @@ Check ($x2out -match 'WAZ-TEST7') 'opt-in report sent and the reference number s
 Check ($x2out -match '(?m)^ KUARANTIN SIAP') 'quarantine-done tag printed at the left edge on its own line'
 Check (-not (Test-Path -LiteralPath "$vhdUnzip2\WazMys.vhd")) 'lure VHD (<name>.zip.<name>.zip shape) quarantined by -Fix'
 Check (-not (Test-Path -LiteralPath $hsDll)) 'Hidden+System hs_rt32 DLL in Temp quarantined by -Fix'
-Remove-Item -LiteralPath $vhdUnzip2, $hsDll, "$env:TEMP\wpscompress", "$dl\WA-ABCDE-123-112026.img" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $vhdUnzip2, $hsDll, "$env:TEMP\wpscompress", "$dl\WA-ABCDE-123-112026 (2)_9433.img", "$env:LOCALAPPDATA\Packages\5319275A.WhatsAppDesktop_wazt0001", $waZipSrc -Recurse -Force -ErrorAction SilentlyContinue
 $repEntries = @{}
 if (Test-Path "$repDir\posted.zip") {
   Add-Type -AssemblyName System.IO.Compression.FileSystem

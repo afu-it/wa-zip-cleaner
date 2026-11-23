@@ -340,6 +340,7 @@ From opt-in reports sent by the tool (Windows event 7045 history, scheduled task
 
 ## Defender killed by policy + IFEO, lure IMG unpacked by WPS Office (opt-in report WAZ-HPJCS/LD2EW, Nov 2026)
 
+- Arrived as `WA-22NCC-123-112026 (2)_9433.zip` through the WhatsApp Desktop app (`%LOCALAPPDATA%\Packages\5319275A.WhatsAppDesktop_*\LocalState\Sessions\*\Transfers\2026-46\`, no download mark).
 - Lure disk image `WA-22NCC-123-112026.img`, unpacked by WPS Office to `%TEMP%\wpscompress\<guid>\<guid>\`. Defender name: `Trojan:Win32/Suschil!rfn` ("executes commands from an attacker"). No hash: Defender quarantined it before we saw it.
 - Defender switched off three ways: `HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\DisableAntiSpyware=1`; `...\Real-Time Protection\` `DisableRealtimeMonitoring`, `DisableBehaviorMonitoring`, `DisableScanOnRealtimeEnable`, `DisableOnAccessProtection`, `DisableIOAVProtection` all `1`; Image File Execution Options `Debugger=systray.exe` on `MsMpEng.exe`, `SecurityHealthService.exe`, `SecurityHealthSystray.exe` (`sc start WinDefend` fails with error 577). Windows Security still showed "No action needed".
 - Same PC had the ManageEngine UEMS agent (installed 13 Nov 2026).
