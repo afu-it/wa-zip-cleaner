@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.23.106'
+$Version = '2026.11.23.107'
 
 # 32-bit PowerShell on 64-bit Windows sees SysWOW64 as System32: no bcdedit.exe or netcfg.exe there, so automatic
 # Safe Mode could never be set up (WAZ-B6PDP, Nov 2026: seven tries). Run again in 64-bit PowerShell, same arguments.
@@ -1311,6 +1311,7 @@ function Scan-Persistence {
 # has no Security Center, and Safe Mode does not start it, so both skip the check. WARN only: some PCs turn Defender
 # off on purpose (game boosters, IT policy).
 function Scan-AntivirusOff {
+  Scan-DefenderPolicyOff
   if ($SafeAuto) { return }
   # $av stays $null when Security Center cannot be read; an empty list means it answered with no antivirus at all.
   $av = $null
@@ -1329,11 +1330,29 @@ function Scan-AntivirusOff {
     if (-not $names) { $names = 'none' }
     Add-Finding 'Info' 'WARN' 'No antivirus is switched on' "Windows Security reports no antivirus with real-time protection on (installed: $names; Defender service: $(if ($wdState) { $wdState } else { 'missing' })). Malware switches antivirus off before installing itself. Turn it back on: Windows Security > Virus & threat protection > Manage settings > Real-time protection: On, then run a Full scan."
   }
+}
+
+function Scan-DefenderPolicyOff {
+  # WAZ-LD2EW (Nov 2026): DisableAntiSpyware plus five Real-Time Protection "Disable*" policies kept Defender's
+  # service stopped, so a full scan sat at 0 files. AFU: -Fix removes them (a .reg copy lets -Restore put them back).
+  # Office PCs keep them as a warning, since company IT may set them for another antivirus.
   $pk = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender'
-  $pol = Get-ItemProperty -LiteralPath $pk -ErrorAction SilentlyContinue
-  $rt = Get-ItemProperty -LiteralPath "$pk\Real-Time Protection" -ErrorAction SilentlyContinue
-  if (($pol -and $pol.DisableAntiSpyware -eq 1) -or ($rt -and $rt.DisableRealtimeMonitoring -eq 1)) {
-    Add-Finding 'Info' 'WARN' 'Windows Defender is switched off by policy' "A policy under $pk switches Defender off. Malware sets this so Defender stays off after a restart. Unless your IT set it, delete the DisableAntiSpyware / DisableRealtimeMonitoring values there (regedit), then restart."
+  $off = @()
+  foreach ($k in $pk, "$pk\Real-Time Protection") {
+    $item = Get-Item -LiteralPath $k -ErrorAction SilentlyContinue
+    if (-not $item) { continue }
+    foreach ($n in $item.GetValueNames()) {
+      $ok = if ($k -eq $pk) { $n -in 'DisableAntiSpyware', 'DisableAntiVirus' } else { $n -like 'Disable*' }
+      if ($ok -and "$($item.GetValue($n))" -eq '1') { $off += "$k|$n" }
+    }
+  }
+  if (-not $off.Count) { return }
+  if ($Owner -eq 'Office') {
+    Add-Finding 'Info' 'WARN' 'Windows Defender is switched off by policy' "Policies under $pk switch Defender off ($(@($off | ForEach-Object { ($_ -split '\|')[1] }) -join ', ')). Malware sets these so Defender stays off after a restart. Ask your IT whether they set them."
+    return
+  }
+  foreach ($t in $off) {
+    Add-Finding 'RegValue' 'HIGH' $t 'Windows Defender is switched off by policy. Malware sets this so Defender stays off after a restart; this tool removes it (restart afterwards).' @{ Tidy = $true }
   }
 }
 
@@ -2271,7 +2290,7 @@ function Get-CmdPaths([string]$cmd) {
   @($out | Select-Object -Unique)
 }
 function Add-LinkedFindings {
-  $skip = '(?i)ManageEngine|IP-guard|UltraViewer|Ping32'
+  $skip = '(?i)ManageEngine|IP-guard|UltraViewer|Ping32|Defender is switched off by policy'
   $tasks = $null
   foreach ($f in @($Findings | Where-Object { $_.Severity -eq 'HIGH' -and $_.Kind -in 'Task', 'RegValue', 'Process' -and "$($_.Detail)" -notmatch $skip })) {
     $paths = @()

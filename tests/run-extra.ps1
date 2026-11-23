@@ -1732,19 +1732,24 @@ $rtHad = Test-Path -LiteralPath $rtKey
 $rtOld = (Get-ItemProperty -LiteralPath $rtKey -ErrorAction SilentlyContinue).DisableRealtimeMonitoring
 New-Item -Path $rtKey -Force | Out-Null
 New-ItemProperty -Path $rtKey -Name DisableRealtimeMonitoring -Value 1 -PropertyType DWord -Force | Out-Null
-$env:WAZIP_TEST_AVSTATE = 'Windows Defender=393472'
-$rAv = Scan "$env:TEMP\xav1.json" -Out "$env:TEMP\xav1.out"
 $env:WAZIP_TEST_AVSTATE = 'Windows Defender=393472;Other AV=266240'
-$rAv2 = Scan "$env:TEMP\xav2.json"
+$rAv2 = Scan "$env:TEMP\xav2.json" -Owner Office
 $env:WAZIP_TEST_AVSTATE = 'Windows Defender=397568'; $env:WAZIP_TEST_WINDEFEND = 'Stopped'
 $rAv3 = Scan "$env:TEMP\xav3.json"
-Remove-Item Env:\WAZIP_TEST_AVSTATE, Env:\WAZIP_TEST_WINDEFEND
+$env:WAZIP_TEST_AVSTATE = 'Windows Defender=393472'; Remove-Item Env:\WAZIP_TEST_WINDEFEND
+$qAv = 'C:\WAZipQuarantineAv'
+$rAv = Scan "$env:TEMP\xav1.json" -Fix -Owner Personal -Root $qAv -Out "$env:TEMP\xav1.out"
+$rtLeft = (Get-ItemProperty -LiteralPath $rtKey -ErrorAction SilentlyContinue).DisableRealtimeMonitoring
+Remove-Item Env:\WAZIP_TEST_AVSTATE
 if (-not $rtHad) { Remove-Item -LiteralPath $rtKey -Force -ErrorAction SilentlyContinue }
 elseif ($null -eq $rtOld) { Remove-ItemProperty -LiteralPath $rtKey -Name DisableRealtimeMonitoring -ErrorAction SilentlyContinue }
 else { Set-ItemProperty -LiteralPath $rtKey -Name DisableRealtimeMonitoring -Value $rtOld }
+Remove-Item -LiteralPath $qAv -Recurse -Force -ErrorAction SilentlyContinue
 Check (Has $rAv 'Info' 'WARN' '^No antivirus is switched on$' 'installed: Windows Defender;') 'no antivirus switched on is WARN'
-Check (Has $rAv 'Info' 'WARN' '^Windows Defender is switched off by policy$') 'Defender switched off by policy is WARN'
+Check (Has $rAv 'RegValue' 'HIGH' 'Real-Time Protection\|DisableRealtimeMonitoring$' 'switched off by policy') 'Defender switched off by policy is HIGH on a personal PC'
+Check ($null -eq $rtLeft) 'Fix removes the policy that switches Defender off'
 Check ((Get-Content -Raw "$env:TEMP\xav1.out") -match 'Maksud: Tiada antivirus yang hidup') 'antivirus-off warning explained in plain Malay'
+Check (Has $rAv2 'Info' 'WARN' '^Windows Defender is switched off by policy$' 'DisableRealtimeMonitoring') 'Defender policy on an office PC is only a warning'
 Check (-not ($rAv2.All | Where-Object { $_.Target -eq 'No antivirus is switched on' })) 'no warning when another antivirus is on'
 Check (Has $rAv3 'Info' 'WARN' '^No antivirus is switched on$' 'Defender service: Stopped') 'Defender listed as on but its service stopped is WARN'
 
