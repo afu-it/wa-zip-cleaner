@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.26.117'
+$Version = '2026.11.26.118'
 
 # 32-bit PowerShell on 64-bit Windows sees SysWOW64 as System32: no bcdedit.exe or netcfg.exe there, so automatic
 # Safe Mode could never be set up (WAZ-B6PDP, Nov 2026: seven tries). Run again in 64-bit PowerShell, same arguments.
@@ -3820,6 +3820,10 @@ function Start-SafeAuto {
 }
 if ($SafeAuto) { Invoke-ReportOffer }
 $blocked = $Fix -and ($script:SvcLeft -or $script:MeLeft -or $IpgPending -or $IpgBlocked)
+# ManageEngine's anti-ransomware part (MEARWService) protects itself, so it always blocks the online clean-up.
+# 83ZM9, M2USF and DBUAY (Nov 2026) all stopped at "type 1"; only DBUAY went on to Safe Mode. Go there by itself.
+$meStuck = @(@($script:MeLeft) + @($script:SvcLeft) + @($env:WAZIP_TEST_MELEFT) | Where-Object { "$_" -match '(?i)MEARW' })
+if ($Fix -and -not $SafeAuto -and -not $script:Recur -and $meStuck.Count) { $script:Recur = 'ManageEngine self-protection blocks the clean-up' }
 if ($SafeAuto -and $IpgAgain) {
   Start-SafeAuto
 } elseif ($SafeAuto) {
@@ -3837,7 +3841,10 @@ if ($SafeAuto -and $IpgAgain) {
 } elseif ($Fix -and $script:Recur) {
   Show-Head 'SAFE MODE AUTO' 'AUTOMATIC SAFE MODE'
   Write-Host ''
-  if ($script:Recur -match 'again and again') {
+  if ($script:Recur -match 'self-protection') {
+    Say 'ManageEngine penggodam kunci dirinya, jadi Windows biasa tak boleh buang dia. Tool akan restart ke Safe Mode untuk buang dia bila dia tak berjalan.' `
+        'The attacker''s ManageEngine locks itself, so normal Windows cannot remove it. The tool restarts into Safe Mode to remove it while it is not running.' Yellow
+  } elseif ($script:Recur -match 'again and again') {
     Say 'Virus masih aktif: dia pasang semula pembunuh antivirus berulang kali. Tool akan restart ke Safe Mode untuk buang dia bila dia tak berjalan.' `
         'The virus is still active: it keeps reinstalling the antivirus killer. The tool restarts into Safe Mode to remove it while it is not running.' Yellow
   } else {

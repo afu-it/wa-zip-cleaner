@@ -1628,6 +1628,15 @@ $nDll = "$env:TEMP\hs_rt32_waznrc01.dll"; Set-Content $nDll 'dummy'; (Get-Item -
 $r47 = Scan "$env:TEMP\x47.json" -Fix -Root $qR
 Check (-not (Test-Path -LiteralPath $nDll)) 'first clean-up quarantines the single bad file'
 Check (-not ((Test-Path $safeDry) -and ((Get-Content -Raw $safeDry) -match 'safeauto'))) 'first-ever clean-up with one bad file does not force Safe Mode'
+# ManageEngine's self-protected MEARWService left after the clean-up: straight to Safe Mode (83ZM9, M2USF, DBUAY).
+$nDll2 = "$env:TEMP\hs_rt32_waznrc02.dll"; Set-Content $nDll2 'dummy'; (Get-Item -LiteralPath $nDll2 -Force).Attributes = 'Hidden, System'
+Remove-Item -LiteralPath $safeDry -Force -ErrorAction SilentlyContinue
+$env:WAZIP_TEST_MELEFT = 'MEARWService'
+$rMe = Scan "$env:TEMP\x47me.json" -Fix -Root $qR -Out "$env:TEMP\x47me.out"
+Remove-Item Env:\WAZIP_TEST_MELEFT
+Check ((Test-Path $safeDry) -and ((Get-Content -Raw $safeDry) -match 'safeauto .*self-protection')) 'locked ManageEngine MEARWService goes straight to Safe Mode'
+Check ((Test-Path "$env:TEMP\x47me.out") -and (Select-String -LiteralPath "$env:TEMP\x47me.out" -SimpleMatch 'ManageEngine penggodam kunci dirinya' -Quiet)) 'Safe Mode reason explained in plain Malay'
+Remove-Item -LiteralPath $safeDry, "$env:TEMP\x47me.out", "$qR\safeauto-queued.txt" -Force -ErrorAction SilentlyContinue
 # An earlier clean-up stopped a malware process; now a loader process is running again.
 $oldD = Join-Path $qR '20200101-000000'; New-Item -ItemType Directory -Force -Path $oldD | Out-Null
 '[{"Kind":"Process","Target":"RuntimeBroker.exe (PID 1)"}]' | Out-File -Encoding UTF8 (Join-Path $oldD 'manifest.json')
