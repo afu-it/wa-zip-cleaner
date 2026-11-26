@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.26.119'
+$Version = '2026.11.26.120'
 
 # 32-bit PowerShell on 64-bit Windows sees SysWOW64 as System32: no bcdedit.exe or netcfg.exe there, so automatic
 # Safe Mode could never be set up (WAZ-B6PDP, Nov 2026: seven tries). Run again in 64-bit PowerShell, same arguments.
@@ -3707,7 +3707,13 @@ if ($infected.Count) {
         "Windows would not let the tool remove these antivirus exclusions: $($script:DefExclLeft -join ', '). Remove them yourself: Windows Security > Virus & threat protection > Manage settings > Exclusions > Add or remove exclusions > click each one > Remove. Then restart and run this tool again." Red
   }
   # Only real exclusions: a plain 'Defender detected' finding means Defender did see it (WAZ-CD9VY, Nov 2026).
-  if ($Findings | Where-Object { $_.Kind -eq 'DefExcl' -or $_.Detail -match 'told to ignore' -or $_.Target -match '^Defender exclusion added' }) {
+  $exclF = @($Findings | Where-Object { $_.Kind -eq 'DefExcl' -or $_.Detail -match 'told to ignore' -or $_.Target -match '^Defender exclusion added' })
+  # Exclusions made by a Windows/Office crack are not the malware's doing (WAZ-EZJDZ, Nov 2026: only KMSAuto ones).
+  $crackRx = '(?i)KMS|SppExtComObj|AAct|Re-?Loader|Microsoft Toolkit|HWID|activat'
+  if ($exclF.Count -and -not @($exclF | Where-Object { "$($_.Target)" -notmatch $crackRx }).Count) {
+    Say 'Pengecualian antivirus ni dibuat oleh alat crack Windows/Office (contoh KMSAuto), bukan malware ZIP WhatsApp. Alat crack selalu bawa virus, jadi lebih selamat buang pengecualian tu dan guna Windows/Office yang sah.' `
+        'These antivirus exclusions were made by a Windows/Office crack tool (for example KMSAuto), not by the WhatsApp ZIP malware. Cracks often carry malware, so it is safer to remove the exclusions and use genuine Windows/Office.' Yellow
+  } elseif ($exclF.Count) {
     Say 'Malware ni suruh Windows Defender abaikan dia, sebab tu scan antivirus nampak bersih. Lepas bersihkan dan restart, buat Full scan Windows Defender sekali lagi.' `
         'This malware told Windows Defender to ignore it, which is why antivirus scans looked clean. After cleaning and restarting, run a Windows Defender full scan again.' Yellow
   }
