@@ -1,0 +1,6 @@
+{
+  "name": "waz-launcher",
+  "main": "worker.js",
+  "compatibility_date": "2026-11-01",
+  "routes": [{ "pattern": "waz.afuit.dev/*", "zone_name": "afuit.dev" }]
+}
