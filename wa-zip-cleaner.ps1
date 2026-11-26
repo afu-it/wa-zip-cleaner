@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.26.116'
+$Version = '2026.11.26.117'
 
 # 32-bit PowerShell on 64-bit Windows sees SysWOW64 as System32: no bcdedit.exe or netcfg.exe there, so automatic
 # Safe Mode could never be set up (WAZ-B6PDP, Nov 2026: seven tries). Run again in 64-bit PowerShell, same arguments.
@@ -3266,8 +3266,13 @@ function Send-WazSample($s) {
     $r = Invoke-WebRequest -Uri $SampleUrl -Method Post -InFile $s.Path -Headers $h -ContentType 'application/octet-stream' -UseBasicParsing -TimeoutSec 300 -ErrorAction Stop
     $c = $r.Content
     if ($c -is [byte[]]) { $c = [Text.Encoding]::UTF8.GetString($c) }
-    return ("$c" -match '"ok"\s*:\s*true')
-  } catch { return $false }
+    if ("$c" -match '"ok"\s*:\s*true') { return '' }
+    return "server: $("$c".Substring(0, [Math]::Min(80, "$c".Length)))"
+  } catch {
+    # WAZ-2VMT9 (Nov 2026): the report went through but all 3 samples failed and the screen only said "internet?".
+    $code = try { [int]$_.Exception.Response.StatusCode } catch { 0 }
+    return "$(if ($code) { "HTTP $code, " })$($_.Exception.Message)"
+  }
 }
 function Invoke-SampleOffer {
   $list = Join-Path $QuarantineRoot 'samples-pending.txt'
@@ -3303,8 +3308,9 @@ function Invoke-SampleOffer {
     $tag = $f.Sha.Substring(0, 12)
     $kind = if ($f.Suspect) { ' mencurigakan' } else { '' }
     $kindEn = if ($f.Suspect) { ' suspicious' } else { '' }
-    if (Send-WazSample $f) { Say "  OK  sampel$kind $tag ($($f.Ext), $($f.Size) bait)" "  OK $kindEn sample $tag ($($f.Ext), $($f.Size) bytes)" Green }
-    else { if (-not $f.Suspect) { $bad++ }; Say "  GAGAL hantar sampel $tag (internet?)" "  FAILED to send sample $tag (internet?)" Yellow }
+    $err = Send-WazSample $f
+    if (-not $err) { Say "  OK  sampel$kind $tag ($($f.Ext), $($f.Size) bait)" "  OK $kindEn sample $tag ($($f.Ext), $($f.Size) bytes)" Green }
+    else { if (-not $f.Suspect) { $bad++ }; Say "  GAGAL hantar sampel $tag ($($f.Size) bait): $err" "  FAILED to send sample $tag ($($f.Size) bytes): $err" Yellow }
   }
   if ($bad) { Say 'Sampel yang gagal akan ditanya lagi bila tool dijalankan semula.' 'Failed samples are offered again next time the tool runs.' DarkGray }
   else { Remove-Item -LiteralPath $list -Force -ErrorAction SilentlyContinue; Say 'Terima kasih! Sampel dihantar.' 'Thank you! Samples sent.' Green }
