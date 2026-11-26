@@ -390,8 +390,11 @@ Register-ScheduledTask -TaskName 'ManageEngine UEMS Test' -Action (New-Scheduled
 $meUn = 'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\{WAZIP-ME-TEST}'
 New-Item -Path $meUn -Force | Out-Null
 New-ItemProperty -Path $meUn -Name DisplayName -Value 'ManageEngine UEMS - Agent' -Force | Out-Null
+New-ItemProperty -Path $meUn -Name InstallDate -Value (Get-Date).ToString('yyyyMMdd') -Force | Out-Null
 $meCfg = 'HKLM:\SOFTWARE\WOW6432Node\AdventNet\DesktopCentral\DCAgent'
 New-Item -Path $meCfg -Force | Out-Null
+New-Item -Path "$meCfg\ServerInfo" -Force | Out-Null
+New-ItemProperty -Path "$meCfg\ServerInfo" -Name DCServerName -Value 'uems-test.example' -Force | Out-Null
 $meMsi = 'HKLM:\SOFTWARE\Classes\Installer\Products\WAZIPMETEST0000000000000000000000'
 New-Item -Path $meMsi -Force | Out-Null
 New-ItemProperty -Path $meMsi -Name ProductName -Value 'ManageEngine UEMS - Agent' -Force | Out-Null
@@ -404,6 +407,8 @@ Check (Test-Path $meDir) 'ManageEngine kept when the user did not confirm'
 $r = Scan "$env:TEMP\x4b.json" -Fix -Owner Office
 Check (Test-Path $meDir) 'ManageEngine kept on an office PC'
 Check (Has $r 'Info' 'WARN' 'ManageEngine' 'IT') 'office PC gets the ask-your-IT warning'
+Check (Has $r 'Info' 'WARN' 'ManageEngine UEMS Agent' 'Installed \d{4}-\d\d-\d\d \d\d:\d\d \(0 days ago\)') 'ManageEngine finding shows when it was installed'
+Check (Has $r 'Info' 'WARN' 'ManageEngine UEMS Agent' 'Its server: uems-test\.example') 'ManageEngine finding shows its server'
 Check ($r.Code -eq 3) "warnings-only scan exits 3 (got $($r.Code))"
 $r = Scan "$env:TEMP\x5.json" -Fix -Owner Personal
 Check (Has $r 'Info' 'HIGH' 'ManageEngine') 'ManageEngine is HIGH on a personal PC'

@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.26.118'
+$Version = '2026.11.26.119'
 
 # 32-bit PowerShell on 64-bit Windows sees SysWOW64 as System32: no bcdedit.exe or netcfg.exe there, so automatic
 # Safe Mode could never be set up (WAZ-B6PDP, Nov 2026: seven tries). Run again in 64-bit PowerShell, same arguments.
@@ -1867,6 +1867,45 @@ function Scan-Vhd {
   }
 }
 
+# When the agent was installed and which server it reports to (WAZ-5Q5UB, Nov 2026: an agent installed an hour
+# before the scan, with no lure left, looked the same as a company install). Earliest of the Apps entry and folder.
+function Get-MeOrigin($dirs) {
+  $when = @(); $dirTime = @()
+  foreach ($k in 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*', 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*') {
+    foreach ($u in @(Get-ItemProperty -Path $k -ErrorAction SilentlyContinue | Where-Object { "$($_.DisplayName)" -match 'ManageEngine|UEMS' })) {
+      $d = [datetime]::MinValue
+      if ([datetime]::TryParseExact("$($u.InstallDate)", 'yyyyMMdd', $null, 'None', [ref]$d)) { $when += $d }
+    }
+  }
+  foreach ($p in $dirs) { try { $dirTime += (Get-Item -LiteralPath $p -Force -ErrorAction Stop).CreationTime } catch {} }
+  $srv = @()
+  foreach ($k in 'HKLM:\SOFTWARE\WOW6432Node\AdventNet\DesktopCentral\DCAgent', 'HKLM:\SOFTWARE\AdventNet\DesktopCentral\DCAgent') {
+    $keys = @(Get-Item -LiteralPath $k -ErrorAction SilentlyContinue) + @(Get-ChildItem -LiteralPath $k -Recurse -ErrorAction SilentlyContinue)
+    foreach ($rk in $keys) {
+      foreach ($pr in (Get-ItemProperty -LiteralPath $rk.PSPath -ErrorAction SilentlyContinue).PSObject.Properties) {
+        if ($pr.Name -match '(?i)server.*(name|ip|address|fqdn)' -and $pr.Name -notmatch '(?i)port|^PS' -and $pr.Value -is [string]) { $srv += $pr.Value.Trim() }
+      }
+    }
+  }
+  foreach ($p in $dirs) {
+    foreach ($js in @(Get-ChildItem -LiteralPath $p -Recurse -File -Filter 'DCAgentServerInfo.json' -ErrorAction SilentlyContinue | Select-Object -First 3)) {
+      try {
+        $props = (Get-Content -Raw -LiteralPath $js.FullName -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop).ServerInfoProps
+        foreach ($pr in $props.PSObject.Properties) { if ($pr.Name -match '(?i)server.*(name|ip|address|fqdn)' -and $pr.Name -notmatch '(?i)port' -and $pr.Value -is [string]) { $srv += $pr.Value.Trim() } }
+      } catch {}
+    }
+  }
+  # The Apps entry has only a date; the folder time also has the hour, so it wins unless the date is an earlier day.
+  $first = $dirTime | Sort-Object | Select-Object -First 1
+  $day = $when | Sort-Object | Select-Object -First 1
+  if ($day -and (-not $first -or $day -lt $first.Date)) { $first = $day }
+  [pscustomobject]@{
+    Installed = $first
+    Days      = if ($first) { [int][Math]::Floor(((Get-Date) - $first).TotalDays) } else { $null }
+    Server    = (@($srv | Where-Object { $_ -and $_ -notmatch '^(127\.0\.0\.1|localhost|0\.0\.0\.0)$' } | Select-Object -Unique) -join ', ')
+  }
+}
+
 function Scan-ManageEngine {
   Scan-Rmm
   $hits = @()
@@ -1914,6 +1953,9 @@ function Scan-ManageEngine {
       'Personal' { 'Remote-management agent on a personal PC: the WhatsApp VBS campaign uses it to control PCs remotely. This tool will force-remove it.' }
       default    { 'Remote-management agent found. If your company did NOT install it, the WhatsApp VBS campaign gave attackers remote control. Its normal uninstaller asks for the attacker''s PIN.' }
     } }
+    $script:MeOrigin = Get-MeOrigin @($hits | Where-Object { $_ -is [string] -and $_ -match '^[a-z]:\\' })
+    if ($script:MeOrigin.Installed) { $d += " Installed $($script:MeOrigin.Installed.ToString('yyyy-MM-dd HH:mm')) ($($script:MeOrigin.Days) days ago)." }
+    if ($script:MeOrigin.Server) { $d += " Its server: $($script:MeOrigin.Server)." }
     Add-Finding 'Info' 'WARN' 'ManageEngine UEMS Agent' $d
   }
 }
@@ -3693,9 +3735,20 @@ if ($me -and $meRemove -and $Fix -and $script:MeLeft) {
 } elseif ($me -and $meRemove) {
   Say 'PC sendiri tak patut ada ManageEngine. Taip Y bila ditanya untuk buang dia.' 'A personal PC should not have ManageEngine. Type Y when asked to remove it.' Yellow
 } elseif ($me -and $Owner -eq 'Office') {
+  if ($script:MeOrigin -and ($script:MeOrigin.Installed -or $script:MeOrigin.Server)) {
+    $mo = $script:MeOrigin
+    $w = if ($mo.Installed) { "dipasang $($mo.Installed.ToString('dd/MM/yyyy h:mm tt'))" } else { '' }
+    Say "ManageEngine ni $w$(if ($mo.Server) { ", server $($mo.Server)" }). Bagi maklumat ni kat IT office." "This ManageEngine: $(if ($mo.Installed) { "installed $($mo.Installed.ToString('yyyy-MM-dd HH:mm'))" })$(if ($mo.Server) { ", server $($mo.Server)" }). Give this to office IT." Yellow
+  }
   Say 'PC office: ManageEngine biasanya IT syarikat yang pasang. Tunjuk skrin ni kat IT office dan tanya betul ke dia yang pasang. Kalau IT kata bukan, jalankan tool ni semula dan jawab 2 (sendiri).' `
       'Office PC: company IT usually installs ManageEngine. Show this screen to your IT team and ask if they installed it. If they did not, run this tool again and answer 2 (personal).' Yellow
 } elseif ($me) {
+  $mo = $script:MeOrigin
+  if ($mo -and $mo.Installed -and $mo.Days -le 7) {
+    Say "AWAS: ManageEngine ni baru dipasang $($mo.Installed.ToString('dd/MM/yyyy h:mm tt')) ($($mo.Days) hari lepas). Kalau bukan IT office yang pasang masa tu, ini penggodam: jalankan tool ni semula, jawab 2 (sendiri) dan taip Y." `
+        "WARNING: this ManageEngine was installed $($mo.Installed.ToString('yyyy-MM-dd HH:mm')) ($($mo.Days) days ago). If office IT did not install it then, it is the attacker: run this tool again, answer 2 (personal) and type Y." Red
+  }
+  if ($mo -and $mo.Server) { Say "Server ManageEngine ni: $($mo.Server). Tanya IT office kalau itu server mereka." "This ManageEngine's server: $($mo.Server). Ask office IT whether that is their server." Yellow }
   Say 'ManageEngine dijumpai. Kalau PC sendiri, jalankan tool ni semula dan jawab 2 (sendiri), tool akan buang dia. Atau buang sendiri: (1) pasang Bulk Crap Uninstaller (percuma, bcuninstaller.com), cari ManageEngine, klik kanan > Uninstall manually (uninstall biasa minta PIN hacker); (2) buka services.msc, set semua servis ManageEngine ke Disabled; (3) buka Task Scheduler, padam task ManageEngine; (4) restart dan imbas semula. Paling selamat: backup data & pasang semula Windows.' `
       'ManageEngine found. If this is your own PC, run this tool again and answer 2 (personal); it will remove it. Or remove it yourself: (1) install Bulk Crap Uninstaller (free, bcuninstaller.com), find ManageEngine, right-click > Uninstall manually (normal uninstall asks for the attacker''s PIN); (2) open services.msc and set every ManageEngine service to Disabled; (3) open Task Scheduler and delete ManageEngine tasks; (4) restart and scan again. Safest: back up data and reinstall Windows.' Yellow
 }
