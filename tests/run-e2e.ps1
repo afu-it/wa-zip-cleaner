@@ -46,7 +46,7 @@ $expect = @(
   @('File', 'Account Statement\.vbs$'), @('File', 'Work Snapshot\.vbs$'), @('File', 'vcRuntimeMinimum_x86\.exe$'), @('File', 'WAZipTest\\rime\.dll$'),
   @('Process', 'cmd\.exe'), @('Vhd', 'Click here to view10\.6\.vhd$'),
   @('File', 'WAZipTest\\hidserv\.dll$'),
-  @('RegValue', 'Console\|Magisk$'), @('RegValue', 'Run\|WinHelperRun$'),
+  @('RegValue', 'Console\|Magisk$'), @('RegValue', 'Run\|WinHelperRun$'), @('File', 'WAZipTest\\svc-helper\.exe$'),
   @('RegValue', 'Run\|MicrosoftUpdate$'), @('Process', 'PDF_C2089'), @('File', 'Update\\PDF_C2089_20260911100446\.exe$'),
   @('File', 'Update\\active_desktop_render_x64\.dll$'), @('File', 'DOC_7748_20260924152821\.zip$'), @('File', 'PDF_C2841_20260911100446\.img$'),
   @('File', 'PDF_FTFWCI_20261009125351\.vhd$'), @('File', '20261019-MYS2026Y1019E51AC\.zip$'), @('File', '20261019\.MYS2026Y1019A7F2E\.zip$'),
@@ -79,6 +79,7 @@ Check (-not (Get-ScheduledTask -TaskName WAZipTestTask -ErrorAction SilentlyCont
 Check (-not (Test-Path "$env:USERPROFILE\Downloads\Click here to view10.6_9999.zip")) 'lure zip quarantined'
 Check (Test-Path "$env:USERPROFILE\Downloads\normal-document.pdf") 'normal file untouched'
 Check (-not (Test-Path "$env:APPDATA\Microsoft\Update\active_desktop_render_x64.dll")) 'KuGou-variant loader quarantined'
+Check (-not (Test-Path -LiteralPath 'C:\Users\Public\WAZipTest\svc-helper.exe')) 'Hidden+System file behind a Run value quarantined'
 $waChrome = "$env:LOCALAPPDATA\Google\Chrome\User Data\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb"
 Check (-not (Test-Path $waChrome)) 'WhatsApp Web login removed from Chrome'
 Check (-not (Test-Path "$env:LOCALAPPDATA\appclient")) 'ABCDoor folder quarantined'

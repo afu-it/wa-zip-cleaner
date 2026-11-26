@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.26.112'
+$Version = '2026.11.26.113'
 
 # 32-bit PowerShell on 64-bit Windows sees SysWOW64 as System32: no bcdedit.exe or netcfg.exe there, so automatic
 # Safe Mode could never be set up (WAZ-B6PDP, Nov 2026: seven tries). Run again in 64-bit PowerShell, same arguments.
@@ -1164,7 +1164,16 @@ function Scan-Persistence {
         if (-not (Test-Path -LiteralPath $target -PathType Leaf)) { continue }
         $a = (Get-Item -LiteralPath $target -Force -ErrorAction SilentlyContinue).Attributes
         if (($a -band [IO.FileAttributes]::Hidden) -and ($a -band [IO.FileAttributes]::System)) {
-          Add-Finding 'RegValue' 'HIGH' "$k|$n" "Auto-start points at a Hidden+System file: $target"; break
+          Add-Finding 'RegValue' 'HIGH' "$k|$n" "Auto-start points at a Hidden+System file: $target"
+          # The file and its running copy go too: with only the Run value removed, the running program wrote it
+          # straight back (WAZ-UU3YY -> P48UF, Nov 2026: c:\windows\resources\themes\explorer.exe and \resources\svchost.exe).
+          $hsDetail = "Hidden+System program started by the auto-start entry $n."
+          Add-Finding 'File' 'HIGH' $target $hsDetail
+          foreach ($pf in @($Findings | Where-Object { $_.Kind -eq 'File' -and "$($_.Target)" -ieq $target -and $_.Severity -ne 'HIGH' })) { $pf.Severity = 'HIGH'; $pf.Detail = $hsDetail }
+          foreach ($pr in @(Get-Process -ErrorAction SilentlyContinue | Where-Object { "$($_.Path)" -ieq $target })) {
+            Add-Finding 'Process' 'HIGH' "$($pr.ProcessName) (PID $($pr.Id))" "Program running from the Hidden+System file $target (auto-start entry $n)" @{ Pid = $pr.Id; Path = $pr.Path }
+          }
+          break
         }
       }
     }
