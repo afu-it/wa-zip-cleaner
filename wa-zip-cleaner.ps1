@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.26.114'
+$Version = '2026.11.26.115'
 
 # 32-bit PowerShell on 64-bit Windows sees SysWOW64 as System32: no bcdedit.exe or netcfg.exe there, so automatic
 # Safe Mode could never be set up (WAZ-B6PDP, Nov 2026: seven tries). Run again in 64-bit PowerShell, same arguments.
@@ -1354,13 +1354,16 @@ function Scan-AntivirusOff {
   }
   # WAZ-LD2EW screenshot: Windows Security said "No action needed" while the Defender service was not running
   # (last scan and last update "Not available"). Security Center still counted it as on, so check the service too.
-  $wdState = if ($env:WAZIP_TEST_WINDEFEND) { $env:WAZIP_TEST_WINDEFEND } else { [string](Get-Service -Name WinDefend -ErrorAction SilentlyContinue).Status }
+  $wdState = if ($env:WAZIP_TEST_WINDEFEND) { $env:WAZIP_TEST_WINDEFEND -replace '^missing$', '' } else { [string](Get-Service -Name WinDefend -ErrorAction SilentlyContinue).Status }
   $wdDead = $wdState -ne 'Running'
   $on = @($av | Where-Object { $_ -and (([int]$_.productState -shr 12) -band 0xF) -eq 1 -and -not ($wdDead -and $_.displayName -match '(?i)Windows Defender|Microsoft Defender') })
   if ($null -ne $av -and -not $on.Count) {
     $names = (@($av | ForEach-Object { $_.displayName }) | Select-Object -Unique) -join ', '
     if (-not $names) { $names = 'none' }
     Add-Finding 'Info' 'WARN' 'No antivirus is switched on' "Windows Security reports no antivirus with real-time protection on (installed: $names; Defender service: $(if ($wdState) { $wdState } else { 'missing' })). Malware switches antivirus off before installing itself. Turn it back on: Windows Security > Virus & threat protection > Manage settings > Real-time protection: On, then run a Full scan."
+    # No Defender service at all (WAZ-EM38E, Nov 2026: Windows 10 1703 with Update off): nothing to switch on.
+    # The end of the run offers a Windows repair that puts Defender back.
+    if (-not $wdState) { $script:DefMissing = $true }
   }
 }
 
@@ -3859,6 +3862,80 @@ if ($SafeAuto -and $IpgAgain) {
   $ans = ([string](Read-Host)).Trim()
   if ($ans -eq '1') { Start-SafeAuto }
 }
+# Windows Defender missing entirely (WAZ-EM38E, Nov 2026): a "Lite" Windows build or malware removed its service, so
+# Windows Security has nothing to switch on. AFU: offer to put it back. Microsoft's Windows 10 Update Assistant repairs
+# Windows in place (files and programs stay) and brings back Defender and Windows Update. The Defender-off policies are
+# removed first (a .reg copy is kept), or the repaired Defender would stay off. Windows 11 and Server are not handled.
+function Invoke-DefenderRepair {
+  if (-not $script:DefMissing -or $SafeAuto -or $script:SafeQueued) { return }
+  $test = $env:WAZIP_TEST_DEFREPAIR
+  if ($env:WAZIP_NO_PROMPT -and -not $test) { return }
+  $os = Get-CimInstance Win32_OperatingSystem -ErrorAction SilentlyContinue
+  $isWin10 = $test -or ($os -and [int]$os.ProductType -eq 1 -and [int]$os.BuildNumber -lt 22000)
+  Show-Head 'WINDOWS SECURITY TIADA' 'WINDOWS SECURITY MISSING'
+  Write-Host ''
+  if (-not $isWin10) {
+    Say 'Windows Defender tiada dalam PC ni. Buka Settings > Windows Update dan pasang semua update, atau pasang antivirus lain (contoh Bitdefender Free).' `
+        'Windows Defender is missing on this PC. Open Settings > Windows Update and install all updates, or install another antivirus (for example Bitdefender Free).' Yellow
+    return
+  }
+  $free = [double](Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='$env:SystemDrive'" -ErrorAction SilentlyContinue).FreeSpace
+  if ($free -lt 12GB -and -not $test) {
+    Say "Windows Defender tiada. Tool boleh pasang semula, tapi perlu sekurang-kurangnya 12 GB ruang kosong di $env:SystemDrive (ada $([int]($free / 1GB)) GB). Kosongkan ruang, kemudian jalankan tool ni sekali lagi." `
+        "Windows Defender is missing. The tool can put it back, but needs at least 12 GB free on $env:SystemDrive (has $([int]($free / 1GB)) GB). Free up space, then run this tool again." Yellow
+    return
+  }
+  Say 'Windows Defender (antivirus Windows) tiada langsung dalam PC ni, jadi tiada apa nak dihidupkan.' 'Windows Defender (the Windows antivirus) is missing from this PC, so there is nothing to switch on.' White
+  Say 'Tool boleh baiki Windows guna alat rasmi Microsoft. Fail dan program anda KEKAL. Ambil masa 1-2 jam, PC restart sendiri beberapa kali. Pastikan PC bercas dan internet stabil.' `
+      'The tool can repair Windows with the official Microsoft tool. Your files and programs STAY. It takes 1-2 hours and the PC restarts by itself a few times. Keep the PC plugged in and online.' White
+  Write-Host ''
+  try { $Host.UI.RawUI.FlushInputBuffer() } catch {}
+  $ans = if ($test) { 'Y' } else { [string](Read-Host 'Taip Y dan Enter untuk pasang semula Windows Security (Type Y and Enter to put Windows Security back)') }
+  if ($ans.Trim() -ne 'Y') { return }
+  # Defender-off policies first, with a copy so -Restore or IT can put them back.
+  $pk = 'HKLM\SOFTWARE\Policies\Microsoft\Windows Defender'
+  if (Test-Path -LiteralPath "Registry::$pk") {
+    New-Item -ItemType Directory -Force -Path $QuarantineRoot | Out-Null
+    $bak = Join-Path $QuarantineRoot ('defender-policies-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.reg')
+    & reg.exe export $pk $bak /y 2>&1 | Out-Null
+    foreach ($k in "Registry::$pk", "Registry::$pk\Real-Time Protection") {
+      $item = Get-Item -LiteralPath $k -ErrorAction SilentlyContinue
+      if (-not $item) { continue }
+      foreach ($n in $item.GetValueNames()) {
+        if ($n -in 'DisableAntiSpyware', 'DisableAntiVirus' -or ($k -like '*Real-Time Protection' -and $n -like 'Disable*')) {
+          Remove-ItemProperty -LiteralPath $k -Name $n -ErrorAction SilentlyContinue
+        }
+      }
+    }
+    Say "  Tetapan yang matikan Defender dibuang (salinan: $bak)." "  Policies that switch Defender off removed (copy: $bak)." Green
+  }
+  $dir = Join-Path $env:ProgramData 'WAZ-Repair'
+  $exe = Join-Path $dir 'Windows10Upgrade9252.exe'
+  $uaArgs = "/quietinstall /skipeula /auto upgrade /copylogs `"$dir`""
+  if ($test) { Set-Content -LiteralPath $test -Value "repair $exe $uaArgs"; return }
+  New-Item -ItemType Directory -Force -Path $dir | Out-Null
+  Say '  Muat turun alat Microsoft...' '  Downloading the Microsoft tool...' Cyan
+  try {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+    Invoke-WebRequest 'https://go.microsoft.com/fwlink/?LinkID=799445' -OutFile $exe -UseBasicParsing -ErrorAction Stop
+  } catch {
+    Say "  GAGAL muat turun: $($_.Exception.Message). Cuba lagi nanti, atau pasang antivirus lain." "  Download FAILED: $($_.Exception.Message). Try again later, or install another antivirus." Red
+    return
+  }
+  # Run it only when Microsoft signed it.
+  $sig = Get-AuthenticodeSignature -FilePath $exe
+  if ($sig.Status -ne 'Valid' -or "$($sig.SignerCertificate.Subject)" -notmatch 'O=Microsoft Corporation') {
+    Remove-Item -LiteralPath $exe -Force -ErrorAction SilentlyContinue
+    Say '  Fail yang dimuat turun bukan dari Microsoft, jadi tak dijalankan.' '  The downloaded file is not signed by Microsoft, so it was not run.' Red
+    return
+  }
+  Start-Process -FilePath $exe -ArgumentList $uaArgs
+  Say '  Pembaikan Windows bermula di belakang. Biarkan PC hidup; ia akan restart sendiri. Lepas siap, jalankan tool ni sekali lagi untuk semak.' `
+      '  The Windows repair has started in the background. Leave the PC on; it restarts by itself. When done, run this tool again to check.' Green
+}
+
+# Last step of a run that the launcher will not follow with -Fix: a scan with warnings only, or the clean-up run.
+if ($Fix -or -not $high.Count) { Invoke-DefenderRepair }
 Stop-Transcript | Out-Null
 # Report offer after the clean-up run, or after a scan the launcher will not follow with Y (warnings only).
 if (-not $SafeAuto -and -not $script:SafeQueued -and ($Fix -or -not $high.Count)) { Invoke-ReportOffer }

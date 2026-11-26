@@ -1767,6 +1767,17 @@ $rAv2 = Scan "$env:TEMP\xav2.json" -Owner Office
 $env:WAZIP_TEST_AVSTATE = 'Windows Defender=397568'; $env:WAZIP_TEST_WINDEFEND = 'Stopped'
 $rAv3 = Scan "$env:TEMP\xav3.json"
 $env:WAZIP_TEST_AVSTATE = 'Windows Defender=393472'; Remove-Item Env:\WAZIP_TEST_WINDEFEND
+# Defender service missing (WAZ-EM38E): the run offers the Windows repair and removes the Defender-off policies first.
+$env:WAZIP_TEST_AVSTATE = 'none'; $env:WAZIP_TEST_WINDEFEND = 'missing'; $defPlan = "$env:TEMP\xdefrepair.txt"; $env:WAZIP_TEST_DEFREPAIR = $defPlan
+Remove-Item -LiteralPath $defPlan -Force -ErrorAction SilentlyContinue
+$rAv4 = Scan "$env:TEMP\xav4.json" -Owner Office
+$plan = if (Test-Path $defPlan) { Get-Content -Raw $defPlan } else { '' }
+Check (Has $rAv4 'Info' 'WARN' 'No antivirus is switched on' 'Defender service: missing') 'missing Defender service is reported'
+Check ($plan -match 'Windows10Upgrade9252\.exe /quietinstall /skipeula /auto upgrade') "missing Defender offers the Windows 10 repair ($("$plan".Trim()))"
+Check ($null -eq (Get-ItemProperty -LiteralPath $rtKey -ErrorAction SilentlyContinue).DisableRealtimeMonitoring) 'Defender-off policy removed before the repair'
+Remove-Item Env:\WAZIP_TEST_DEFREPAIR; Remove-Item -LiteralPath $defPlan -Force -ErrorAction SilentlyContinue
+New-ItemProperty -Path $rtKey -Name DisableRealtimeMonitoring -Value 1 -PropertyType DWord -Force | Out-Null
+$env:WAZIP_TEST_AVSTATE = 'Windows Defender=393472'; Remove-Item Env:\WAZIP_TEST_WINDEFEND
 # Debugger hijack (WAZ-LD2EW): the Windows Security tray icon, which a server runner never starts, plus a harmless one.
 $ifeo = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options'
 New-Item -Path "$ifeo\SecurityHealthSystray.exe" -Force | Out-Null
