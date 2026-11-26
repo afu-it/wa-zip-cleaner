@@ -665,6 +665,18 @@ Check (-not (Get-ItemProperty -Path $runH -Name WazHexTest -ErrorAction Silently
 Remove-Item -LiteralPath $hexDir -Recurse -Force -ErrorAction SilentlyContinue
 Remove-ItemProperty -Path $runH -Name WazHexTest -ErrorAction SilentlyContinue
 
+Write-Host '=== Program in C:\Windows\Resources (WAZ-UU3YY -> NTANF) ===' -ForegroundColor Cyan
+$resDir = Join-Path $env:SystemRoot 'Resources\Themes\WazResTest'
+New-Item -ItemType Directory -Force -Path $resDir | Out-Null
+Set-Content "$resDir\explorer.exe" 'dummy'; Set-Content "$resDir\helper.exe" 'dummy'; Set-Content "$resDir\plain.exe" 'dummy'
+(Get-Item -LiteralPath "$resDir\helper.exe" -Force).Attributes = 'Hidden, System, Archive'
+$rR = Scan "$env:TEMP\xres1.json" -Fix
+Check (Has $rR 'File' 'HIGH' 'WazResTest\\explorer\.exe$' 'Windows\\Resources') 'program named like Windows in Windows\Resources is HIGH'
+Check (Has $rR 'File' 'HIGH' 'WazResTest\\helper\.exe$' 'Windows\\Resources') 'hidden program in Windows\Resources is HIGH'
+Check (-not ($rR.All | Where-Object { $_.Target -match 'WazResTest\\plain\.exe$' })) 'ordinary visible program in Windows\Resources is left alone'
+Check (-not (Test-Path -LiteralPath "$resDir\explorer.exe") -and -not (Test-Path -LiteralPath "$resDir\helper.exe")) 'Windows\Resources programs quarantined'
+Remove-Item -LiteralPath $resDir -Recurse -Force -ErrorAction SilentlyContinue
+
 Write-Host '=== Program in Public\Libraries symbol folder (SyncEngineDatabase report) ===' -ForegroundColor Cyan
 $libDir = 'C:\Users\Public\Libraries\BB&{@#{!@()[{(+)(@%]@(=,[),{}~Lr'
 New-Item -ItemType Directory -Force -Path $libDir | Out-Null

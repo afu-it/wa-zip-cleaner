@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.26.113'
+$Version = '2026.11.26.114'
 
 # 32-bit PowerShell on 64-bit Windows sees SysWOW64 as System32: no bcdedit.exe or netcfg.exe there, so automatic
 # Safe Mode could never be set up (WAZ-B6PDP, Nov 2026: seven tries). Run again in 64-bit PowerShell, same arguments.
@@ -1307,6 +1307,7 @@ function Scan-Persistence {
   Scan-DefenderExclusions
   Scan-DefenderHistory
   Scan-RanPrograms
+  Scan-WindowsResources
   $startups = @("$env:ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp")
   $startups += Get-ChildItem "$env:SystemDrive\Users" -Directory -ErrorAction SilentlyContinue |
     ForEach-Object { Join-Path $_.FullName 'AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup' }
@@ -1317,6 +1318,21 @@ function Scan-Persistence {
       if ("$($_.Name) $body" -match $PersistRegex) { Add-Finding 'File' 'HIGH' $_.FullName 'Startup folder entry pointing at malware.' }
       # SORVEPOTEL's startup .bat builds a hidden PowerShell command out of for-loops plus base64.
       elseif ($body -match '(?i)for\s+%{1,2}\w+\s+in' -and $body -match '[A-Za-z0-9+/]{40,}') { Add-Finding 'File' 'HIGH' $_.FullName 'Startup script that hides a PowerShell command (SORVEPOTEL WhatsApp worm).' }
+    }
+  }
+}
+
+# C:\Windows\Resources holds themes only. A hidden program there, or one named like a Windows program, is a dropper
+# copy that a Run value starts (WAZ-UU3YY -> NTANF, Nov 2026: themes\explorer.exe and svchost.exe stayed after the
+# Run values were cleaned). Add-Finding already skips Microsoft-signed files under Windows.
+function Scan-WindowsResources {
+  $root = Join-Path $env:SystemRoot 'Resources'
+  foreach ($f in @(Get-ChildItem -LiteralPath $root -Recurse -File -Force -ErrorAction SilentlyContinue | Where-Object { $_.Extension -match '(?i)^\.(exe|dll|scr|com|pif)$' })) {
+    $hidden = ($f.Attributes -band [IO.FileAttributes]::Hidden) -or ($f.Attributes -band [IO.FileAttributes]::System)
+    if (-not $hidden -and $f.Name -notmatch '(?i)^(explorer|svchost|spoolsv|lsass|csrss|winlogon|services|smss|taskhost\w*|conhost|dllhost|rundll32)\.exe$') { continue }
+    Add-Finding 'File' 'HIGH' $f.FullName 'Program hidden in C:\Windows\Resources (only themes belong there): a copy of malware that starts itself again.'
+    foreach ($pr in @(Get-Process -ErrorAction SilentlyContinue | Where-Object { "$($_.Path)" -ieq $f.FullName })) {
+      Add-Finding 'Process' 'HIGH' "$($pr.ProcessName) (PID $($pr.Id))" "Program running from C:\Windows\Resources: $($f.FullName)" @{ Pid = $pr.Id; Path = $pr.Path }
     }
   }
 }
