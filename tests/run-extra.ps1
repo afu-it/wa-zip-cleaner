@@ -1227,6 +1227,17 @@ Write-Host '=== .bat launchers ===' -ForegroundColor Cyan
 & sc.exe delete WazCrdTest | Out-Null; & sc.exe delete WazMsp360Test | Out-Null; & sc.exe delete WazFaronicsTest | Out-Null
 Remove-Item "$drvDir\wazlolv.sys" -Force -ErrorAction SilentlyContinue
 Remove-Item Env:\WAZIP_TEST_LOLDRIVERS
+# Windows Update back on with Y (WAZ-EM38E): service to Manual, the block policy removed, a company WSUS left alone.
+$wuPol = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate'
+$wuPolHad = Test-Path -LiteralPath $wuPol
+New-Item -Path "$wuPol\AU" -Force | Out-Null
+New-ItemProperty -Path "$wuPol\AU" -Name NoAutoUpdate -Value 1 -PropertyType DWord -Force | Out-Null
+$env:WAZIP_TEST_WUFIX = '1'
+$rWu = Scan "$env:TEMP\xwu1.json"
+Remove-Item Env:\WAZIP_TEST_WUFIX
+Check ((Get-ItemProperty -LiteralPath $wuKey).Start -ne 4) "Windows Update service switched back on (Start=$((Get-ItemProperty -LiteralPath $wuKey).Start))"
+Check ($null -eq (Get-ItemProperty -LiteralPath "$wuPol\AU" -ErrorAction SilentlyContinue).NoAutoUpdate) 'NoAutoUpdate policy removed'
+if (-not $wuPolHad) { Remove-Item -LiteralPath $wuPol -Recurse -Force -ErrorAction SilentlyContinue }
 Set-ItemProperty -LiteralPath $wuKey -Name Start -Value 3
 Remove-Item $prof -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item 'HKLM:\SOFTWARE\Policies\Google\Chrome' -Recurse -Force -ErrorAction SilentlyContinue

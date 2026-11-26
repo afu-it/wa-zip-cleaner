@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.26.115'
+$Version = '2026.11.26.116'
 
 # 32-bit PowerShell on 64-bit Windows sees SysWOW64 as System32: no bcdedit.exe or netcfg.exe there, so automatic
 # Safe Mode could never be set up (WAZ-B6PDP, Nov 2026: seven tries). Run again in 64-bit PowerShell, same arguments.
@@ -1222,6 +1222,7 @@ function Scan-Persistence {
   # CloudSEK (Dec 2025): the loader switches off Windows Update so the PC stops getting fixes.
   if ((Get-ItemProperty -LiteralPath 'HKLM:\SYSTEM\CurrentControlSet\Services\wuauserv' -ErrorAction SilentlyContinue).Start -eq 4) {
     Add-Finding 'Info' 'WARN' 'Windows Update is disabled' 'Silver Fox switches off Windows Update. Unless you did this yourself, turn it back on: services.msc > Windows Update > Startup type Manual.'
+    $script:WuOff = $true
   }
   Scan-AntivirusOff
   # ABCDoor (Kaspersky, Apr 2026) runs at logon through UserInitMprLogonScript and keeps settings in Software\CarEmu.
@@ -3934,7 +3935,54 @@ function Invoke-DefenderRepair {
       '  The Windows repair has started in the background. Leave the PC on; it restarts by itself. When done, run this tool again to check.' Green
 }
 
+# Windows Update switched off (WAZ-EM38E, Nov 2026: Windows 10 1703, never updated since 2017). AFU: offer to switch
+# it back on. Services back to Manual, the policies that stop updates removed (a .reg copy is kept). A WSUS server
+# set by company IT stays; only one pointing at this PC itself (a common blocker trick) is removed.
+function Invoke-WindowsUpdateOn {
+  if (-not $script:WuOff -or $SafeAuto -or $script:SafeQueued) { return }
+  $test = $env:WAZIP_TEST_WUFIX
+  if ($env:WAZIP_NO_PROMPT -and -not $test) { return }
+  Show-Head 'WINDOWS UPDATE MATI' 'WINDOWS UPDATE IS OFF'
+  Write-Host ''
+  Say 'Windows Update dimatikan, jadi PC ni tak dapat pembaikan keselamatan dari Microsoft.' 'Windows Update is switched off, so this PC gets no security fixes from Microsoft.' White
+  try { $Host.UI.RawUI.FlushInputBuffer() } catch {}
+  $ans = if ($test) { 'Y' } else { [string](Read-Host 'Taip Y dan Enter untuk hidupkan semula Windows Update (Type Y and Enter to switch Windows Update back on)') }
+  if ($ans.Trim() -ne 'Y') { return }
+  $wp = 'HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate'
+  if (Test-Path -LiteralPath "Registry::$wp") {
+    New-Item -ItemType Directory -Force -Path $QuarantineRoot | Out-Null
+    $bak = Join-Path $QuarantineRoot ('windowsupdate-policies-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.reg')
+    & reg.exe export $wp $bak /y 2>&1 | Out-Null
+    $au = "Registry::$wp\AU"
+    foreach ($n in 'NoAutoUpdate') { Remove-ItemProperty -LiteralPath $au -Name $n -ErrorAction SilentlyContinue }
+    foreach ($n in 'DisableWindowsUpdateAccess', 'DoNotConnectToWindowsUpdateInternetLocations', 'SetDisableUXWUAccess') { Remove-ItemProperty -LiteralPath "Registry::$wp" -Name $n -ErrorAction SilentlyContinue }
+    $ws = [string](Get-ItemProperty -LiteralPath "Registry::$wp" -ErrorAction SilentlyContinue).WUServer
+    if ($ws -match '(?i)^(https?://)?(127\.|localhost|0\.0\.0\.0|\[?::1)') {
+      Remove-ItemProperty -LiteralPath $au -Name UseWUServer -ErrorAction SilentlyContinue
+      foreach ($n in 'WUServer', 'WUStatusServer') { Remove-ItemProperty -LiteralPath "Registry::$wp" -Name $n -ErrorAction SilentlyContinue }
+    }
+    Say "  Tetapan yang sekat update dibuang (salinan: $bak)." "  Policies that block updates removed (copy: $bak)." Green
+  }
+  $bad = @()
+  foreach ($svc in 'wuauserv', 'BITS', 'UsoSvc', 'WaaSMedicSvc') {
+    $key = "HKLM:\SYSTEM\CurrentControlSet\Services\$svc"
+    $st = (Get-ItemProperty -LiteralPath $key -ErrorAction SilentlyContinue).Start
+    if ($null -eq $st -or $st -ne 4) { continue }
+    # Blocker tools lock the service key, so try the service manager first, then the registry.
+    & sc.exe config $svc start= demand 2>&1 | Out-Null
+    if ((Get-ItemProperty -LiteralPath $key -ErrorAction SilentlyContinue).Start -eq 4) { try { Set-ItemProperty -LiteralPath $key -Name Start -Value 3 -ErrorAction Stop } catch {} }
+    if ((Get-ItemProperty -LiteralPath $key -ErrorAction SilentlyContinue).Start -eq 4 -and $svc -ne 'WaaSMedicSvc') { $bad += $svc }
+  }
+  Start-Service -Name wuauserv -ErrorAction SilentlyContinue
+  if ($bad.Count) {
+    Say "  GAGAL hidupkan: $($bad -join ', '). Restart PC dan jalankan tool ni sekali lagi." "  FAILED to switch on: $($bad -join ', '). Restart the PC and run this tool again." Red
+  } else {
+    Say '  OK  Windows Update hidup semula. Buka Settings > Update & Security > Check for updates.' '  OK  Windows Update is back on. Open Settings > Update & Security > Check for updates.' Green
+  }
+}
+
 # Last step of a run that the launcher will not follow with -Fix: a scan with warnings only, or the clean-up run.
+if ($Fix -or -not $high.Count -or $env:WAZIP_TEST_WUFIX) { Invoke-WindowsUpdateOn }
 if ($Fix -or -not $high.Count) { Invoke-DefenderRepair }
 Stop-Transcript | Out-Null
 # Report offer after the clean-up run, or after a scan the launcher will not follow with Y (warnings only).
