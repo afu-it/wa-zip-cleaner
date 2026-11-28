@@ -1754,6 +1754,28 @@ Remove-Item Env:\WAZIP_TEST_UPDATEPENDING
 $sd = if (Test-Path $safeDry) { Get-Content -Raw $safeDry } else { '' }
 Check ($sd -match 'update-pending' -and $sd -notmatch 'safeauto') "pending Windows update stops the Safe Mode restart ($("$sd".Trim()))"
 Check ((Get-Content -Raw "$env:TEMP\x49u.out") -match 'Update and restart') 'pending Windows update: user told to Update and restart first'
+# R: the tool restarts for the user and queues itself to run again after the restart (WAZ-WXZB4..87HWG, Nov 2026).
+$replant = {
+  Stop-Process -Id $rP.Id -Force -ErrorAction SilentlyContinue; & sc.exe delete WazBootRepairRc | Out-Null; Start-Sleep 1
+  New-Item -ItemType Directory -Force -Path $rDir | Out-Null
+  Copy-Item -LiteralPath "$env:SystemRoot\System32\PING.EXE" -Destination "$rDir\RuntimeBroker.exe" -Force
+  $script:rP = [Diagnostics.Process]::Start("$rDir\RuntimeBroker.exe", '-n 900 127.0.0.1')
+  Set-Content $kvSys 'dummy'
+  & sc.exe create WazBootRepairRc type= kernel start= demand binPath= $kvSys | Out-Null
+  Start-Sleep 2
+}
+$env:WAZIP_TEST_UPDATEPENDING = '1'; $env:WAZIP_TEST_UPDRESTART = 'R'
+& $replant
+$r49r = Scan "$env:TEMP\x49r.json" -Fix -Root $qR -Out "$env:TEMP\x49r.out"
+$sd = if (Test-Path $safeDry) { Get-Content -Raw $safeDry } else { '' }
+Check ($sd -match 'update-restart .*-Fix' -and (Test-Path (Join-Path $qR 'update-restart.txt'))) "R restarts for the user and runs the tool again ($("$sd".Trim()))"
+# Still pending after that restart: open Windows Update instead of restarting again.
+& $replant
+$r49t = Scan "$env:TEMP\x49t.json" -Fix -Root $qR -Out "$env:TEMP\x49t.out"
+$sd = if (Test-Path $safeDry) { Get-Content -Raw $safeDry } else { '' }
+Check ($sd -match 'update-still-pending' -and -not (Test-Path (Join-Path $qR 'update-restart.txt'))) 'update still pending after the restart: no restart loop'
+Check ((Get-Content -Raw "$env:TEMP\x49t.out") -match 'Restart now') 'update still pending: user sent to the Windows Update page'
+Remove-Item Env:\WAZIP_TEST_UPDATEPENDING, Env:\WAZIP_TEST_UPDRESTART
 Stop-Process -Id $rP.Id -Force -ErrorAction SilentlyContinue
 & sc.exe delete WazBootRepairRc | Out-Null
 Remove-Item -LiteralPath $rDir, $qR, $safeDry, $kvSys -Recurse -Force -ErrorAction SilentlyContinue

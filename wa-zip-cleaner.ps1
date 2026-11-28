@@ -32,7 +32,7 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
-$Version = '2026.11.26.120'
+$Version = '2026.11.28.121'
 
 # 32-bit PowerShell on 64-bit Windows sees SysWOW64 as System32: no bcdedit.exe or netcfg.exe there, so automatic
 # Safe Mode could never be set up (WAZ-B6PDP, Nov 2026: seven tries). Run again in 64-bit PowerShell, same arguments.
@@ -3801,6 +3801,52 @@ function Test-UpdatePending {
   return (Test-Path -LiteralPath (Join-Path $env:windir 'WinSxS\pending.xml'))
 }
 
+# A pending update blocks Safe Mode. Users were told to "Update and restart" and ran the tool six more times over three
+# hours without restarting (WAZ-WXZB4..87HWG, Nov 2026). Offer to restart for them: Windows' own "Restart now" (it
+# installs the update), and the tool runs again by itself after the restart. If the update is still waiting after
+# that restart, open the Windows Update page instead of restarting in a loop.
+function Invoke-UpdateRestart {
+  $mark = Join-Path $QuarantineRoot 'update-restart.txt'
+  $dry = $env:WAZIP_TEST_SAFEAUTO_DRY
+  if (Test-Path -LiteralPath $mark) {
+    Remove-Item -LiteralPath $mark -Force -ErrorAction SilentlyContinue
+    if ($dry) { Add-Content -LiteralPath $dry -Value "update-still-pending $stamp" }
+    Say 'Update Windows masih belum siap walaupun PC dah restart. Halaman Windows Update akan dibuka: tekan "Restart now" (atau "Install now" dulu kalau ada), tunggu PC masuk Windows biasa, kemudian jalankan tool ni sekali lagi dan pilih 1.' `
+        'The Windows update is still waiting even after the restart. The Windows Update page will open: click "Restart now" (or "Install now" first if shown), wait for normal Windows, then run this tool again and choose 1.' Yellow
+    if (-not $dry) { Start-Process 'ms-settings:windowsupdate' -ErrorAction SilentlyContinue }
+    return
+  }
+  $ans = if ($dry -and $env:WAZIP_TEST_UPDRESTART) { $env:WAZIP_TEST_UPDRESTART } elseif ($env:WAZIP_NO_PROMPT) { '' } else {
+    [string](Read-Host 'Taip R dan Enter untuk restart sekarang (tool jalan sendiri lepas restart) (Type R and Enter to restart now; the tool runs again by itself)')
+  }
+  if ("$ans".Trim() -ne 'R') {
+    Say 'INGAT: Safe Mode TIDAK dimulakan. Buat Start > Power > Update and restart dulu, kemudian jalankan tool ni sekali lagi dan pilih 1.' `
+        'REMEMBER: Safe Mode was NOT started. Do Start > Power > Update and restart first, then run this tool again and choose 1.' Yellow
+    return
+  }
+  $copy = Join-Path $QuarantineRoot 'wa-zip-cleaner.ps1'
+  $cmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$copy`" -Fix"
+  if ($meRemove) { $cmd += ' -RemoveManageEngine' }
+  if ($Owner) { $cmd += " -Owner $Owner" }
+  if ($dry) { Add-Content -LiteralPath $dry -Value "update-restart $cmd"; Set-Content -LiteralPath $mark -Value $stamp; return }
+  try {
+    if ($PSCommandPath -ne $copy) { Copy-Item -LiteralPath $PSCommandPath -Destination $copy -Force -ErrorAction Stop }
+    # No leading *: this one must run in normal Windows only.
+    Set-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce' -Name 'WAZipAfterUpdate' -Value $cmd -ErrorAction Stop
+    Set-Content -LiteralPath $mark -Value $stamp -ErrorAction Stop
+  } catch {
+    Say "Tak dapat sediakan restart auto ($($_.Exception.Message)). Buat Start > Power > Update and restart, kemudian jalankan tool ni sekali lagi dan pilih 1." `
+        "Could not set up the automatic restart ($($_.Exception.Message)). Do Start > Power > Update and restart, then run this tool again and choose 1." Red
+    return
+  }
+  Say 'PC akan restart dan siapkan update (boleh ambil 5-20 minit, JANGAN tutup PC). Lepas log masuk, tool ni jalan sendiri dan sambung bersihkan.' `
+      'The PC restarts and finishes the update (5-20 minutes, do NOT switch it off). After you sign in, this tool runs by itself and carries on cleaning.' Yellow
+  # Windows' own "Restart now" installs the waiting update; a plain restart may skip it. Fall back to a plain restart.
+  & "$env:windir\System32\UsoClient.exe" RestartDevice 2>&1 | Out-Null
+  Start-Sleep -Seconds 30
+  & shutdown.exe /r /t 30 2>&1 | Out-Null
+}
+
 # Blocked leftovers: offer to restart into Safe Mode (the tool runs itself there) or into the recovery screen (BUANG.bat).
 function Start-SafeAuto {
   # The online pass holds the evidence (running loader, its folder and task) and still has internet: offer the report
@@ -3809,6 +3855,7 @@ function Start-SafeAuto {
   # Only from normal Windows: in Safe Mode the boot setting is already on and must not be left behind.
   # Checked before the report offer so the report shows it (WAZ-NGHRL/GKLA9, Nov 2026: report sent, no Safe Mode).
   $updPending = -not $SafeAuto -and (Test-UpdatePending)
+  if (-not $updPending) { Remove-Item -LiteralPath (Join-Path $QuarantineRoot 'update-restart.txt') -Force -ErrorAction SilentlyContinue }
   if ($updPending) {
     Write-Host ''
     Say 'Windows ada UPDATE yang belum siap. Kalau masuk Safe Mode sekarang, update tu gagal dan keluar skrin hitam "Something didn''t go as planned". Buat ni dulu: Start > Power > Update and restart. Tunggu sampai masuk Windows biasa, kemudian jalankan tool ni sekali lagi dan pilih 1.' `
@@ -3822,8 +3869,7 @@ function Start-SafeAuto {
   }
   if ($updPending) {
     if ($env:WAZIP_TEST_SAFEAUTO_DRY) { Add-Content -LiteralPath $env:WAZIP_TEST_SAFEAUTO_DRY -Value "update-pending $stamp" }
-    Say 'INGAT: Safe Mode TIDAK dimulakan. Buat Start > Power > Update and restart dulu, kemudian jalankan tool ni sekali lagi dan pilih 1.' `
-        'REMEMBER: Safe Mode was NOT started. Do Start > Power > Update and restart first, then run this tool again and choose 1.' Yellow
+    Invoke-UpdateRestart
     return
   }
   # Setup failed: say why, and give the recovery steps right here. "Follow the red steps above" pointed at nothing when
